@@ -1,6 +1,7 @@
 import SiteLogo from '@/Components/SiteLogo';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import QRCode from 'react-qr-code';
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageProps } from '@/types';
@@ -2887,6 +2888,10 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                     )}
                                     {tournament.judge_code && (
                                         <div className="space-y-3">
+                                            {(() => {
+                                                const judgeUrl = `${window.location.origin}/t/${tournament.slug}/judge`;
+                                                return (
+                                            <>
                                             <div>
                                                 <p className="text-xs text-slate-500 mb-1">Judge Code</p>
                                                 <div className="flex items-center gap-2">
@@ -2906,10 +2911,10 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                                 <p className="text-xs text-slate-500 mb-1">Judge Link</p>
                                                 <div className="flex items-center gap-2">
                                                     <span className="flex-1 px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/50 text-xs font-mono text-slate-300 truncate">
-                                                        {window.location.origin}/t/{tournament.slug}/judge
+                                                        {judgeUrl}
                                                     </span>
                                                     <button
-                                                        onClick={() => { const judgeUrl = `${window.location.origin}/t/${tournament.slug}/judge`; navigator.clipboard.writeText(judgeUrl); setToast('Judge link copied!'); }}
+                                                        onClick={() => { navigator.clipboard.writeText(judgeUrl); setToast('Judge link copied!'); }}
                                                         className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800/60 transition-all shrink-0"
                                                         title="Copy link"
                                                     >
@@ -2917,7 +2922,22 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                                     </button>
                                                 </div>
                                             </div>
+                                            <div className="flex flex-col items-center pt-1">
+                                                <p className="text-xs text-slate-500 mb-2">Scan to open judge login</p>
+                                                <div className="p-2.5 rounded-xl bg-white shadow-lg shadow-black/30">
+                                                    <QRCode
+                                                        value={judgeUrl}
+                                                        size={152}
+                                                        level="M"
+                                                        bgColor="#ffffff"
+                                                        fgColor="#0f172a"
+                                                    />
+                                                </div>
+                                            </div>
                                             <p className="text-[10px] text-slate-600 text-center">Share the link + code to judges so they can submit scores</p>
+                                            </>
+                                                );
+                                            })()}
                                         </div>
                                     )}
                                     {!isActive && !tournament.judge_code && (
