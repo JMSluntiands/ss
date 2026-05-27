@@ -2536,6 +2536,12 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                     Facebook
                                 </a>
                                 <p className="text-xs text-zinc-600 mt-2">Powered by SHADOW <span className="text-red-500">SYNDICATE</span></p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                    Web developers —{' '}
+                                    <span className="text-gray-500">Ronnel C Navarro</span>
+                                    {' '}&amp;{' '}
+                                    <span className="text-gray-500">Rho Anne Cera</span>
+                                </p>
                             </div>
                         </footer>
                     </div>

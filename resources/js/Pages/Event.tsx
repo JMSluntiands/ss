@@ -1,3 +1,4 @@
+import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useRef } from 'react';
@@ -389,11 +390,7 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
                 </div>
 
                 {/* Footer */}
-                <footer className="border-t border-zinc-800/60 py-8 mt-12">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                        <p className="text-xs text-gray-700">&copy; {new Date().getFullYear()} Shadow Syndicate. All rights reserved.</p>
-                    </div>
-                </footer>
+                <SiteFooter className="mt-12" />
             </div>
 
             {/* Registration Modal */}

@@ -1,4 +1,5 @@
 import { MemberSlideData, MembersSliderSection } from '@/Components/MembersMarquee';
+import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
 import { PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
@@ -341,27 +342,7 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                     </div>
                 </section>
 
-                {/* ── Footer ── */}
-                <footer className="border-t border-zinc-800/60 py-12">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                            <div className="flex items-center gap-3">
-                                <SiteLogo className="w-8 h-8 drop-shadow-[0_0_8px_rgba(220,38,38,0.3)]" />
-                                <span className="text-sm font-black tracking-tight text-gray-400">
-                                    SHADOW <span className="text-red-500/70">SYNDICATE</span>
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-6 text-sm text-gray-600">
-                                <Link href={route('members')} className="hover:text-red-400 transition-colors">Members</Link>
-                                <Link href={route('events')} className="hover:text-red-400 transition-colors">Event</Link>
-                                <Link href={route('blog')} className="hover:text-red-400 transition-colors">Blog</Link>
-                            </div>
-                            <p className="text-xs text-gray-700">
-                                &copy; {new Date().getFullYear()} Shadow Syndicate. All rights reserved.
-                            </p>
-                        </div>
-                    </div>
-                </footer>
+                <SiteFooter variant="full" />
 
                 {/* ── Join Us Modal ── */}
                 {joinModalOpen && (

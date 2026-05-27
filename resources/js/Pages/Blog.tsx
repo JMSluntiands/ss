@@ -1,3 +1,4 @@
+import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
 import { blogImageSrc, normalizeImages } from '@/utils/blogImages';
 import { Head, Link } from '@inertiajs/react';
@@ -159,11 +160,7 @@ export default function Blog({ posts = [] }: { posts?: BlogPostData[] }) {
                     )}
                 </div>
 
-                <footer className="border-t border-zinc-800/60 py-8 mt-12">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                        <p className="text-xs text-gray-700">&copy; {new Date().getFullYear()} Shadow Syndicate. All rights reserved.</p>
-                    </div>
-                </footer>
+                <SiteFooter className="mt-12" />
             </div>
         </>
     );
