@@ -11,15 +11,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/site-assets/logo', fn () => \App\Support\SiteAssets::logoResponse())->name('site.logo');
 
-Route::get('/files/{path}', function (string $path) {
-    $path = ltrim(str_replace(['..', '\\'], ['', '/'], $path), '/');
-    if ($path === '' || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
-        abort(404);
-    }
-
-    return \Illuminate\Support\Facades\Storage::disk('public')->response($path);
-})->where('path', '.*')->name('public.storage');
-
 Route::get('/', [\App\Http\Controllers\SitePageController::class, 'home'])->name('home');
 
 Route::get('/members', [\App\Http\Controllers\SitePageController::class, 'members'])->name('members');

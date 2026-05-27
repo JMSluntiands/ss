@@ -15,6 +15,12 @@ class SiteAssets
 
     public static function logoUrl(): string
     {
+        foreach (self::LOGO_CANDIDATES['public'] as $file) {
+            if (Storage::disk('public')->exists($file)) {
+                return asset('storage/'.$file);
+            }
+        }
+
         return route('site.logo');
     }
 
