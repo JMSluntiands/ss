@@ -32,15 +32,40 @@ const rankColors: Record<string, string> = {
     D: 'text-gray-400 bg-zinc-700/30 border-zinc-600/30',
 };
 
+const ROLE_ORDER = ['Founder', 'Co-Founder', 'Officer', 'Member', 'Recruit'];
+
+const roleFilterColors: Record<string, string> = {
+    All: 'bg-zinc-700/50 text-gray-300 border-zinc-600/50 hover:bg-zinc-700',
+    Founder: 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20',
+    'Co-Founder': 'bg-red-400/10 text-red-300 border-red-400/30 hover:bg-red-400/20',
+    Officer: 'bg-orange-500/10 text-orange-400 border-orange-500/30 hover:bg-orange-500/20',
+    Member: 'bg-zinc-700/30 text-gray-400 border-zinc-600/50 hover:bg-zinc-700/50',
+    Recruit: 'bg-zinc-800/30 text-gray-500 border-zinc-700/50 hover:bg-zinc-800/50',
+};
+
+const roleFilterActiveColors: Record<string, string> = {
+    All: 'bg-zinc-600 text-white border-zinc-500',
+    Founder: 'bg-red-500/30 text-red-300 border-red-500/60',
+    'Co-Founder': 'bg-red-400/30 text-red-200 border-red-400/60',
+    Officer: 'bg-orange-500/30 text-orange-300 border-orange-500/60',
+    Member: 'bg-zinc-600/50 text-gray-200 border-zinc-500/60',
+    Recruit: 'bg-zinc-700/50 text-gray-300 border-zinc-600/60',
+};
+
 export default function Members({ members = [] }: { members?: MemberData[] }) {
     const [search, setSearch] = useState('');
+    const [activeRole, setActiveRole] = useState('All');
 
-    const filtered = members.filter(
-        (m) =>
+    const roles = ['All', ...ROLE_ORDER.filter((r) => members.some((m) => m.role === r))];
+
+    const filtered = members.filter((m) => {
+        const matchSearch =
             m.name.toLowerCase().includes(search.toLowerCase()) ||
             m.role.toLowerCase().includes(search.toLowerCase()) ||
-            (m.bey || '').toLowerCase().includes(search.toLowerCase()),
-    );
+            (m.bey || '').toLowerCase().includes(search.toLowerCase());
+        const matchRole = activeRole === 'All' || m.role === activeRole;
+        return matchSearch && matchRole;
+    });
 
     return (
         <>
@@ -78,14 +103,34 @@ export default function Members({ members = [] }: { members?: MemberData[] }) {
 
                     {members.length > 0 ? (
                         <>
-                            <div className="mb-8">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
                                 <input
                                     type="text"
-                                    placeholder="Search members by name, role, or Beyblade..."
+                                    placeholder="Search by name or Beyblade..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="w-full max-w-md bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/20 transition-colors"
+                                    className="w-full sm:max-w-xs bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/20 transition-colors"
                                 />
+                                <div className="flex flex-wrap gap-2">
+                                    {roles.map((role) => (
+                                        <button
+                                            key={role}
+                                            onClick={() => setActiveRole(role)}
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${
+                                                activeRole === role
+                                                    ? (roleFilterActiveColors[role] ?? 'bg-zinc-600 text-white border-zinc-500')
+                                                    : (roleFilterColors[role] ?? 'bg-zinc-800/30 text-gray-500 border-zinc-700/50 hover:bg-zinc-800/50')
+                                            }`}
+                                        >
+                                            {role}
+                                            {role !== 'All' && (
+                                                <span className="ml-1.5 opacity-60">
+                                                    {members.filter((m) => m.role === role).length}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
