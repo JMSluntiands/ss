@@ -1,3 +1,4 @@
+import { memberImageSrc } from '@/utils/publicStorage';
 import { Link } from '@inertiajs/react';
 
 export interface MemberSlideData {
@@ -9,12 +10,6 @@ export interface MemberSlideData {
     losses: number;
     bey: string | null;
     image_url: string | null;
-}
-
-function memberImageSrc(url: string | null): string | null {
-    if (!url) return null;
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    return `/storage/${url}`;
 }
 
 const roleColors: Record<string, string> = {

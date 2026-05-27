@@ -1,12 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { memberImageSrc } from '@/utils/publicStorage';
 import { Head, router } from '@inertiajs/react';
 import { FormEvent, useRef, useState } from 'react';
-
-function memberImageSrc(url: string | null): string | null {
-    if (!url) return null;
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    return `/storage/${url}`;
-}
 
 interface SiteMember {
     id: number;

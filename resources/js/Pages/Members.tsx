@@ -1,4 +1,5 @@
 import SiteLogo from '@/Components/SiteLogo';
+import { memberImageSrc } from '@/utils/publicStorage';
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -12,12 +13,6 @@ interface MemberData {
     bey: string | null;
     joined: string | null;
     image_url: string | null;
-}
-
-function memberImageSrc(url: string | null): string | null {
-    if (!url) return null;
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    return `/storage/${url}`;
 }
 
 const roleColors: Record<string, string> = {

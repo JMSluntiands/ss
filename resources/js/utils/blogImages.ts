@@ -12,9 +12,8 @@ export function normalizeImages(images: unknown): string[] {
     return images.filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
 }
 
+import { publicStorageUrl } from '@/utils/publicStorage';
+
 export function blogImageSrc(path: string): string {
-    const trimmed = path.trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-    if (trimmed.startsWith('/storage/')) return trimmed;
-    return `/storage/${trimmed.replace(/^\/+/, '')}`;
+    return publicStorageUrl(path);
 }

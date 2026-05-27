@@ -1,4 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { blogImageSrc } from '@/utils/blogImages';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -57,13 +58,6 @@ function normalizeImages(images: unknown): string[] {
     }
     if (!Array.isArray(images)) return [];
     return images.filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
-}
-
-function blogImageSrc(path: string): string {
-    const trimmed = path.trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-    if (trimmed.startsWith('/storage/')) return trimmed;
-    return `/storage/${trimmed.replace(/^\/+/, '')}`;
 }
 
 function ImagePreview({ src, className, borderClass }: { src: string; className?: string; borderClass: string }) {
