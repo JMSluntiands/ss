@@ -29,4 +29,5 @@ export type PageProps<
         success?: string;
         error?: string;
     };
+    site_logo_url: string;
 };

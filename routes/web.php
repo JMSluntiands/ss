@@ -9,6 +9,8 @@ use App\Http\Controllers\EventRegistrationController;
 use App\Http\Controllers\TournamentController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/site-assets/logo', fn () => \App\Support\SiteAssets::logoResponse())->name('site.logo');
+
 Route::get('/', [\App\Http\Controllers\SitePageController::class, 'home'])->name('home');
 
 Route::get('/members', [\App\Http\Controllers\SitePageController::class, 'members'])->name('members');

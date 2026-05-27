@@ -1,11 +1,15 @@
-import { Head, Link } from '@inertiajs/react';
+import SiteLogo from '@/Components/SiteLogo';
+import { PageProps } from '@/types';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
 
 export default function Guest({ children }: PropsWithChildren) {
+    const { site_logo_url } = usePage<PageProps>().props;
+
     return (
         <>
         <Head>
-            <link rel="preload" href="/storage/sslogo.png" as="image" />
+            <link rel="preload" href={site_logo_url} as="image" />
         </Head>
         <div className="flex min-h-screen">
             <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
@@ -23,9 +27,7 @@ export default function Guest({ children }: PropsWithChildren) {
 
                 <div className="relative z-10 flex flex-col justify-center items-center w-full px-12">
                     <div className="mb-6">
-                        <img
-                            src="/storage/sslogo.png"
-                            alt="Shadow Syndicate"
+                        <SiteLogo
                             className="w-80 h-auto drop-shadow-[0_0_40px_rgba(220,38,38,0.4)]"
                             loading="eager"
                             fetchPriority="high"
@@ -67,9 +69,7 @@ export default function Guest({ children }: PropsWithChildren) {
 
             <div className="flex w-full lg:w-1/2 flex-col items-center justify-center bg-zinc-950 px-6 py-12">
                 <div className="lg:hidden mb-10 flex flex-col items-center">
-                    <img
-                        src="/storage/sslogo.png"
-                        alt="Shadow Syndicate"
+                    <SiteLogo
                         className="w-48 h-auto mb-4 drop-shadow-[0_0_20px_rgba(220,38,38,0.3)]"
                         loading="eager"
                         fetchPriority="high"

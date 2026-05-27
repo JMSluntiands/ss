@@ -1,3 +1,4 @@
+import SiteLogo from '@/Components/SiteLogo';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import React, { useState, useEffect, useRef } from 'react';
@@ -2515,12 +2516,12 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                             <span className="text-xl font-black text-white tracking-tight">
                                 SHADOW <span className="text-red-500">SYNDICATE</span>
                             </span>
-                            <img src="/storage/sslogo.png" alt="Shadow Syndicate" className="h-10 w-auto" />
+                            <SiteLogo className="h-10 w-auto" />
                         </header>
                         <main className="flex-1">{children}</main>
                         <footer className="border-t border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm">
                             <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col items-center gap-4">
-                                <img src="/storage/sslogo.png" alt="Shadow Syndicate" className="h-14 w-auto opacity-80" />
+                                <SiteLogo className="h-14 w-auto opacity-80" />
                                 <p className="text-sm text-gray-500">
                                     Created by <span className="font-semibold text-red-400">Shadow Syndicate</span>
                                 </p>

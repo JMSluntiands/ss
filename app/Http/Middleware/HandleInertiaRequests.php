@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\SiteAssets;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -33,6 +34,7 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            'site_logo_url' => SiteAssets::logoUrl(),
             'auth' => [
                 'user' => $user,
             ],

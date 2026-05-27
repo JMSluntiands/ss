@@ -1,4 +1,5 @@
 import { MemberSlideData, MembersSliderSection } from '@/Components/MembersMarquee';
+import SiteLogo from '@/Components/SiteLogo';
 import { PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -34,11 +35,7 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex items-center justify-between h-16 sm:h-20">
                             <div className="flex items-center gap-3">
-                                <img
-                                    src="/storage/sslogo.png"
-                                    alt="Shadow Syndicate"
-                                    className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]"
-                                />
+                                <SiteLogo className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
                                 <span className="text-lg sm:text-xl font-black tracking-tight">
                                     SHADOW <span className="text-red-500">SYNDICATE</span>
                                 </span>
@@ -155,11 +152,7 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                             {/* Right column - Logo */}
                             <div className="flex justify-center order-1 lg:order-2">
                                 <div className="relative">
-                                    <img
-                                        src="/storage/sslogo.png"
-                                        alt="Shadow Syndicate"
-                                        className="w-56 h-56 sm:w-72 sm:h-72 lg:w-[400px] lg:h-[400px] drop-shadow-[0_0_60px_rgba(220,38,38,0.5)] relative z-10"
-                                    />
+                                    <SiteLogo className="w-56 h-56 sm:w-72 sm:h-72 lg:w-[400px] lg:h-[400px] drop-shadow-[0_0_60px_rgba(220,38,38,0.5)] relative z-10 object-contain" />
 
                                     <svg className="absolute -top-6 -right-8 w-16 h-24 animate-lightning-1" viewBox="0 0 64 96" fill="none">
                                         <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg1)" />
@@ -353,11 +346,7 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                             <div className="flex items-center gap-3">
-                                <img
-                                    src="/storage/sslogo.png"
-                                    alt="Shadow Syndicate"
-                                    className="w-8 h-8 drop-shadow-[0_0_8px_rgba(220,38,38,0.3)]"
-                                />
+                                <SiteLogo className="w-8 h-8 drop-shadow-[0_0_8px_rgba(220,38,38,0.3)]" />
                                 <span className="text-sm font-black tracking-tight text-gray-400">
                                     SHADOW <span className="text-red-500/70">SYNDICATE</span>
                                 </span>
@@ -390,7 +379,7 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                                 </button>
 
                                 <div className="flex items-center gap-3 mb-6">
-                                    <img src="/storage/sslogo.png" alt="Shadow Syndicate" className="w-12 h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
+                                    <SiteLogo className="w-12 h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
                                     <div>
                                         <h2 className="text-xl font-black text-white">Join Shadow Syndicate</h2>
                                         <p className="text-sm text-gray-500">Become part of the community</p>

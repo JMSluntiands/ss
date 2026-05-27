@@ -1,3 +1,4 @@
+import SiteLogo from '@/Components/SiteLogo';
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -53,7 +54,7 @@ export default function Members({ members = [] }: { members?: MemberData[] }) {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex items-center justify-between h-16 sm:h-20">
                             <Link href={route('home')} className="flex items-center gap-3">
-                                <img src="/storage/sslogo.png" alt="Shadow Syndicate" className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
+                                <SiteLogo className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
                                 <span className="text-lg sm:text-xl font-black tracking-tight">
                                     SHADOW <span className="text-red-500">SYNDICATE</span>
                                 </span>
