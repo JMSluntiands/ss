@@ -1,16 +1,19 @@
+import { MemberSlideData, MembersSliderSection } from '@/Components/MembersMarquee';
 import { PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
-export default function Welcome({ auth }: PageProps) {
+export default function Welcome({ auth, members = [] }: PageProps & { members?: MemberSlideData[] }) {
     const [scrollY, setScrollY] = useState(0);
     const [menuOpen, setMenuOpen] = useState(false);
     const [joinModalOpen, setJoinModalOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        const t = setTimeout(() => setMounted(true), 100);
         const handleScroll = () => setScrollY(window.scrollY);
         window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
+        return () => { clearTimeout(t); window.removeEventListener('scroll', handleScroll); };
     }, []);
 
     const navScrolled = scrollY > 50;
@@ -87,7 +90,7 @@ export default function Welcome({ auth }: PageProps) {
                 </nav>
 
                 {/* ── Hero Section ── */}
-                <section id="home" className="relative min-h-screen flex items-center justify-center pt-20">
+                <section id="home" className={`relative min-h-screen flex items-center justify-center pt-20 transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
                     <div className="absolute inset-0 overflow-hidden">
                         <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-red-600/15 rounded-full blur-[150px] animate-pulse" />
                         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-red-900/20 rounded-full blur-[120px]" />
@@ -325,58 +328,7 @@ export default function Welcome({ auth }: PageProps) {
                     </div>
                 </section>
 
-                {/* ── Challonge CTA Section ── */}
-                <section className="relative py-24 sm:py-32">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 border border-zinc-800/80">
-                            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-red-600/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
-                            <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-red-900/10 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
-
-                            <div className="relative z-10 px-6 py-16 sm:px-12 sm:py-20 lg:px-20 lg:py-24 flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
-                                <div className="flex-1 text-center lg:text-left">
-                                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-6">
-                                        <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                                            <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                            </svg>
-                                        </div>
-                                        <span className="text-sm font-bold tracking-widest text-red-400 uppercase">
-                                            Challonge
-                                        </span>
-                                    </div>
-                                    <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-4">
-                                        Join Our Tournaments
-                                        <br />
-                                        <span className="text-red-500">on Challonge</span>
-                                    </h2>
-                                    <p className="text-gray-400 text-lg leading-relaxed max-w-xl">
-                                        Sign up or log in to Challonge to join our official
-                                        tournaments. View brackets, results, and upcoming events!
-                                    </p>
-                                </div>
-                                <div className="flex flex-col gap-4 shrink-0">
-                                    <a
-                                        href="https://challonge.com/users/login"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="group relative px-8 py-4 text-center text-lg font-bold bg-red-600 hover:bg-red-500 rounded-xl transition-all shadow-lg shadow-red-600/20 hover:shadow-red-500/30"
-                                    >
-                                        Log in to Challonge
-                                        <span className="absolute inset-0 rounded-xl border border-red-400/20 group-hover:border-red-400/40 transition-colors" />
-                                    </a>
-                                    <a
-                                        href="https://challonge.com/users/new"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="px-8 py-4 text-center text-lg font-bold border border-zinc-700 hover:border-red-500/50 rounded-xl transition-all hover:bg-zinc-800/60"
-                                    >
-                                        Create Challonge Account
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                <MembersSliderSection members={members} />
 
                 {/* ── Community Section ── */}
                 <section id="community" className="relative py-24 sm:py-32">
@@ -389,38 +341,10 @@ export default function Welcome({ auth }: PageProps) {
                             Ready to{' '}
                             <span className="text-red-500">Let It Rip?</span>
                         </h2>
-                        <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-12">
+                        <p className="text-gray-400 text-lg max-w-2xl mx-auto">
                             Be part of the strongest Beyblade community. Register now
                             and start your journey as a blader!
                         </p>
-
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            {auth.user ? (
-                                <Link
-                                    href={route('dashboard')}
-                                    className="group relative px-10 py-4 text-lg font-bold bg-red-600 hover:bg-red-500 rounded-xl transition-all shadow-lg shadow-red-600/20 hover:shadow-red-500/30"
-                                >
-                                    Go to Dashboard
-                                    <span className="absolute inset-0 rounded-xl border border-red-400/20 group-hover:border-red-400/40 transition-colors" />
-                                </Link>
-                            ) : (
-                                <>
-                                    <Link
-                                        href={route('register')}
-                                        className="group relative px-10 py-4 text-lg font-bold bg-red-600 hover:bg-red-500 rounded-xl transition-all shadow-lg shadow-red-600/20 hover:shadow-red-500/30"
-                                    >
-                                        Register Now
-                                        <span className="absolute inset-0 rounded-xl border border-red-400/20 group-hover:border-red-400/40 transition-colors" />
-                                    </Link>
-                                    <Link
-                                        href={route('login')}
-                                        className="px-10 py-4 text-lg font-bold border border-zinc-700 hover:border-red-500/50 rounded-xl transition-all hover:bg-zinc-900/80"
-                                    >
-                                        Log In
-                                    </Link>
-                                </>
-                            )}
-                        </div>
                     </div>
                 </section>
 

@@ -70,11 +70,19 @@ class TournamentController extends Controller
 
     public function create()
     {
+        if (!auth()->user()->isAdmin() && !auth()->user()->can_create_tournaments) {
+            abort(403, 'You do not have permission to create tournaments.');
+        }
+
         return Inertia::render('Tournaments/Create');
     }
 
     public function store(Request $request)
     {
+        if (!auth()->user()->isAdmin() && !auth()->user()->can_create_tournaments) {
+            abort(403, 'You do not have permission to create tournaments.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255',
@@ -268,6 +276,10 @@ class TournamentController extends Controller
     {
         if ($tournament->user_id !== auth()->id()) {
             abort(403);
+        }
+
+        if (!auth()->user()->isAdmin() && !auth()->user()->can_score_matches) {
+            abort(403, 'You do not have permission to score matches.');
         }
 
         // Swiss group stage flow
@@ -924,6 +936,10 @@ class TournamentController extends Controller
     {
         if ($tournament->user_id !== auth()->id()) {
             abort(403);
+        }
+
+        if (!auth()->user()->isAdmin() && !auth()->user()->can_use_judge) {
+            abort(403, 'You do not have permission to use the judge system.');
         }
 
         $tournament->update(['judge_code' => strtoupper(Str::random(6))]);

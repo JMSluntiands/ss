@@ -10,4 +10,21 @@
     .scrollbar-hide::-webkit-scrollbar {
         display: none;
     }
+
+    .members-marquee-track {
+        animation: members-marquee 40s linear infinite;
+    }
+
+    .members-marquee:hover .members-marquee-track {
+        animation-play-state: paused;
+    }
+
+    @keyframes members-marquee {
+        0% {
+            transform: translateX(0);
+        }
+        100% {
+            transform: translateX(-50%);
+        }
+    }
 }

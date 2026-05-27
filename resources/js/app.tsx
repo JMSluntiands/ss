@@ -11,8 +11,10 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
-            staleTime: 3000,
-            refetchOnWindowFocus: true,
+            staleTime: 5000,
+            refetchOnWindowFocus: false,
+            refetchOnMount: false,
+            refetchOnReconnect: false,
             retry: 1,
         },
     },

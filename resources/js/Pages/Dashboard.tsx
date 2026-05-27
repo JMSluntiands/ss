@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { PageProps } from '@/types';
 
 interface Tournament {
     id: number;
@@ -29,6 +30,8 @@ const statusColors: Record<string, string> = {
 
 export default function Dashboard({ tournaments = [] }: { tournaments?: Tournament[] }) {
     const [showCreateDropdown, setShowCreateDropdown] = useState(false);
+    const { permissions } = usePage<PageProps>().props;
+    const canCreate = permissions.can_create_tournaments;
 
     return (
         <AuthenticatedLayout currentPage="tournaments">
@@ -41,6 +44,7 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                         <div className="mt-2 w-16 h-1 rounded-full bg-gradient-to-r from-red-600 to-red-400" />
                     </div>
 
+                    {canCreate && (
                     <div className="relative">
                         <button
                             onClick={() => setShowCreateDropdown(!showCreateDropdown)}
@@ -81,6 +85,7 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                             </>
                         )}
                     </div>
+                    )}
                 </div>
 
                 {tournaments.length === 0 ? (
@@ -93,8 +98,11 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                             </div>
                             <h3 className="text-lg font-semibold text-white mb-2">No tournaments yet</h3>
                             <p className="text-gray-500 text-sm text-center max-w-sm mb-6">
-                                Create your first tournament and start battling! Organize events, invite bladers, and track your wins.
+                                {canCreate
+                                    ? 'Create your first tournament and start battling! Organize events, invite bladers, and track your wins.'
+                                    : 'You don\'t have permission to create tournaments. Ask an admin to grant you access.'}
                             </p>
+                            {canCreate && (
                             <Link
                                 href={route('tournaments.create')}
                                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700/50 text-sm font-medium text-gray-300 hover:text-white hover:bg-zinc-700/50 hover:border-zinc-600/50 transition-all"
@@ -104,6 +112,7 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                                 </svg>
                                 Create your first tournament
                             </Link>
+                            )}
                         </div>
                     </div>
                 ) : (

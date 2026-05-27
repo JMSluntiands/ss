@@ -1,37 +1,48 @@
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
-const members = [
-    { name: 'DarkBlade', role: 'Founder', rank: 'S', wins: 87, losses: 12, bey: 'Dranzer Spiral', joined: 'Jan 2024', img: 'https://i.pravatar.cc/150?img=1' },
-    { name: 'StormRider', role: 'Co-Founder', rank: 'S', wins: 74, losses: 18, bey: 'Dragoon Storm', joined: 'Jan 2024', img: 'https://i.pravatar.cc/150?img=3' },
-    { name: 'PhantomX', role: 'Officer', rank: 'A', wins: 65, losses: 23, bey: 'Wolborg MS', joined: 'Feb 2024', img: 'https://i.pravatar.cc/150?img=5' },
-    { name: 'BlitzKing', role: 'Officer', rank: 'A', wins: 58, losses: 20, bey: 'Draciel Shield', joined: 'Mar 2024', img: 'https://i.pravatar.cc/150?img=7' },
-    { name: 'ShadowViper', role: 'Member', rank: 'A', wins: 52, losses: 25, bey: 'Driger Fang', joined: 'Mar 2024', img: 'https://i.pravatar.cc/150?img=8' },
-    { name: 'NovaCrush', role: 'Member', rank: 'B', wins: 44, losses: 30, bey: 'Trygle Wing', joined: 'Apr 2024', img: 'https://i.pravatar.cc/150?img=11' },
-    { name: 'IronFist', role: 'Member', rank: 'B', wins: 39, losses: 28, bey: 'Galeon Attacker', joined: 'May 2024', img: 'https://i.pravatar.cc/150?img=12' },
-    { name: 'ThunderBolt', role: 'Member', rank: 'B', wins: 35, losses: 32, bey: 'Flash Leopard', joined: 'May 2024', img: 'https://i.pravatar.cc/150?img=14' },
-    { name: 'CrimsonEdge', role: 'Member', rank: 'C', wins: 28, losses: 35, bey: 'Burn Phoenix', joined: 'Jun 2024', img: 'https://i.pravatar.cc/150?img=15' },
-    { name: 'ZeroGravity', role: 'Member', rank: 'C', wins: 22, losses: 30, bey: 'Galaxy Pegasus', joined: 'Jul 2024', img: 'https://i.pravatar.cc/150?img=18' },
-    { name: 'VortexBlade', role: 'Member', rank: 'C', wins: 18, losses: 25, bey: 'Storm Aquario', joined: 'Aug 2024', img: 'https://i.pravatar.cc/150?img=20' },
-    { name: 'NightHawk', role: 'Recruit', rank: 'D', wins: 10, losses: 20, bey: 'Rock Leone', joined: 'Sep 2024', img: 'https://i.pravatar.cc/150?img=22' },
-];
+interface MemberData {
+    id: number;
+    name: string;
+    role: string;
+    rank: string;
+    wins: number;
+    losses: number;
+    bey: string | null;
+    joined: string | null;
+    image_url: string | null;
+}
+
+function memberImageSrc(url: string | null): string | null {
+    if (!url) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `/storage/${url}`;
+}
 
 const roleColors: Record<string, string> = {
-    Founder: 'text-red-400',
-    'Co-Founder': 'text-red-300',
-    Officer: 'text-orange-400',
-    Member: 'text-gray-400',
-    Recruit: 'text-gray-500',
+    Founder: 'text-red-400 border-red-500/30',
+    'Co-Founder': 'text-red-300 border-red-400/30',
+    Officer: 'text-orange-400 border-orange-500/30',
+    Member: 'text-gray-400 border-zinc-600/50',
+    Recruit: 'text-gray-500 border-zinc-700/50',
 };
 
-export default function Members() {
+const rankColors: Record<string, string> = {
+    S: 'text-red-400 bg-red-500/10 border-red-500/30',
+    A: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+    B: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+    C: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+    D: 'text-gray-400 bg-zinc-700/30 border-zinc-600/30',
+};
+
+export default function Members({ members = [] }: { members?: MemberData[] }) {
     const [search, setSearch] = useState('');
 
     const filtered = members.filter(
         (m) =>
             m.name.toLowerCase().includes(search.toLowerCase()) ||
             m.role.toLowerCase().includes(search.toLowerCase()) ||
-            m.bey.toLowerCase().includes(search.toLowerCase()),
+            (m.bey || '').toLowerCase().includes(search.toLowerCase()),
     );
 
     return (
@@ -68,44 +79,92 @@ export default function Members() {
                         </p>
                     </div>
 
-                    <div className="mb-8">
-                        <input
-                            type="text"
-                            placeholder="Search members by name, role, or Beyblade..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full max-w-md bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/20 transition-colors"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-                        {filtered.map((member) => (
-                            <div
-                                key={member.name}
-                                className="group relative bg-zinc-900/60 border border-zinc-800/60 rounded-2xl overflow-hidden hover:border-red-500/30 transition-all"
-                            >
-                                <div className="relative aspect-square overflow-hidden">
-                                    <img
-                                        src={member.img}
-                                        alt={member.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
-                                    <span className={`absolute top-3 right-3 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md border ${roleColors[member.role]} bg-zinc-950/70 backdrop-blur-sm`}>
-                                        {member.role}
-                                    </span>
-                                </div>
-                                <div className="p-4 text-center">
-                                    <h3 className="font-bold text-white text-lg mb-1">{member.name}</h3>
-                                    <p className="text-xs text-gray-500">Joined {member.joined}</p>
-                                </div>
+                    {members.length > 0 ? (
+                        <>
+                            <div className="mb-8">
+                                <input
+                                    type="text"
+                                    placeholder="Search members by name, role, or Beyblade..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="w-full max-w-md bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/20 transition-colors"
+                                />
                             </div>
-                        ))}
-                    </div>
 
-                    {filtered.length === 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+                                {filtered.map((member) => {
+                                    const total = member.wins + member.losses;
+                                    const winRate = total > 0 ? Math.round((member.wins / total) * 100) : 0;
+
+                                    return (
+                                        <div
+                                            key={member.id}
+                                            className="group relative bg-zinc-900/60 border border-zinc-800/60 rounded-2xl overflow-hidden hover:border-red-500/30 transition-all"
+                                        >
+                                            <div className="relative aspect-[4/3] overflow-hidden">
+                                                {memberImageSrc(member.image_url) ? (
+                                                    <img
+                                                        src={memberImageSrc(member.image_url)!}
+                                                        alt={member.name}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full bg-gradient-to-br from-red-700 to-zinc-800 flex items-center justify-center">
+                                                        <span className="text-5xl font-black text-white/80">{member.name.charAt(0)}</span>
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
+                                                <span className={`absolute top-3 right-3 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border ${roleColors[member.role] || 'text-gray-400 border-zinc-600/50'} bg-zinc-950/70 backdrop-blur-sm`}>
+                                                    {member.role}
+                                                </span>
+                                                {member.rank && (
+                                                    <span className={`absolute top-3 left-3 w-8 h-8 flex items-center justify-center text-xs font-black rounded-lg border ${rankColors[member.rank] || 'text-gray-400 bg-zinc-700/30 border-zinc-600/30'}`}>
+                                                        {member.rank}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="p-4">
+                                                <h3 className="font-bold text-white text-lg text-center">{member.name}</h3>
+
+                                                {member.bey && (
+                                                    <p className="text-xs text-red-400/80 text-center mt-1 truncate" title={member.bey}>
+                                                        {member.bey}
+                                                    </p>
+                                                )}
+
+                                                <div className="grid grid-cols-3 gap-2 mt-3">
+                                                    <div className="text-center py-1.5 rounded-lg bg-zinc-800/50">
+                                                        <p className="text-sm font-bold text-emerald-400">{member.wins}</p>
+                                                        <p className="text-[10px] text-gray-600 uppercase">Wins</p>
+                                                    </div>
+                                                    <div className="text-center py-1.5 rounded-lg bg-zinc-800/50">
+                                                        <p className="text-sm font-bold text-red-400">{member.losses}</p>
+                                                        <p className="text-[10px] text-gray-600 uppercase">Losses</p>
+                                                    </div>
+                                                    <div className="text-center py-1.5 rounded-lg bg-zinc-800/50">
+                                                        <p className="text-sm font-bold text-white">{winRate}%</p>
+                                                        <p className="text-[10px] text-gray-600 uppercase">WR</p>
+                                                    </div>
+                                                </div>
+
+                                                <p className="text-[11px] text-gray-600 text-center mt-3">
+                                                    {member.joined ? `Joined ${member.joined}` : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {filtered.length === 0 && (
+                                <div className="text-center py-20 text-gray-600">
+                                    <p className="text-lg">No members found matching your search.</p>
+                                </div>
+                            )}
+                        </>
+                    ) : (
                         <div className="text-center py-20 text-gray-600">
-                            <p className="text-lg">No members found matching your search.</p>
+                            <p className="text-lg">No members yet.</p>
                         </div>
                     )}
                 </div>

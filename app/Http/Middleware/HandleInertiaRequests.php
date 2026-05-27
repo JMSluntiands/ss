@@ -29,10 +29,24 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
+            ],
+            'is_admin' => $user?->isAdmin() ?? false,
+            'permissions' => [
+                'can_create_tournaments' => $user ? ($user->isAdmin() || $user->can_create_tournaments) : false,
+                'can_manage_tournaments' => $user ? ($user->isAdmin() || $user->can_manage_tournaments) : false,
+                'can_use_judge' => $user ? ($user->isAdmin() || $user->can_use_judge) : false,
+                'can_score_matches' => $user ? ($user->isAdmin() || $user->can_score_matches) : false,
+                'can_manage_events' => $user ? ($user->isAdmin() || $user->can_manage_events) : false,
+            ],
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
             ],
         ];
     }

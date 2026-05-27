@@ -12,6 +12,7 @@
         "laravel/reverb": "^1.10",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "maestroerror/php-heic-to-jpg": "^1.0",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

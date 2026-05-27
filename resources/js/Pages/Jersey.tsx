@@ -1,67 +1,21 @@
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
-const jerseys = [
-    {
-        id: 1,
-        name: 'Shadow Syndicate Official Jersey 2026',
-        price: '₱850',
-        sizes: ['S', 'M', 'L', 'XL', '2XL'],
-        color: 'Black / Red',
-        material: 'Dri-Fit Polyester',
-        description: 'The official Shadow Syndicate competition jersey. Features the full logo on the front, member name customization on the back, and red accent detailing on the sleeves.',
-        img: 'https://placehold.co/600x600/1a1a1a/ef4444?text=SS+Jersey+2026&font=montserrat',
-        available: true,
-    },
-    {
-        id: 2,
-        name: 'Shadow Syndicate Hoodie - Limited Edition',
-        price: '₱1,200',
-        sizes: ['S', 'M', 'L', 'XL'],
-        color: 'Black',
-        material: 'Cotton Fleece Blend',
-        description: 'Limited edition pullover hoodie with embroidered Shadow Syndicate logo on the chest and "Let It Rip" print on the back. Perfect for tournament days and casual wear.',
-        img: 'https://placehold.co/600x600/1a1a1a/ef4444?text=SS+Hoodie&font=montserrat',
-        available: true,
-    },
-    {
-        id: 3,
-        name: 'Shadow Syndicate Training Shirt',
-        price: '₱550',
-        sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL'],
-        color: 'Dark Gray / Red',
-        material: 'Dri-Fit Polyester',
-        description: 'Lightweight training shirt for practice sessions. Features a minimalist SS logo on the chest with breathable mesh panels on the sides.',
-        img: 'https://placehold.co/600x600/1a1a1a/ef4444?text=Training+Shirt&font=montserrat',
-        available: true,
-    },
-    {
-        id: 4,
-        name: 'Shadow Syndicate Cap',
-        price: '₱350',
-        sizes: ['One Size'],
-        color: 'Black / Red',
-        material: 'Cotton Twill',
-        description: 'Snapback cap with embroidered Shadow Syndicate logo on the front and adjustable strap. One size fits all.',
-        img: 'https://placehold.co/600x600/1a1a1a/ef4444?text=SS+Cap&font=montserrat',
-        available: true,
-    },
-    {
-        id: 5,
-        name: 'Shadow Syndicate Season 1 Jersey (Retro)',
-        price: '₱750',
-        sizes: ['M', 'L'],
-        color: 'Black / White',
-        material: 'Dri-Fit Polyester',
-        description: 'Our very first jersey design from Season 1. Limited remaining stock — grab one before they\'re gone!',
-        img: 'https://placehold.co/600x600/1a1a1a/a3a3a3?text=Retro+Jersey&font=montserrat',
-        available: false,
-    },
-];
+interface JerseyItemData {
+    id: number;
+    name: string;
+    price: string;
+    sizes: string[];
+    color: string | null;
+    material: string | null;
+    description: string | null;
+    image_url: string | null;
+    available: boolean;
+}
 
-export default function Jersey() {
+export default function Jersey({ items = [] }: { items?: JerseyItemData[] }) {
     const [selected, setSelected] = useState<number | null>(null);
-    const selectedJersey = jerseys.find((j) => j.id === selected);
+    const selectedItem = items.find((j) => j.id === selected);
 
     return (
         <>
@@ -109,41 +63,53 @@ export default function Jersey() {
                         </div>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {jerseys.map((item) => (
-                            <div
-                                key={item.id}
-                                className="group bg-zinc-900/60 border border-zinc-800/60 rounded-2xl overflow-hidden hover:border-red-500/30 transition-all cursor-pointer"
-                                onClick={() => setSelected(item.id)}
-                            >
-                                <div className="relative aspect-square overflow-hidden bg-zinc-900">
-                                    <img
-                                        src={item.img}
-                                        alt={item.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                    {!item.available && (
-                                        <div className="absolute inset-0 bg-zinc-950/60 flex items-center justify-center">
-                                            <span className="px-4 py-2 text-sm font-bold bg-zinc-900/90 border border-zinc-700 rounded-lg text-gray-400">
-                                                Sold Out
-                                            </span>
+                    {items.length > 0 ? (
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {items.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="group bg-zinc-900/60 border border-zinc-800/60 rounded-2xl overflow-hidden hover:border-red-500/30 transition-all cursor-pointer"
+                                    onClick={() => setSelected(item.id)}
+                                >
+                                    <div className="relative aspect-square overflow-hidden bg-zinc-900">
+                                        {item.image_url ? (
+                                            <img
+                                                src={item.image_url}
+                                                alt={item.name}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-zinc-800">
+                                                <span className="text-lg font-bold text-gray-500 text-center px-4">{item.name}</span>
+                                            </div>
+                                        )}
+                                        {!item.available && (
+                                            <div className="absolute inset-0 bg-zinc-950/60 flex items-center justify-center">
+                                                <span className="px-4 py-2 text-sm font-bold bg-zinc-900/90 border border-zinc-700 rounded-lg text-gray-400">
+                                                    Sold Out
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="p-5">
+                                        <h3 className="font-bold text-white mb-1">{item.name}</h3>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-red-400 font-black text-lg">{item.price}</span>
+                                            <span className="text-xs text-gray-600">{item.sizes.join(' / ')}</span>
                                         </div>
-                                    )}
-                                </div>
-                                <div className="p-5">
-                                    <h3 className="font-bold text-white mb-1">{item.name}</h3>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-red-400 font-black text-lg">{item.price}</span>
-                                        <span className="text-xs text-gray-600">{item.sizes.join(' / ')}</span>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 text-gray-600">
+                            <p className="text-lg">No items yet.</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Item Detail Modal */}
-                {selected && selectedJersey && (
+                {selected && selectedItem && (
                     <>
                         <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm" onClick={() => setSelected(null)} />
                         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -159,35 +125,41 @@ export default function Jersey() {
 
                                 <div className="grid sm:grid-cols-2">
                                     <div className="aspect-square bg-zinc-800">
-                                        <img src={selectedJersey.img} alt={selectedJersey.name} className="w-full h-full object-cover" />
+                                        {selectedItem.image_url ? (
+                                            <img src={selectedItem.image_url} alt={selectedItem.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <span className="text-lg font-bold text-gray-500 text-center px-4">{selectedItem.name}</span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="p-6 flex flex-col justify-center">
-                                        <h2 className="text-xl font-bold text-white mb-2">{selectedJersey.name}</h2>
-                                        <span className="text-2xl font-black text-red-400 mb-4">{selectedJersey.price}</span>
-                                        <p className="text-sm text-gray-400 leading-relaxed mb-5">{selectedJersey.description}</p>
+                                        <h2 className="text-xl font-bold text-white mb-2">{selectedItem.name}</h2>
+                                        <span className="text-2xl font-black text-red-400 mb-4">{selectedItem.price}</span>
+                                        <p className="text-sm text-gray-400 leading-relaxed mb-5">{selectedItem.description}</p>
 
                                         <div className="space-y-3 text-sm mb-6">
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500">Sizes</span>
-                                                <span className="text-white font-medium">{selectedJersey.sizes.join(', ')}</span>
+                                                <span className="text-white font-medium">{selectedItem.sizes.join(', ')}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500">Color</span>
-                                                <span className="text-white font-medium">{selectedJersey.color}</span>
+                                                <span className="text-white font-medium">{selectedItem.color || '—'}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500">Material</span>
-                                                <span className="text-white font-medium">{selectedJersey.material}</span>
+                                                <span className="text-white font-medium">{selectedItem.material || '—'}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500">Status</span>
-                                                <span className={selectedJersey.available ? 'text-green-400 font-medium' : 'text-red-400 font-medium'}>
-                                                    {selectedJersey.available ? 'Available' : 'Sold Out'}
+                                                <span className={selectedItem.available ? 'text-green-400 font-medium' : 'text-red-400 font-medium'}>
+                                                    {selectedItem.available ? 'Available' : 'Sold Out'}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {selectedJersey.available && (
+                                        {selectedItem.available && (
                                             <a
                                                 href="https://www.facebook.com/"
                                                 target="_blank"

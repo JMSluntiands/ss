@@ -1,0 +1,339 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\BlogPost;
+use App\Support\BlogImageStorage;
+use App\Models\JerseyItem;
+use App\Models\SiteEvent;
+use App\Models\SiteMember;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+
+class AdminContentController extends Controller
+{
+    // ── User-facing Events (authenticated) ──
+
+    public function userEventsIndex()
+    {
+        if (!auth()->user()->isAdmin() && !auth()->user()->can_manage_events) {
+            abort(403, 'You do not have permission to manage events.');
+        }
+
+        $events = SiteEvent::withCount('registrations')->latest()->paginate(20);
+        $tournaments = auth()->user()->tournaments()->select('id', 'name', 'description')->latest()->get();
+
+        return Inertia::render('MyEvents', [
+            'events' => $events,
+            'tournaments' => $tournaments,
+            'userName' => auth()->user()->name,
+        ]);
+    }
+
+    public function eventRegistrations(SiteEvent $event)
+    {
+        if (!auth()->user()->isAdmin() && $event->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $event->load(['registrations.user', 'tournament']);
+        return Inertia::render('EventRegistrations', [
+            'event' => $event,
+        ]);
+    }
+
+    // ── Blog Posts ──
+
+    public function blogIndex()
+    {
+        $posts = BlogPost::latest()->paginate(20);
+        return Inertia::render('Admin/Content/Blog', ['posts' => $posts]);
+    }
+
+    private function blogRules(): array
+    {
+        return [
+            'title' => 'required|string|max:255',
+            'excerpt' => 'required|string',
+            'content' => 'required|string',
+            'category' => 'required|string|max:100',
+            'author' => 'required|string|max:100',
+            'read_time' => 'nullable|string|max:50',
+            'published' => 'nullable|in:0,1,true,false,on,off',
+            'images' => 'nullable',
+            'images.*' => 'nullable|file|max:15360|mimes:jpg,jpeg,png,gif,webp,bmp,svg,heic,heif',
+            'keep_images' => 'nullable|array',
+            'keep_images.*' => 'string|max:500',
+        ];
+    }
+
+    private function prepareBlogData(array $data, Request $request): array
+    {
+        unset($data['images'], $data['keep_images']);
+        $data['published'] = filter_var($request->input('published', false), FILTER_VALIDATE_BOOLEAN);
+
+        return $data;
+    }
+
+    private function storeUploadedBlogImages(Request $request): array
+    {
+        $paths = [];
+        if (!$request->hasFile('images')) {
+            return $paths;
+        }
+
+        foreach ($request->file('images') as $file) {
+            $stored = BlogImageStorage::store($file);
+            if ($stored) {
+                $paths[] = $stored;
+            }
+        }
+
+        return $paths;
+    }
+
+    private function deleteBlogImages(?array $paths): void
+    {
+        if (!$paths) {
+            return;
+        }
+        foreach ($paths as $path) {
+            if ($path && !str_starts_with($path, 'http')) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+            }
+        }
+    }
+
+    public function blogStore(Request $request)
+    {
+        $data = $this->prepareBlogData($request->validate($this->blogRules()), $request);
+
+        $uploaded = $this->storeUploadedBlogImages($request);
+        $data['images'] = $uploaded ?: null;
+
+        BlogPost::create($data);
+        return back()->with('success', 'Blog post created.');
+    }
+
+    public function blogUpdate(Request $request, BlogPost $post)
+    {
+        $data = $this->prepareBlogData($request->validate($this->blogRules()), $request);
+
+        $keep = $request->input('keep_images', []);
+        $current = $post->images ?? [];
+        $toDelete = array_diff($current, $keep);
+        $this->deleteBlogImages(array_values($toDelete));
+
+        $uploaded = $this->storeUploadedBlogImages($request);
+        $data['images'] = array_values(array_merge($keep, $uploaded)) ?: null;
+
+        $post->update($data);
+        return back()->with('success', 'Blog post updated.');
+    }
+
+    public function blogDestroy(BlogPost $post)
+    {
+        $this->deleteBlogImages($post->images);
+        $post->delete();
+        return back()->with('success', 'Blog post deleted.');
+    }
+
+    // ── Events ──
+
+    public function eventsIndex()
+    {
+        $events = SiteEvent::latest()->paginate(20);
+        return Inertia::render('Admin/Content/Events', ['events' => $events]);
+    }
+
+    private function eventRules(): array
+    {
+        return [
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'organizer' => 'nullable|string|max:255',
+            'date' => 'required|string|max:100',
+            'time' => 'nullable|string|max:50',
+            'location' => 'required|string|max:255',
+            'map_address' => 'nullable|string|max:500',
+            'map_lat' => 'nullable|numeric|between:-90,90',
+            'map_lng' => 'nullable|numeric|between:-180,180',
+            'format' => 'nullable|string|max:100',
+            'slots' => 'nullable|string|max:50',
+            'entry_fee' => 'nullable|string|max:100',
+            'prizes' => 'nullable|array',
+            'prizes.*.place' => 'required|string|max:100',
+            'prizes.*.prize' => 'required|string|max:255',
+            'status' => 'required|string|max:50',
+            'participants' => 'nullable|integer',
+            'winner' => 'nullable|string|max:100',
+            'runner_up' => 'nullable|string|max:100',
+            'is_upcoming' => 'boolean',
+            'tournament_id' => 'nullable|exists:tournaments,id',
+            'allow_double_entry' => 'boolean',
+            'require_payment' => 'boolean',
+            'payment_method' => 'nullable|string|max:1000',
+            'payment_qr' => 'nullable|image|max:5120',
+        ];
+    }
+
+    private function authorizeEventManagement(): void
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && !$user->can_manage_events) {
+            abort(403, 'You do not have permission to manage events.');
+        }
+    }
+
+    public function eventStore(Request $request)
+    {
+        $this->authorizeEventManagement();
+        $data = $request->validate($this->eventRules());
+        $data['user_id'] = auth()->id();
+
+        if ($request->hasFile('payment_qr')) {
+            $data['payment_qr'] = $request->file('payment_qr')->store('payment-qr');
+        }
+
+        SiteEvent::create($data);
+        return back()->with('success', 'Event created.');
+    }
+
+    public function eventUpdate(Request $request, SiteEvent $event)
+    {
+        $this->authorizeEventManagement();
+        $data = $request->validate($this->eventRules());
+
+        if ($request->hasFile('payment_qr')) {
+            if ($event->payment_qr) {
+                \Illuminate\Support\Facades\Storage::delete($event->payment_qr);
+            }
+            $data['payment_qr'] = $request->file('payment_qr')->store('payment-qr');
+        } else {
+            unset($data['payment_qr']);
+        }
+
+        $event->update($data);
+        return back()->with('success', 'Event updated.');
+    }
+
+    public function eventDestroy(SiteEvent $event)
+    {
+        $this->authorizeEventManagement();
+        $event->delete();
+        return back()->with('success', 'Event deleted.');
+    }
+
+    // ── Members ──
+
+    public function membersIndex()
+    {
+        $members = SiteMember::orderBy('sort_order')->paginate(30);
+        return Inertia::render('Admin/Content/Members', ['members' => $members]);
+    }
+
+    public function memberStore(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:100',
+            'role' => 'required|string|max:50',
+            'rank' => 'required|string|max:10',
+            'wins' => 'integer|min:0',
+            'losses' => 'integer|min:0',
+            'bey' => 'nullable|string|max:100',
+            'joined' => 'nullable|string|max:50',
+            'image' => 'nullable|image|max:5120',
+            'sort_order' => 'integer',
+        ]);
+
+        if ($request->hasFile('image')) {
+            $data['image_url'] = $request->file('image')->store('member-images', 'public');
+        }
+        unset($data['image']);
+
+        SiteMember::create($data);
+        return back()->with('success', 'Member added.');
+    }
+
+    public function memberUpdate(Request $request, SiteMember $member)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:100',
+            'role' => 'required|string|max:50',
+            'rank' => 'required|string|max:10',
+            'wins' => 'integer|min:0',
+            'losses' => 'integer|min:0',
+            'bey' => 'nullable|string|max:100',
+            'joined' => 'nullable|string|max:50',
+            'image' => 'nullable|image|max:5120',
+            'sort_order' => 'integer',
+        ]);
+
+        if ($request->hasFile('image')) {
+            if ($member->image_url && !str_starts_with($member->image_url, 'http')) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($member->image_url);
+            }
+            $data['image_url'] = $request->file('image')->store('member-images', 'public');
+        }
+        unset($data['image']);
+
+        $member->update($data);
+        return back()->with('success', 'Member updated.');
+    }
+
+    public function memberDestroy(SiteMember $member)
+    {
+        $member->delete();
+        return back()->with('success', 'Member deleted.');
+    }
+
+    // ── Jersey / Merch ──
+
+    public function jerseyIndex()
+    {
+        $items = JerseyItem::orderBy('sort_order')->paginate(20);
+        return Inertia::render('Admin/Content/Jersey', ['items' => $items]);
+    }
+
+    public function jerseyStore(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|string|max:50',
+            'sizes' => 'required|array',
+            'color' => 'nullable|string|max:100',
+            'material' => 'nullable|string|max:100',
+            'description' => 'nullable|string',
+            'image_url' => 'nullable|string|max:500',
+            'available' => 'boolean',
+            'sort_order' => 'integer',
+        ]);
+
+        JerseyItem::create($data);
+        return back()->with('success', 'Item created.');
+    }
+
+    public function jerseyUpdate(Request $request, JerseyItem $item)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|string|max:50',
+            'sizes' => 'required|array',
+            'color' => 'nullable|string|max:100',
+            'material' => 'nullable|string|max:100',
+            'description' => 'nullable|string',
+            'image_url' => 'nullable|string|max:500',
+            'available' => 'boolean',
+            'sort_order' => 'integer',
+        ]);
+
+        $item->update($data);
+        return back()->with('success', 'Item updated.');
+    }
+
+    public function jerseyDestroy(JerseyItem $item)
+    {
+        $item->delete();
+        return back()->with('success', 'Item deleted.');
+    }
+}

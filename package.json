@@ -22,12 +22,14 @@
         "postcss": "^8.4.31",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
+        "sharp": "^0.34.5",
         "tailwindcss": "^3.2.1",
         "typescript": "^5.0.2",
         "vite": "^7.0.7"
     },
     "dependencies": {
         "@tanstack/react-query": "^5.100.14",
+        "heic2any": "^0.0.4",
         "laravel-echo": "^2.3.4",
         "pusher-js": "^8.5.0"
     }

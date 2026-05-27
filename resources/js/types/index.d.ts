@@ -3,6 +3,12 @@ export interface User {
     name: string;
     email: string;
     email_verified_at?: string;
+    role: 'user' | 'admin';
+    can_manage_tournaments: boolean;
+    can_use_judge: boolean;
+    can_score_matches: boolean;
+    can_create_tournaments: boolean;
+    can_manage_events: boolean;
 }
 
 export type PageProps<
@@ -10,5 +16,17 @@ export type PageProps<
 > = T & {
     auth: {
         user: User;
+    };
+    is_admin: boolean;
+    permissions: {
+        can_create_tournaments: boolean;
+        can_manage_tournaments: boolean;
+        can_use_judge: boolean;
+        can_score_matches: boolean;
+        can_manage_events: boolean;
+    };
+    flash: {
+        success?: string;
+        error?: string;
     };
 };
