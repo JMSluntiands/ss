@@ -1,3 +1,4 @@
+import OptimizedImage from '@/Components/OptimizedImage';
 import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
 import { blogImageSrc, normalizeImages } from '@/utils/blogImages';
@@ -87,7 +88,7 @@ export default function Blog({ posts = [] }: { posts?: BlogPostData[] }) {
                                             >
                                                 <div className="relative aspect-[4/3] overflow-hidden bg-zinc-800">
                                                     {cover ? (
-                                                        <img
+                                                        <OptimizedImage
                                                             src={blogImageSrc(cover)}
                                                             alt={post.title}
                                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

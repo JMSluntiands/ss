@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BlogPost;
 use App\Support\BlogImageStorage;
+use App\Support\ImageOptimizer;
 use App\Models\JerseyItem;
 use App\Models\SiteEvent;
 use App\Models\SiteMember;
@@ -247,7 +248,7 @@ class AdminContentController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $data['image_url'] = $request->file('image')->store('member-images', 'public');
+            $data['image_url'] = ImageOptimizer::storeOptimized($request->file('image'), 'member-images', 800);
         }
         unset($data['image']);
 
@@ -273,7 +274,7 @@ class AdminContentController extends Controller
             if ($member->image_url && !str_starts_with($member->image_url, 'http')) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($member->image_url);
             }
-            $data['image_url'] = $request->file('image')->store('member-images', 'public');
+            $data['image_url'] = ImageOptimizer::storeOptimized($request->file('image'), 'member-images', 800);
         }
         unset($data['image']);
 

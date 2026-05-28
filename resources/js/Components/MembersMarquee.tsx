@@ -1,3 +1,4 @@
+import OptimizedImage from '@/Components/OptimizedImage';
 import { memberImageSrc } from '@/utils/publicStorage';
 import { Link } from '@inertiajs/react';
 
@@ -37,7 +38,7 @@ function MemberCard({ member }: { member: MemberSlideData }) {
         <div className="w-[260px] sm:w-[280px] shrink-0 flex flex-col bg-zinc-900/80 border border-zinc-800/60 rounded-2xl overflow-hidden">
             <div className="relative aspect-[4/3] overflow-hidden">
                 {img ? (
-                    <img src={img} alt={member.name} className="w-full h-full object-cover object-[center_18%]" />
+                    <OptimizedImage src={img} alt={member.name} className="w-full h-full object-cover object-[center_18%]" />
                 ) : (
                     <div className="w-full h-full bg-gradient-to-br from-red-700 to-zinc-800 flex items-center justify-center">
                         <span className="text-4xl font-black text-white/80">{member.name.charAt(0)}</span>

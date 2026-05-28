@@ -1,5 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { memberImageSrc } from '@/utils/publicStorage';
+import { resizeImageFile } from '@/utils/resizeImageFile';
 import { Head, router } from '@inertiajs/react';
 import { FormEvent, useRef, useState } from 'react';
 
@@ -414,7 +415,14 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
                                         ref={imageInputRef}
                                         type="file"
                                         accept="image/*"
-                                        onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                                        onChange={async (e) => {
+                                            const picked = e.target.files?.[0];
+                                            if (!picked) {
+                                                setImageFile(null);
+                                                return;
+                                            }
+                                            setImageFile(await resizeImageFile(picked, 800, 0.82));
+                                        }}
                                         className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-red-500/10 file:text-red-400 hover:file:bg-red-500/20 file:cursor-pointer file:transition-colors"
                                     />
                                     <p className="text-[11px] text-gray-600 mt-1">Upload member photo (max 5MB)</p>

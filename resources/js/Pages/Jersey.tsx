@@ -1,3 +1,4 @@
+import OptimizedImage from '@/Components/OptimizedImage';
 import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
 import { Head, Link } from '@inertiajs/react';
@@ -74,7 +75,7 @@ export default function Jersey({ items = [] }: { items?: JerseyItemData[] }) {
                                 >
                                     <div className="relative aspect-square overflow-hidden bg-zinc-900">
                                         {item.image_url ? (
-                                            <img
+                                            <OptimizedImage
                                                 src={item.image_url}
                                                 alt={item.name}
                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -127,7 +128,7 @@ export default function Jersey({ items = [] }: { items?: JerseyItemData[] }) {
                                 <div className="grid sm:grid-cols-2">
                                     <div className="aspect-square bg-zinc-800">
                                         {selectedItem.image_url ? (
-                                            <img src={selectedItem.image_url} alt={selectedItem.name} className="w-full h-full object-cover" />
+                                            <OptimizedImage src={selectedItem.image_url} alt={selectedItem.name} className="w-full h-full object-cover" priority />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center">
                                                 <span className="text-lg font-bold text-gray-500 text-center px-4">{selectedItem.name}</span>

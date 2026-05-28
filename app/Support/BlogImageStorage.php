@@ -22,7 +22,7 @@ class BlogImageStorage
             return self::storeHeicAsJpeg($file);
         }
 
-        return $file->store('blog-images', 'public');
+        return ImageOptimizer::storeOptimized($file, 'blog-images', 1600);
     }
 
     private static function isHeic(UploadedFile $file): bool
@@ -54,6 +54,12 @@ class BlogImageStorage
 
         try {
             $binary = HeicToJpg::convert($path)->get();
+
+            $optimized = ImageOptimizer::optimizeBinary($binary, 'blog-images', 1600);
+            if ($optimized) {
+                return $optimized;
+            }
+
             $filename = 'blog-images/'.Str::uuid().'.jpg';
             Storage::disk('public')->put($filename, $binary);
 

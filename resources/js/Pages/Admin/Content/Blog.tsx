@@ -1,5 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { blogImageSrc } from '@/utils/blogImages';
+import { resizeImageFile } from '@/utils/resizeImageFile';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -19,18 +20,21 @@ function isAcceptedBlogImage(file: File): boolean {
 }
 
 async function prepareBlogImageFile(file: File): Promise<File> {
-    if (!isHeicFile(file)) return file;
+    let prepared = file;
 
-    const { default: heic2any } = await import('heic2any');
-    const converted = await heic2any({
-        blob: file,
-        toType: 'image/jpeg',
-        quality: 0.88,
-    });
-    const blob = Array.isArray(converted) ? converted[0] : converted;
-    const baseName = file.name.replace(/\.(heic|heif)$/i, '') || 'photo';
+    if (isHeicFile(file)) {
+        const { default: heic2any } = await import('heic2any');
+        const converted = await heic2any({
+            blob: file,
+            toType: 'image/jpeg',
+            quality: 0.88,
+        });
+        const blob = Array.isArray(converted) ? converted[0] : converted;
+        const baseName = file.name.replace(/\.(heic|heif)$/i, '') || 'photo';
+        prepared = new File([blob], `${baseName}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+    }
 
-    return new File([blob], `${baseName}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+    return resizeImageFile(prepared, 1600, 0.82);
 }
 
 interface BlogPost {

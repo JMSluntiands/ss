@@ -1,3 +1,4 @@
+import OptimizedImage from '@/Components/OptimizedImage';
 import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
 import { memberImageSrc } from '@/utils/publicStorage';
@@ -144,7 +145,7 @@ export default function Members({ members = [] }: { members?: MemberData[] }) {
                                         >
                                             <div className="relative aspect-[4/3] overflow-hidden">
                                                 {memberImageSrc(member.image_url) ? (
-                                                    <img
+                                                    <OptimizedImage
                                                         src={memberImageSrc(member.image_url)!}
                                                         alt={member.name}
                                                         className="w-full h-full object-cover object-[center_18%] group-hover:scale-105 transition-transform duration-500"

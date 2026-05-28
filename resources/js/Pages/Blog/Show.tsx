@@ -1,3 +1,4 @@
+import OptimizedImage from '@/Components/OptimizedImage';
 import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
 import { blogImageSrc, normalizeImages } from '@/utils/blogImages';
@@ -73,9 +74,10 @@ export default function BlogShow({ post }: { post: BlogPostData }) {
                                             imgs.length === 1 ? 'max-h-72 sm:max-h-80' : 'aspect-[4/3]'
                                         }`}
                                     >
-                                        <img
+                                        <OptimizedImage
                                             src={blogImageSrc(path)}
                                             alt={`${post.title} ${i + 1}`}
+                                            priority={i === 0}
                                             className={`w-full object-cover object-center ${
                                                 imgs.length === 1 ? 'h-full max-h-72 sm:max-h-80' : 'h-full'
                                             }`}
