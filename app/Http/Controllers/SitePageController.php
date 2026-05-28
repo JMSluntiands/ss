@@ -43,6 +43,36 @@ class SitePageController extends Controller
         ]);
     }
 
+    public function eventShow(SiteEvent $event)
+    {
+        $event->load([
+            'registrations' => function ($query) {
+                $query
+                    ->whereIn('status', ['tentative', 'confirmed'])
+                    ->latest()
+                    ->select([
+                        'id',
+                        'site_event_id',
+                        'full_name',
+                        'entry_type',
+                        'blader_name_1',
+                        'blader_name_2',
+                        'status',
+                        'created_at',
+                    ]);
+            },
+        ]);
+
+        return Inertia::render('Events/Show', [
+            'event' => $event,
+            'registrationCounts' => [
+                'total' => $event->registrations->count(),
+                'confirmed' => $event->registrations->where('status', 'confirmed')->count(),
+                'tentative' => $event->registrations->where('status', 'tentative')->count(),
+            ],
+        ]);
+    }
+
     public function members()
     {
         return Inertia::render('Members', [

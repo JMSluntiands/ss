@@ -71,7 +71,9 @@ interface Tournament {
     advance_per_group: number | null;
     break_ties: boolean;
     third_place_match: boolean;
+    placement_matches_fifth_seventh: boolean;
     swiss_rounds: number | null;
+    swiss_top_cut_players: number | null;
     current_round: number;
     pts_for_match_win: number;
     pts_for_match_tie: number;
@@ -96,6 +98,26 @@ const formatLabel: Record<string, string> = {
     round_robin: 'Round Robin',
     swiss: 'Swiss',
 };
+
+/** Players highlighted as advancing to playoffs in standings. */
+function getSwissPlayoffCutSize(
+    tournament: Tournament,
+    standingCount: number,
+    participantCount: number,
+): number | null {
+    const configuredTop = tournament.swiss_top_cut_players ?? 0;
+    if (tournament.format === 'swiss' && configuredTop >= 2) {
+        return Math.min(configuredTop, standingCount);
+    }
+    if (tournament.tournament_type === 'two_stage' && tournament.advance_per_group) {
+        const perGroup = tournament.participants_per_group ?? 0;
+        const groupCount =
+            perGroup > 0 ? Math.max(2, Math.ceil(participantCount / perGroup)) : 2;
+        return Math.min(tournament.advance_per_group * groupCount, standingCount);
+    }
+
+    return null;
+}
 
 const statusColors: Record<string, string> = {
     pending: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
@@ -228,12 +250,111 @@ function RoundScorer({ p1Name, p2Name, rounds, onAddRound, onRemoveRound, onRese
     );
 }
 
+function EditMatchPlayersModal({
+    open,
+    onClose,
+    tournamentId,
+    match,
+    participants,
+}: {
+    open: boolean;
+    onClose: () => void;
+    tournamentId: number;
+    match: TournamentMatch;
+    participants: Participant[];
+}) {
+    const [player1Id, setPlayer1Id] = useState<number | ''>(match.player1_id ?? '');
+    const [player2Id, setPlayer2Id] = useState<number | ''>(match.player2_id ?? '');
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (!open) return;
+        setPlayer1Id(match.player1_id ?? '');
+        setPlayer2Id(match.player2_id ?? '');
+    }, [open, match.player1_id, match.player2_id]);
+
+    if (!open) return null;
+
+    const submit = () => {
+        setSaving(true);
+        router.patch(
+            route('matches.updatePlayers', [tournamentId, match.id]),
+            {
+                player1_id: player1Id || null,
+                player2_id: player2Id || null,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onFinish: () => {
+                    setSaving(false);
+                    onClose();
+                },
+            }
+        );
+    };
+
+    return (
+        <>
+            <div className="fixed inset-0 z-40 !mt-0 bg-black/60" onClick={onClose} />
+            <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4">
+                <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+                        <h2 className="text-base font-semibold text-white">Edit Round Match Players</h2>
+                        <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <div className="p-5 space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Player 1</label>
+                            <select
+                                value={player1Id}
+                                onChange={(e) => setPlayer1Id(e.target.value ? Number(e.target.value) : '')}
+                                className="w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-2.5 px-3 text-white text-sm"
+                            >
+                                <option value="">Select player</option>
+                                {participants.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.seed}. {p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Player 2</label>
+                            <select
+                                value={player2Id}
+                                onChange={(e) => setPlayer2Id(e.target.value ? Number(e.target.value) : '')}
+                                className="w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-2.5 px-3 text-white text-sm"
+                            >
+                                <option value="">Select player</option>
+                                {participants.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.seed}. {p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <button
+                            onClick={submit}
+                            disabled={saving}
+                            className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-sm font-semibold text-white disabled:opacity-50"
+                        >
+                            {saving ? 'Saving...' : 'Save Matchup'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+}
+
 /* ─── Single Elimination MatchCard ─── */
 function MatchCard({
     match,
     tournamentId,
     isActive,
     canScore: canScoreProp = true,
+    isStadiumPickerOpen = false,
+    onOpenStadiumPicker,
+    onCloseStadiumPicker,
     participants = [],
     stadiumCount = 0,
     occupiedStadiums = [],
@@ -242,18 +363,23 @@ function MatchCard({
     tournamentId: number;
     isActive: boolean;
     canScore?: boolean;
+    isStadiumPickerOpen?: boolean;
+    onOpenStadiumPicker?: () => void;
+    onCloseStadiumPicker?: () => void;
     participants?: Participant[];
     stadiumCount?: number;
     occupiedStadiums?: number[];
 }) {
-    const [showStadiumPicker, setShowStadiumPicker] = useState(false);
     const [showScoreModal, setShowScoreModal] = useState(false);
+    const [showEditPlayers, setShowEditPlayers] = useState(false);
     const [showDetails, setShowDetails] = useState(false);
     const [rounds, setRounds] = useState<RoundEntry[]>([]);
     const [submitting, setSubmitting] = useState(false);
     const isPlaying = match.status === 'playing';
     const canReport = isActive && canScoreProp && match.player1_id && match.player2_id && !match.winner_id;
     const canSetPlaying = canReport && !isPlaying;
+    const hasAnyScore = !!match.winner_id || match.player1_score !== null || match.player2_score !== null;
+    const canEditPlayers = isActive && (match.round === 1 || !hasAnyScore);
 
     const p1Score = rounds.filter(r => r.winner === 'p1').reduce((s, r) => s + r.points, 0);
     const p2Score = rounds.filter(r => r.winner === 'p2').reduce((s, r) => s + r.points, 0);
@@ -289,7 +415,7 @@ function MatchCard({
             { status: 'playing', stadium },
             { preserveScroll: true, preserveState: true }
         );
-        setShowStadiumPicker(false);
+        onCloseStadiumPicker?.();
     };
 
     const cancelPlaying = () => {
@@ -302,7 +428,7 @@ function MatchCard({
 
     const handleSetPlaying = () => {
         if (stadiumCount > 0) {
-            setShowStadiumPicker(true);
+            onOpenStadiumPicker?.();
         } else {
             startPlaying(null);
         }
@@ -425,6 +551,15 @@ function MatchCard({
                         </button>
                     </div>
                 )}
+                {canEditPlayers && (
+                    <button
+                        onClick={() => setShowEditPlayers(true)}
+                        className="w-full flex items-center justify-center gap-1 px-3 py-1.5 border-t border-slate-700/30 bg-slate-800/40 text-[10px] font-medium text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 transition-all"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        Edit Players
+                    </button>
+                )}
             </div>
 
             {/* Score Details Modal */}
@@ -438,8 +573,8 @@ function MatchCard({
                     : (match.player2_score ?? 0);
                 return (
                 <>
-                    <div className="fixed inset-0 z-40 bg-black/60" onClick={() => setShowDetails(false)} />
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-40 !mt-0 bg-black/60" onClick={() => setShowDetails(false)} />
+                    <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4">
                         <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 overflow-hidden">
                             <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
                                 <h2 className="text-base font-semibold text-white">Match History</h2>
@@ -500,6 +635,14 @@ function MatchCard({
                                                     </div>
                                                 );
                                             })}
+
+            <EditMatchPlayersModal
+                open={showEditPlayers}
+                onClose={() => setShowEditPlayers(false)}
+                tournamentId={tournamentId}
+                match={match}
+                participants={participants}
+            />
                                         </div>
                                     </div>
                                 ) : (
@@ -513,14 +656,14 @@ function MatchCard({
             })()}
 
             {/* Stadium Picker Modal */}
-            {showStadiumPicker && (
+            {isStadiumPickerOpen && (
                 <>
-                    <div className="fixed inset-0 z-40 bg-black/60" onClick={() => setShowStadiumPicker(false)} />
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-40 !mt-0 bg-black/60" onClick={() => onCloseStadiumPicker?.()} />
+                    <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4">
                         <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 p-6">
                             <div className="flex items-center justify-between mb-5">
                                 <h2 className="text-lg font-semibold text-white">Select Stadium</h2>
-                                <button onClick={() => setShowStadiumPicker(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+                                <button onClick={() => onCloseStadiumPicker?.()} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             </div>
@@ -556,8 +699,8 @@ function MatchCard({
             {/* Score Modal */}
             {showScoreModal && (
                 <>
-                    <div className="fixed inset-0 z-40 bg-black/70" onClick={() => setShowScoreModal(false)} />
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-40 !mt-0 bg-black/70" onClick={() => setShowScoreModal(false)} />
+                    <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4">
                         <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-semibold text-white">Report Score</h2>
@@ -663,8 +806,8 @@ function SwissScoreModal({
 
     return (
         <>
-            <div className="fixed inset-0 z-40 bg-black/70" onClick={onClose} />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-40 !mt-0 bg-black/70" onClick={onClose} />
+            <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4">
                 <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 p-6">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-semibold text-white">{isEdit ? 'Edit Match Result' : 'Report Match Result'}</h2>
@@ -719,6 +862,97 @@ function SwissScoreModal({
     );
 }
 
+function SwissHistoryModal({
+    match,
+    onClose,
+}: {
+    match: TournamentMatch;
+    onClose: () => void;
+}) {
+    if (!match.winner_id || match.is_bye) return null;
+
+    const rd = match.round_details ?? [];
+    const p1Name = match.player1?.name || 'Player 1';
+    const p2Name = match.player2?.name || 'Player 2';
+    const p1Total = rd.length > 0
+        ? rd.filter(r => r.winner === 'p1').reduce((s, r) => s + Number(r.points), 0)
+        : (match.player1_battle_points || match.player1_score || 0);
+    const p2Total = rd.length > 0
+        ? rd.filter(r => r.winner === 'p2').reduce((s, r) => s + Number(r.points), 0)
+        : (match.player2_battle_points || match.player2_score || 0);
+
+    return (
+        <>
+            <div className="fixed inset-0 z-40 !mt-0 bg-black/60" onClick={onClose} />
+            <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4">
+                <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+                        <h2 className="text-base font-semibold text-white">Match History</h2>
+                        <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <div className="p-5">
+                        <div className="flex items-stretch gap-3 mb-5">
+                            <div className={`flex-1 rounded-xl p-3 text-center ${match.winner_id === match.player1_id ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-slate-800/40 border border-slate-700/30'}`}>
+                                <p className={`text-xs font-semibold truncate ${match.winner_id === match.player1_id ? 'text-cyan-400' : 'text-slate-400'}`}>{p1Name}</p>
+                                <p className={`text-3xl font-bold mt-1 ${match.winner_id === match.player1_id ? 'text-cyan-400' : 'text-white'}`}>{p1Total}</p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">pts</p>
+                                {match.winner_id === match.player1_id && (
+                                    <span className="inline-flex items-center gap-1 mt-2 px-2.5 py-0.5 rounded-md bg-cyan-500/10 text-[10px] font-bold text-cyan-400">
+                                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                        WINNER
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center">
+                                <span className="text-sm font-bold text-slate-600">VS</span>
+                            </div>
+                            <div className={`flex-1 rounded-xl p-3 text-center ${match.winner_id === match.player2_id ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-slate-800/40 border border-slate-700/30'}`}>
+                                <p className={`text-xs font-semibold truncate ${match.winner_id === match.player2_id ? 'text-cyan-400' : 'text-slate-400'}`}>{p2Name}</p>
+                                <p className={`text-3xl font-bold mt-1 ${match.winner_id === match.player2_id ? 'text-cyan-400' : 'text-white'}`}>{p2Total}</p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">pts</p>
+                                {match.winner_id === match.player2_id && (
+                                    <span className="inline-flex items-center gap-1 mt-2 px-2.5 py-0.5 rounded-md bg-cyan-500/10 text-[10px] font-bold text-cyan-400">
+                                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                        WINNER
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {rd.length > 0 ? (
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Round History</p>
+                                <div className="space-y-1.5">
+                                    {rd.map((r, i) => {
+                                        const winnerName = r.winner === 'p1' ? p1Name : p2Name;
+                                        const badgeClass = FINISH_BADGE[r.finish] || 'bg-slate-700/60 text-slate-300 border-slate-600/50';
+                                        return (
+                                            <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-700/30">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-slate-500 w-14">Round {r.round}</span>
+                                                    <span className="text-xs font-medium text-white truncate">{winnerName}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}`}>{r.finish}</span>
+                                                    <span className="text-xs font-bold text-cyan-400">+{r.points}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-center text-xs text-slate-500 py-4">No round details recorded</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+}
+
 /* ─── Swiss Match Card ─── */
 function SwissMatchCard({
     match,
@@ -726,6 +960,12 @@ function SwissMatchCard({
     isActive,
     canScore: canScoreProp = true,
     onOpenScore,
+    isDetailsOpen = false,
+    onOpenDetails,
+    onCloseDetails,
+    isStadiumPickerOpen = false,
+    onOpenStadiumPicker,
+    onCloseStadiumPicker,
     participants = [],
     stadiumCount = 0,
     occupiedStadiums = [],
@@ -734,19 +974,25 @@ function SwissMatchCard({
     tournamentId: number;
     isActive: boolean;
     canScore?: boolean;
-    onOpenScore: (match: TournamentMatch) => void;
+    onOpenScore: (matchId: number) => void;
+    isDetailsOpen?: boolean;
+    onOpenDetails?: () => void;
+    onCloseDetails?: () => void;
+    isStadiumPickerOpen?: boolean;
+    onOpenStadiumPicker?: () => void;
+    onCloseStadiumPicker?: () => void;
     participants?: Participant[];
     stadiumCount?: number;
     occupiedStadiums?: number[];
 }) {
-    const [showStadiumPicker, setShowStadiumPicker] = useState(false);
-    const [showDetails, setShowDetails] = useState(false);
+    const [showEditPlayers, setShowEditPlayers] = useState(false);
     const p1Name = match.player1?.name || 'TBD';
     const p2Name = match.player2?.name || 'BYE';
     const isCompleted = match.status === 'completed';
     const isPlaying = match.status === 'playing';
     const canReport = isActive && canScoreProp && !isCompleted && match.player1_id && match.player2_id && !match.is_bye;
     const canSetPlaying = canReport && !isPlaying;
+    const canEditPlayers = isActive && !match.is_bye && match.round === 1;
 
     const p1Judge = match.player1_id ? participants.find(p => p.id === match.player1_id)?.judge : null;
     const p2Judge = match.player2_id ? participants.find(p => p.id === match.player2_id)?.judge : null;
@@ -757,7 +1003,7 @@ function SwissMatchCard({
             { status: 'playing', stadium },
             { preserveScroll: true, preserveState: true }
         );
-        setShowStadiumPicker(false);
+        onCloseStadiumPicker?.();
     };
 
     const cancelPlaying = () => {
@@ -770,7 +1016,7 @@ function SwissMatchCard({
 
     const handleSetPlaying = () => {
         if (stadiumCount > 0) {
-            setShowStadiumPicker(true);
+            onOpenStadiumPicker?.();
         } else {
             startPlaying(null);
         }
@@ -861,15 +1107,15 @@ function SwissMatchCard({
                     </div>
                 </div>
 
-                <div className="w-20 flex items-center justify-center border-l border-slate-700/30 shrink-0">
+                <div className="w-20 flex items-start justify-center pt-2 pb-2 border-l border-slate-700/30 shrink-0">
                     {match.is_bye ? (
                         <span className="text-xs text-slate-500 font-medium">BYE</span>
                     ) : isCompleted ? (
                         <div className="flex flex-col items-center gap-1">
                             <button
-                                onClick={() => setShowDetails(!showDetails)}
+                                onClick={() => (isDetailsOpen ? onCloseDetails?.() : onOpenDetails?.())}
                                 className={`px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all flex items-center gap-1 ${
-                                    showDetails
+                                    isDetailsOpen
                                         ? 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400'
                                         : 'bg-slate-800/60 border border-slate-700/50 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30'
                                 }`}
@@ -880,7 +1126,7 @@ function SwissMatchCard({
                             </button>
                             {isActive && (
                                 <button
-                                    onClick={() => onOpenScore(match)}
+                                    onClick={() => onOpenScore(match.id)}
                                     className="px-2.5 py-1 rounded-lg bg-slate-800/60 border border-slate-700/50 text-[10px] font-medium text-slate-500 hover:text-amber-400 hover:border-amber-500/30 transition-all"
                                     title="Edit score"
                                 >
@@ -900,111 +1146,53 @@ function SwissMatchCard({
                                 </button>
                             )}
                             <button
-                                onClick={() => onOpenScore(match)}
+                                onClick={() => onOpenScore(match.id)}
                                 className="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-xs font-semibold text-cyan-400 hover:bg-cyan-500/20 transition-all"
                             >
                                 Score
                             </button>
+                            {canEditPlayers && (
+                                <button
+                                    onClick={() => setShowEditPlayers(true)}
+                                    className="px-2.5 py-1 rounded-lg bg-slate-800/60 border border-slate-700/50 text-[10px] font-medium text-slate-500 hover:text-amber-400 hover:border-amber-500/30 transition-all"
+                                >
+                                    Edit
+                                </button>
+                            )}
                         </div>
                     ) : (
-                        <span className="text-xs text-slate-600">--</span>
+                        <div className="flex flex-col items-center gap-1">
+                            <span className="text-xs text-slate-600">--</span>
+                            {canEditPlayers && (
+                                <button
+                                    onClick={() => setShowEditPlayers(true)}
+                                    className="px-2.5 py-1 rounded-lg bg-slate-800/60 border border-slate-700/50 text-[10px] font-medium text-slate-500 hover:text-amber-400 hover:border-amber-500/30 transition-all"
+                                >
+                                    Edit
+                                </button>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
         </div>
 
-        {showDetails && isCompleted && !match.is_bye && (() => {
-            const rd = match.round_details ?? [];
-            const p1Total = rd.length > 0
-                ? rd.filter(r => r.winner === 'p1').reduce((s, r) => s + Number(r.points), 0)
-                : (match.player1_battle_points || match.player1_score || 0);
-            const p2Total = rd.length > 0
-                ? rd.filter(r => r.winner === 'p2').reduce((s, r) => s + Number(r.points), 0)
-                : (match.player2_battle_points || match.player2_score || 0);
-            return (
-            <>
-                <div className="fixed inset-0 z-40 bg-black/60" onClick={() => setShowDetails(false)} />
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 overflow-hidden">
-                        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-                            <h2 className="text-base font-semibold text-white">Match History</h2>
-                            <button onClick={() => setShowDetails(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-                        <div className="p-5">
-                            <div className="flex items-stretch gap-3 mb-5">
-                                <div className={`flex-1 rounded-xl p-3 text-center ${match.winner_id === match.player1_id ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-slate-800/40 border border-slate-700/30'}`}>
-                                    <p className={`text-xs font-semibold truncate ${match.winner_id === match.player1_id ? 'text-cyan-400' : 'text-slate-400'}`}>{p1Name}</p>
-                                    <p className={`text-3xl font-bold mt-1 ${match.winner_id === match.player1_id ? 'text-cyan-400' : 'text-white'}`}>
-                                        {p1Total}
-                                    </p>
-                                    <p className="text-[10px] text-slate-500 mt-0.5">pts</p>
-                                    {match.winner_id === match.player1_id && (
-                                        <span className="inline-flex items-center gap-1 mt-2 px-2.5 py-0.5 rounded-md bg-cyan-500/10 text-[10px] font-bold text-cyan-400">
-                                            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                                            WINNER
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex items-center">
-                                    <span className="text-sm font-bold text-slate-600">VS</span>
-                                </div>
-                                <div className={`flex-1 rounded-xl p-3 text-center ${match.winner_id === match.player2_id ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-slate-800/40 border border-slate-700/30'}`}>
-                                    <p className={`text-xs font-semibold truncate ${match.winner_id === match.player2_id ? 'text-cyan-400' : 'text-slate-400'}`}>{p2Name}</p>
-                                    <p className={`text-3xl font-bold mt-1 ${match.winner_id === match.player2_id ? 'text-cyan-400' : 'text-white'}`}>
-                                        {p2Total}
-                                    </p>
-                                    <p className="text-[10px] text-slate-500 mt-0.5">pts</p>
-                                    {match.winner_id === match.player2_id && (
-                                        <span className="inline-flex items-center gap-1 mt-2 px-2.5 py-0.5 rounded-md bg-cyan-500/10 text-[10px] font-bold text-cyan-400">
-                                            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                                            WINNER
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
+        <EditMatchPlayersModal
+            open={showEditPlayers}
+            onClose={() => setShowEditPlayers(false)}
+            tournamentId={tournamentId}
+            match={match}
+            participants={participants}
+        />
 
-                            {rd.length > 0 ? (
-                                <div>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Round History</p>
-                                    <div className="space-y-1.5">
-                                        {rd.map((r, i) => {
-                                            const winnerName = r.winner === 'p1' ? p1Name : p2Name;
-                                            const badgeClass = FINISH_BADGE[r.finish] || 'bg-slate-700/60 text-slate-300 border-slate-600/50';
-                                            return (
-                                                <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-700/30">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-bold text-slate-500 w-14">Round {r.round}</span>
-                                                        <span className="text-xs font-medium text-white truncate">{winnerName}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}`}>{r.finish}</span>
-                                                        <span className="text-xs font-bold text-cyan-400">+{r.points}</span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="text-center text-xs text-slate-500 py-4">No round details recorded</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </>
-            );
-        })()}
-
-        {showStadiumPicker && (
+        {isStadiumPickerOpen && (
             <>
-                <div className="fixed inset-0 z-40 bg-black/60" onClick={() => setShowStadiumPicker(false)} />
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-40 !mt-0 bg-black/60" onClick={() => onCloseStadiumPicker?.()} />
+                <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4">
                     <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 p-6">
                         <div className="flex items-center justify-between mb-5">
                             <h2 className="text-lg font-semibold text-white">Select Stadium</h2>
-                            <button onClick={() => setShowStadiumPicker(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+                            <button onClick={() => onCloseStadiumPicker?.()} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
@@ -1045,10 +1233,12 @@ function StandingsTable({
     standings,
     matches,
     tournament,
+    participantCount,
 }: {
     standings: SwissStanding[];
     matches: TournamentMatch[];
     tournament: Tournament;
+    participantCount: number;
 }) {
     if (!standings || standings.length === 0) return null;
 
@@ -1072,10 +1262,11 @@ function StandingsTable({
         return pdB - pdA;
     });
 
-    const topCut = (() => {
-        if (tournament.tournament_type !== 'two_stage' || !tournament.advance_per_group) return null;
-        return Math.min(tournament.advance_per_group * 2, sortedStandings.length);
-    })();
+    const topCut = getSwissPlayoffCutSize(
+        tournament,
+        sortedStandings.length,
+        participantCount,
+    );
 
     return (
         <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
@@ -1341,12 +1532,18 @@ function EliminationBracket({
     format,
     readOnly = false,
     canScore = true,
+    stadiumPickerMatchId = null,
+    onOpenStadiumPicker,
+    onCloseStadiumPicker,
 }: {
     matches: TournamentMatch[];
     tournament: Tournament;
     format: string;
     readOnly?: boolean;
     canScore?: boolean;
+    stadiumPickerMatchId?: number | null;
+    onOpenStadiumPicker?: (matchId: number) => void;
+    onCloseStadiumPicker?: () => void;
 }) {
     const isActive = !readOnly && tournament.status === 'active';
     const occupiedStadiums = matches
@@ -1440,7 +1637,7 @@ function EliminationBracket({
                                         </h4>
                                         <div className="flex flex-col justify-around flex-1 gap-4">
                                             {roundMatches.map(match => (
-                                                <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                                <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
                                             ))}
                                         </div>
                                     </div>
@@ -1467,7 +1664,7 @@ function EliminationBracket({
                                         </h4>
                                         <div className="flex flex-col justify-around flex-1 gap-4">
                                             {roundMatches.map(match => (
-                                                <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                                <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
                                             ))}
                                         </div>
                                     </div>
@@ -1488,7 +1685,7 @@ function EliminationBracket({
                         </div>
                         <div className="p-6 flex justify-center">
                             {grandFinalMatches.map(match => (
-                                <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
                             ))}
                         </div>
                     </div>
@@ -1550,7 +1747,7 @@ function EliminationBracket({
                                     </h4>
                                     <div className="flex flex-col justify-around flex-1 gap-4">
                                         {roundMatches.map(match => (
-                                            <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                            <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
                                         ))}
                                     </div>
                                 </div>
@@ -1590,7 +1787,7 @@ function EliminationBracket({
                                     </h4>
                                     <div className="flex flex-col gap-4">
                                         {p3Visible.map(match => (
-                                            <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                            <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
                                         ))}
                                     </div>
                                 </div>
@@ -1615,7 +1812,7 @@ function EliminationBracket({
                                                 )}
                                                 <div className="flex flex-wrap gap-4 justify-center">
                                                     {p5vRoundsMap[round].map(match => (
-                                                        <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                                        <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
                                                     ))}
                                                 </div>
                                             </div>
@@ -1637,19 +1834,53 @@ function SwissView({
     tournament,
     matches,
     standings,
+    participantCount,
     readOnly = false,
     canScore = true,
+    onRefreshBracket,
+    isRefreshingBracket = false,
+    stadiumPickerMatchId,
+    scoreMatchId,
+    detailsMatchId,
+    onOpenStadiumPicker,
+    onCloseStadiumPicker,
+    onOpenScore,
+    onCloseScore,
+    onOpenDetails,
+    onCloseDetails,
+    finalStageStadiumPickerMatchId,
+    onOpenFinalStageStadiumPicker,
+    onCloseFinalStageStadiumPicker,
 }: {
     tournament: Tournament;
     matches: TournamentMatch[];
     standings: SwissStanding[];
+    participantCount: number;
     readOnly?: boolean;
     canScore?: boolean;
+    onRefreshBracket?: () => void;
+    isRefreshingBracket?: boolean;
+    stadiumPickerMatchId: number | null;
+    scoreMatchId: number | null;
+    detailsMatchId: number | null;
+    onOpenStadiumPicker: (matchId: number) => void;
+    onCloseStadiumPicker: () => void;
+    onOpenScore: (matchId: number) => void;
+    onCloseScore: () => void;
+    onOpenDetails: (matchId: number) => void;
+    onCloseDetails: () => void;
+    finalStageStadiumPickerMatchId: number | null;
+    onOpenFinalStageStadiumPicker: (matchId: number) => void;
+    onCloseFinalStageStadiumPicker: () => void;
 }) {
     const groupMatches = matches.filter(m => m.stage !== 'final');
     const finalMatches = matches.filter(m => m.stage === 'final');
     const hasFinalStage = finalMatches.length > 0;
     const isTwoStage = tournament.tournament_type === 'two_stage';
+
+    const hasSwissTopCut =
+        tournament.format === 'swiss' && (tournament.swiss_top_cut_players ?? 0) >= 2;
+    const wantsSwissPlayoff = isTwoStage || hasSwissTopCut;
 
     const mainBracket = finalMatches.filter(m => !m.bracket || m.bracket === 'winners' || m.bracket === 'grand_final');
     const grandFinal = mainBracket.find(m => m.bracket === 'grand_final' && m.winner_id);
@@ -1685,7 +1916,12 @@ function SwissView({
         setSelectedRound(round);
         try { sessionStorage.setItem(roundKey, String(round)); } catch {}
     };
-    const [scoreMatch, setScoreMatch] = useState<TournamentMatch | null>(null);
+    const scoreMatch = scoreMatchId
+        ? groupMatches.find((m) => m.id === scoreMatchId) ?? null
+        : null;
+    const detailsMatch = detailsMatchId
+        ? groupMatches.find((m) => m.id === detailsMatchId) ?? null
+        : null;
 
     const isActive = !readOnly && tournament.status === 'active';
     const totalRounds = tournament.swiss_rounds || 1;
@@ -1705,8 +1941,8 @@ function SwissView({
     const allCurrentComplete = currentRoundMatches.length > 0 && currentRoundMatches.every(m => m.status === 'completed');
     const isLastRound = currentRound >= totalRounds;
     const canAdvance = isActive && allCurrentComplete && !isLastRound;
-    const canStartFinals = isActive && allCurrentComplete && isLastRound && isTwoStage && !hasFinalStage;
-    const canComplete = isActive && allCurrentComplete && isLastRound && !isTwoStage;
+    const canStartFinals = isActive && allCurrentComplete && isLastRound && wantsSwissPlayoff && !hasFinalStage;
+    const canComplete = isActive && allCurrentComplete && isLastRound && !wantsSwissPlayoff;
 
     const NowPlayingBanner = () => {
         if (playingMatches.length === 0) return null;
@@ -1742,7 +1978,7 @@ function SwissView({
     const tabs = [
         {
             id: 'bracket' as const,
-            label: isTwoStage ? 'Group Stage' : 'Bracket',
+            label: isTwoStage ? 'Group Stage' : hasSwissTopCut ? 'Swiss rounds' : 'Bracket',
             icon: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z',
         },
         {
@@ -1797,11 +2033,38 @@ function SwissView({
 
             {/* Bracket / Group Stage Tab */}
             {activeTab === 'bracket' && (<>
+                {onRefreshBracket && (
+                    <div className="flex items-center justify-end gap-2 mb-3">
+                        <span className="text-[11px] text-slate-500 hidden sm:inline">Auto-refresh every 5s</span>
+                        <button
+                            type="button"
+                            onClick={onRefreshBracket}
+                            disabled={isRefreshingBracket}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-600/60 bg-slate-800/60 text-slate-300 hover:text-white hover:bg-slate-700/60 hover:border-cyan-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <svg
+                                className={`w-3.5 h-3.5 ${isRefreshingBracket ? 'animate-spin' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                aria-hidden
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                />
+                            </svg>
+                            {isRefreshingBracket ? 'Refreshing…' : 'Refresh'}
+                        </button>
+                    </div>
+                )}
                 <NowPlayingBanner />
                 <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-white">{isTwoStage ? 'Group Stage Rounds' : 'Rounds'}</h2>
-                        <span className="text-xs text-slate-500">
+                    <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between gap-3">
+                        <h2 className="text-lg font-semibold text-white">{isTwoStage ? 'Group Stage Rounds' : hasSwissTopCut ? 'Swiss rounds' : 'Rounds'}</h2>
+                        <span className="text-xs text-slate-500 shrink-0">
                             Round {currentRound} of {totalRounds}
                         </span>
                     </div>
@@ -1836,6 +2099,48 @@ function SwissView({
                     <div className="p-4 space-y-3">
                         {roundMatches.length === 0 ? (
                             <p className="text-sm text-slate-500 text-center py-8">No matches generated yet.</p>
+                        ) : isTwoStage ? (
+                            (() => {
+                                const half = Math.ceil(roundMatches.length / 2);
+                                const topMatches = roundMatches.slice(0, half);
+                                const bottomMatches = roundMatches.slice(half);
+
+                                const renderGroup = (label: string, list: TournamentMatch[]) => (
+                                    <div className="rounded-2xl border border-slate-800/70 bg-slate-900/30 overflow-hidden">
+                                        <div className="px-4 py-2.5 border-b border-slate-800/70 text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                                            {label}
+                                        </div>
+                                        <div className="p-3 space-y-3">
+                                            {list.map((match) => (
+                                                <SwissMatchCard
+                                                    key={match.id}
+                                                    match={match}
+                                                    tournamentId={tournament.id}
+                                                    isActive={isActive && selectedRound === currentRound}
+                                                    canScore={canScore}
+                                                    onOpenScore={onOpenScore}
+                                                    isDetailsOpen={detailsMatchId === match.id}
+                                                    onOpenDetails={() => onOpenDetails(match.id)}
+                                                    onCloseDetails={onCloseDetails}
+                                                    isStadiumPickerOpen={stadiumPickerMatchId === match.id}
+                                                    onOpenStadiumPicker={() => onOpenStadiumPicker(match.id)}
+                                                    onCloseStadiumPicker={onCloseStadiumPicker}
+                                                    participants={tournament.participants || []}
+                                                    stadiumCount={tournament.stadiums || 0}
+                                                    occupiedStadiums={occupiedStadiums}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+
+                                return (
+                                    <div className="space-y-3">
+                                        {renderGroup('Group A', topMatches)}
+                                        {bottomMatches.length > 0 && renderGroup('Group B', bottomMatches)}
+                                    </div>
+                                );
+                            })()
                         ) : (
                             roundMatches.map((match) => (
                                 <SwissMatchCard
@@ -1844,7 +2149,13 @@ function SwissView({
                                     tournamentId={tournament.id}
                                     isActive={isActive && selectedRound === currentRound}
                                     canScore={canScore}
-                                    onOpenScore={setScoreMatch}
+                                    onOpenScore={onOpenScore}
+                                    isDetailsOpen={detailsMatchId === match.id}
+                                    onOpenDetails={() => onOpenDetails(match.id)}
+                                    onCloseDetails={onCloseDetails}
+                                    isStadiumPickerOpen={stadiumPickerMatchId === match.id}
+                                    onOpenStadiumPicker={() => onOpenStadiumPicker(match.id)}
+                                    onCloseStadiumPicker={onCloseStadiumPicker}
                                     participants={tournament.participants || []}
                                     stadiumCount={tournament.stadiums || 0}
                                     occupiedStadiums={occupiedStadiums}
@@ -1872,7 +2183,11 @@ function SwissView({
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3l3.057-3L12 4.5 15.943 0 19 3l-2 6.5L19 21H5l2-11.5L5 3z" />
                                     </svg>
-                                    Start Final Stage ({formatLabel[tournament.final_stage_format || 'single_elimination']})
+                                    Start playoff bracket (
+                                    {hasSwissTopCut
+                                        ? `top ${tournament.swiss_top_cut_players} — single elimination`
+                                        : formatLabel[tournament.final_stage_format || 'single_elimination']}
+                                    )
                                 </button>
                             )}
                             {canComplete && (
@@ -1906,7 +2221,12 @@ function SwissView({
 
             {/* Standings Tab */}
             {activeTab === 'standings' && (
-                <StandingsTable standings={standings} matches={groupMatches} tournament={tournament} />
+                <StandingsTable
+                    standings={standings}
+                    matches={groupMatches}
+                    tournament={tournament}
+                    participantCount={participantCount}
+                />
             )}
 
             {/* Player Stats Tab */}
@@ -2010,11 +2330,14 @@ function SwissView({
                     <EliminationBracket
                         matches={finalMatches}
                         tournament={tournament}
-                        format={tournament.final_stage_format || 'single_elimination'}
+                        format={hasSwissTopCut ? 'single_elimination' : tournament.final_stage_format || 'single_elimination'}
                         readOnly={readOnly}
                         canScore={canScore}
+                        stadiumPickerMatchId={finalStageStadiumPickerMatchId}
+                        onOpenStadiumPicker={onOpenFinalStageStadiumPicker}
+                        onCloseStadiumPicker={onCloseFinalStageStadiumPicker}
                     />
-                ) : tournament.status === 'completed' && !isTwoStage && standings.length > 0 ? (
+                ) : tournament.status === 'completed' && !isTwoStage && !hasSwissTopCut && standings.length > 0 ? (
                     /* Single-stage Swiss completed: show podium */
                     <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
                         <div className="px-6 py-4 border-b border-slate-800/80">
@@ -2095,14 +2418,16 @@ function SwissView({
                             <p className="text-slate-400 text-sm text-center">
                                 {isTwoStage
                                     ? 'Complete all group stage rounds to start the final stage bracket.'
-                                    : 'Final stage will be available once the tournament is completed.'
-                                }
+                                    : hasSwissTopCut
+                                        ? 'Complete all Swiss rounds, then use “Start playoff bracket” to generate the single elimination cut.'
+                                        : 'Final stage will be available once the tournament is completed.'}
                             </p>
                             <p className="text-slate-500 text-xs mt-1 text-center">
                                 {isTwoStage
                                     ? `Top players will advance to a ${formatLabel[tournament.final_stage_format || 'single_elimination']} bracket.`
-                                    : `Complete all ${totalRounds} rounds to see the final results.`
-                                }
+                                    : hasSwissTopCut
+                                        ? `Top ${tournament.swiss_top_cut_players} from standings will enter a single elimination playoff.`
+                                        : `Complete all ${totalRounds} rounds to see the final results.`}
                             </p>
                         </div>
                     </div>
@@ -2114,7 +2439,13 @@ function SwissView({
                 <SwissScoreModal
                     match={scoreMatch}
                     tournamentId={tournament.id}
-                    onClose={() => setScoreMatch(null)}
+                    onClose={onCloseScore}
+                />
+            )}
+            {detailsMatch && (
+                <SwissHistoryModal
+                    match={detailsMatch}
+                    onClose={onCloseDetails}
                 />
             )}
         </>
@@ -2174,8 +2505,8 @@ function BulkAddModal({ tournamentId, onClose }: { tournamentId: number; onClose
 
     return (
         <>
-            <div className="fixed inset-0 z-40 bg-black/60" onClick={onClose} />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-40 !mt-0 bg-black/60" onClick={onClose} />
+            <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4">
                 <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 p-6">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-semibold text-white">Bulk Add Participants</h2>
@@ -2334,8 +2665,8 @@ function StadiumsField({
 
             {showModal && (
                 <>
-                    <div className="fixed inset-0 z-40 bg-black/60" onClick={() => setShowModal(false)} />
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-40 !mt-0 bg-black/60" onClick={() => setShowModal(false)} />
+                    <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4">
                         <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 p-6">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-lg font-semibold text-white">Set Stadiums</h2>
@@ -2377,6 +2708,10 @@ function StadiumsField({
 export default function Show({ tournament, readOnly = false }: { tournament: Tournament; readOnly?: boolean }) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [openSwissStadiumMatchId, setOpenSwissStadiumMatchId] = useState<number | null>(null);
+    const [openFinalStageStadiumMatchId, setOpenFinalStageStadiumMatchId] = useState<number | null>(null);
+    const [openSwissScoreMatchId, setOpenSwissScoreMatchId] = useState<number | null>(null);
+    const [openSwissDetailsMatchId, setOpenSwissDetailsMatchId] = useState<number | null>(null);
     const [toast, setToast] = useState<string | null>(null);
     const [, setLiveTick] = useState(0);
 
@@ -2387,6 +2722,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
         currentRound: number | null;
     }>({ matches: null, standings: null, status: null, currentRound: null });
     const prevDataRef = useRef<string>('');
+    const forceLiveUpdateRef = useRef(false);
 
     useEffect(() => {
         if (toast) {
@@ -2398,36 +2734,47 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
     useEffect(() => {
         liveDataRef.current = { matches: null, standings: null, status: null, currentRound: null };
         prevDataRef.current = '';
+        forceLiveUpdateRef.current = false;
         setLiveTick(0);
     }, [tournament]);
+
+    const applyLivePayload = (data: {
+        matches: TournamentMatch[];
+        swiss_standings?: SwissStanding[];
+        status?: string;
+        current_round?: number;
+    }) => {
+        const dataString = JSON.stringify(data);
+        if (!forceLiveUpdateRef.current && dataString === prevDataRef.current) {
+            return;
+        }
+        prevDataRef.current = dataString;
+        liveDataRef.current = {
+            matches: data.matches,
+            standings: data.swiss_standings ?? liveDataRef.current.standings,
+            status: data.status ?? liveDataRef.current.status,
+            currentRound: data.current_round ?? liveDataRef.current.currentRound,
+        };
+        setLiveTick((t) => t + 1);
+    };
 
     const { permissions } = usePage<PageProps>().props;
     const canJudge = permissions?.can_use_judge ?? false;
     const canScore = permissions?.can_score_matches ?? false;
 
     const currentStatus = liveDataRef.current.status ?? tournament.status;
-    const shouldPoll = readOnly || currentStatus === 'active';
+    const shouldPoll = readOnly || currentStatus === 'active' || currentStatus === 'completed';
     const liveUrl = readOnly
         ? `/t/${tournament.slug}/live`
         : `/tournaments/${tournament.id}/live`;
 
-    useQuery({
+    const { refetch: refetchLive, isFetching: isLiveFetching } = useQuery({
         queryKey: ['tournament-live', tournament.id, tournament.slug, readOnly],
         queryFn: async () => {
             const res = await fetch(liveUrl);
             if (!res.ok) throw new Error('Failed to fetch live data');
             const data = await res.json();
-            const dataString = JSON.stringify(data);
-            if (dataString !== prevDataRef.current) {
-                prevDataRef.current = dataString;
-                liveDataRef.current = {
-                    matches: data.matches,
-                    standings: data.swiss_standings ?? liveDataRef.current.standings,
-                    status: data.status ?? liveDataRef.current.status,
-                    currentRound: data.current_round ?? liveDataRef.current.currentRound,
-                };
-                setLiveTick(t => t + 1);
-            }
+            applyLivePayload(data);
             return data;
         },
         enabled: shouldPoll,
@@ -2436,6 +2783,18 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
         refetchOnWindowFocus: false,
         structuralSharing: true,
     });
+
+    const refreshBracket = async () => {
+        forceLiveUpdateRef.current = true;
+        try {
+            const result = await refetchLive();
+            if (result.data) {
+                applyLivePayload(result.data);
+            }
+        } finally {
+            forceLiveUpdateRef.current = false;
+        }
+    };
 
     const handleRemoveParticipant = (participantId: number) => {
         router.delete(route('participants.destroy', [tournament.id, participantId]), { preserveScroll: true, preserveState: true });
@@ -2465,6 +2824,17 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
         .map(m => m.stadium as number);
     const isSwiss = tournament.format === 'swiss';
     const isTwoStage = tournament.tournament_type === 'two_stage';
+    const hasSwissTopCut =
+        isSwiss && (tournament.swiss_top_cut_players ?? 0) >= 2;
+    const playoffCutSize = isSwiss
+        ? getSwissPlayoffCutSize(tournament, standings.length, participantCount)
+        : null;
+    const effectiveElimFormat = isTwoStage
+        ? (tournament.final_stage_format || 'single_elimination')
+        : hasSwissTopCut
+            ? 'single_elimination'
+            : tournament.format;
+    const showSingleElimPlacementFlags = effectiveElimFormat === 'single_elimination';
 
     // Single elimination: group main-bracket matches by round (exclude placement brackets)
     const roundsMap: Record<number, TournamentMatch[]> = {};
@@ -2486,10 +2856,12 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
         return `Round ${round}`;
     };
 
-    // Format description for two-stage
+    // Format description for two-stage or Swiss + top cut
     const formatDescription = isTwoStage
         ? `${formatLabel[tournament.group_stage_format || tournament.format] || tournament.format} \u2192 ${formatLabel[tournament.final_stage_format || 'single_elimination']}`
-        : (formatLabel[tournament.format] || tournament.format);
+        : hasSwissTopCut
+            ? `Swiss \u2192 Single elimination (top ${tournament.swiss_top_cut_players})`
+            : (formatLabel[tournament.format] || tournament.format);
 
     // Find champion
     const finalMatches = matches.filter(m => m.stage === 'final');
@@ -2501,11 +2873,12 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
             .sort((a, b) => b.round - a.round);
         return mainBracket[0]?.winner || null;
     };
-    const champion = isTwoStage && finalMatches.length > 0
-        ? findBracketChampion(finalMatches)
-        : isSwiss
-            ? (liveTournament.status === 'completed' && standings.length > 0 ? standings[0]?.participant : null)
-            : findBracketChampion(matches);
+    const champion =
+        finalMatches.length > 0 && (isTwoStage || hasSwissTopCut)
+            ? findBracketChampion(finalMatches)
+            : isSwiss
+                ? (liveTournament.status === 'completed' && standings.length > 0 ? standings[0]?.participant : null)
+                : findBracketChampion(matches);
 
     const PageLayout = ({ children }: { children: React.ReactNode }) => {
         if (readOnly) {
@@ -2658,9 +3031,26 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                         </span>
                                     </div>
                                 )}
-                                {tournament.third_place_match && (
+                                {playoffCutSize !== null && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-slate-500">Playoff cut</span>
+                                        <span className="text-sm font-medium text-cyan-400">
+                                            Top {playoffCutSize}
+                                            {hasSwissTopCut && tournament.swiss_top_cut_players
+                                                ? ` (configured: ${tournament.swiss_top_cut_players})`
+                                                : ''}
+                                        </span>
+                                    </div>
+                                )}
+                                {showSingleElimPlacementFlags && tournament.third_place_match && (
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-slate-500">3rd Place Match</span>
+                                        <span className="text-sm font-medium text-emerald-400">Yes</span>
+                                    </div>
+                                )}
+                                {showSingleElimPlacementFlags && tournament.placement_matches_fifth_seventh && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-slate-500">5th–7th Mini-bracket</span>
                                         <span className="text-sm font-medium text-emerald-400">Yes</span>
                                     </div>
                                 )}
@@ -2728,16 +3118,16 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                         </span>
                                     </div>
                                 )}
-                                {isTwoStage && finalMatches.length > 0 && (
+                                {(isTwoStage || hasSwissTopCut) && finalMatches.length > 0 && (
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-slate-500">Stage</span>
                                         <span className="text-sm font-medium text-amber-400">Final Stage</span>
                                     </div>
                                 )}
-                                {isTwoStage && finalMatches.length === 0 && isActive && (
+                                {(isTwoStage || hasSwissTopCut) && finalMatches.length === 0 && isActive && (
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-slate-500">Stage</span>
-                                        <span className="text-sm font-medium text-cyan-400">Group Stage</span>
+                                        <span className="text-sm font-medium text-cyan-400">{isTwoStage ? 'Group Stage' : 'Swiss'}</span>
                                     </div>
                                 )}
                             </div>
@@ -2889,7 +3279,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                     {tournament.judge_code && (
                                         <div className="space-y-3">
                                             {(() => {
-                                                const judgeUrl = `${window.location.origin}/t/${tournament.slug}/judge`;
+                                                const judgeUrl = `${window.location.origin}/t/${tournament.slug}/judge?code=${encodeURIComponent(tournament.judge_code!)}`;
                                                 return (
                                             <>
                                             <div>
@@ -2923,7 +3313,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                                 </div>
                                             </div>
                                             <div className="flex flex-col items-center pt-1">
-                                                <p className="text-xs text-slate-500 mb-2">Scan to open judge login</p>
+                                                <p className="text-xs text-slate-500 mb-2">Scan to open judge panel (code included)</p>
                                                 <div className="p-2.5 rounded-xl bg-white shadow-lg shadow-black/30">
                                                     <QRCode
                                                         value={judgeUrl}
@@ -2934,7 +3324,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                                     />
                                                 </div>
                                             </div>
-                                            <p className="text-[10px] text-slate-600 text-center">Share the link + code to judges so they can submit scores</p>
+                                            <p className="text-[10px] text-slate-600 text-center">Share the QR or link — judges go straight to the panel without typing the code</p>
                                             </>
                                                 );
                                             })()}
@@ -2960,8 +3350,23 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                     tournament={liveTournament}
                                     matches={matches}
                                     standings={standings}
+                                    participantCount={participantCount}
                                     readOnly={readOnly}
                                     canScore={canScore}
+                                    onRefreshBracket={shouldPoll ? refreshBracket : undefined}
+                                    isRefreshingBracket={isLiveFetching}
+                                    stadiumPickerMatchId={openSwissStadiumMatchId}
+                                    scoreMatchId={openSwissScoreMatchId}
+                                    detailsMatchId={openSwissDetailsMatchId}
+                                    onOpenStadiumPicker={setOpenSwissStadiumMatchId}
+                                    onCloseStadiumPicker={() => setOpenSwissStadiumMatchId(null)}
+                                    onOpenScore={setOpenSwissScoreMatchId}
+                                    onCloseScore={() => setOpenSwissScoreMatchId(null)}
+                                    onOpenDetails={setOpenSwissDetailsMatchId}
+                                    onCloseDetails={() => setOpenSwissDetailsMatchId(null)}
+                                    finalStageStadiumPickerMatchId={openFinalStageStadiumMatchId}
+                                    onOpenFinalStageStadiumPicker={setOpenFinalStageStadiumMatchId}
+                                    onCloseFinalStageStadiumPicker={() => setOpenFinalStageStadiumMatchId(null)}
                                 />
                             ) : (
                                 <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
@@ -3009,6 +3414,9 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                     format="double_elimination"
                                     readOnly={readOnly}
                                     canScore={canScore}
+                                    stadiumPickerMatchId={openFinalStageStadiumMatchId}
+                                    onOpenStadiumPicker={setOpenFinalStageStadiumMatchId}
+                                    onCloseStadiumPicker={() => setOpenFinalStageStadiumMatchId(null)}
                                 />
                             )
                         ) : (
@@ -3055,6 +3463,9 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                                                     tournamentId={tournament.id}
                                                                     isActive={isActive}
                                                                     canScore={canScore}
+                                                                    isStadiumPickerOpen={openFinalStageStadiumMatchId === match.id}
+                                                                    onOpenStadiumPicker={() => setOpenFinalStageStadiumMatchId(match.id)}
+                                                                    onCloseStadiumPicker={() => setOpenFinalStageStadiumMatchId(null)}
                                                                     participants={participants}
                                                                     stadiumCount={tournament.stadiums || 0}
                                                                     occupiedStadiums={occupiedStadiums}
@@ -3089,8 +3500,8 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
             {/* Delete Modal */}
             {!readOnly && showDeleteConfirm && (
                 <>
-                    <div className="fixed inset-0 z-40 bg-black/60" onClick={() => setShowDeleteConfirm(false)} />
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-40 !mt-0 bg-black/60" onClick={() => setShowDeleteConfirm(false)} />
+                    <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4">
                         <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 p-6">
                             <h2 className="text-lg font-semibold text-white">Delete Tournament</h2>
                             <p className="mt-2 text-sm text-slate-400">Are you sure you want to delete <strong className="text-white">{tournament.name}</strong>? This cannot be undone.</p>

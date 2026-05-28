@@ -85,12 +85,11 @@ export default function Members({ members = [] }: { members?: MemberData[] }) {
                                 <Link href={route('members')} className="px-4 py-2 text-sm font-medium text-red-400 transition-colors">Members</Link>
                                 <Link href={route('events')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Event</Link>
                                 <Link href={route('blog')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Blog</Link>
-                                <Link href={route('jersey')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Jersey</Link>
+                                <Link href={route('jersey')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Shop</Link>
                             </div>
                         </div>
                     </div>
                 </nav>
-
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                     <div className="mb-10">
                         <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-4">

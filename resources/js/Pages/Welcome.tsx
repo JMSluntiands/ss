@@ -1,6 +1,8 @@
 import { MemberSlideData, MembersSliderSection } from '@/Components/MembersMarquee';
 import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
+import SiteVisitsStrip from '@/Components/SiteVisitsStrip';
+import VisitorCounter from '@/Components/VisitorCounter';
 import { PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -47,7 +49,7 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                                 <Link href={route('members')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Members</Link>
                                 <Link href={route('events')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Event</Link>
                                 <Link href={route('blog')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Blog</Link>
-                                <Link href={route('jersey')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Jersey</Link>
+                                <Link href={route('jersey')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Shop</Link>
                                 <div className="w-px h-6 bg-zinc-700 mx-2" />
                                 <button
                                     onClick={() => setJoinModalOpen(true)}
@@ -79,7 +81,7 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                                 <Link href={route('members')} className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 rounded-lg">Members</Link>
                                 <Link href={route('events')} className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 rounded-lg">Event</Link>
                                 <Link href={route('blog')} className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 rounded-lg">Blog</Link>
-                                <Link href={route('jersey')} className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 rounded-lg">Jersey</Link>
+                                <Link href={route('jersey')} className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 rounded-lg">Shop</Link>
                                 <div className="border-t border-zinc-800/60 my-2" />
                                 <button onClick={() => { setMenuOpen(false); setJoinModalOpen(true); }} className="block w-full text-left px-4 py-2.5 text-sm font-semibold text-red-400 hover:bg-zinc-800/60 rounded-lg">Join Us</button>
                             </div>
@@ -201,6 +203,8 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                 {/* ── About Section ── */}
                 <section id="about" className="relative py-24 sm:py-32">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="mb-10 sm:mb-12" />
+
                         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
                             <div>
                                 <span className="inline-block px-4 py-1.5 text-xs font-bold tracking-widest text-red-400 bg-red-500/10 border border-red-500/20 rounded-full mb-6 uppercase">
@@ -343,6 +347,10 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                 </section>
 
                 <SiteFooter variant="full" />
+
+                <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">
+                    <VisitorCounter />
+                </div>
 
                 {/* ── Join Us Modal ── */}
                 {joinModalOpen && (

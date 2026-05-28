@@ -203,9 +203,15 @@ class SwissService
         $nextRound = $currentRound + 1;
 
         if ($nextRound > $tournament->swiss_rounds) {
-            if ($tournament->tournament_type !== 'two_stage') {
-                $tournament->update(['status' => 'completed']);
+            if ($tournament->tournament_type === 'two_stage') {
+                return false;
             }
+            $topCut = (int) ($tournament->swiss_top_cut_players ?? 0);
+            if ($tournament->format === 'swiss' && $topCut >= 2) {
+                return false;
+            }
+            $tournament->update(['status' => 'completed']);
+
             return false;
         }
 

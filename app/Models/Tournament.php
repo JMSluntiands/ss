@@ -21,6 +21,7 @@ class Tournament extends Model
         'participants_per_group',
         'advance_per_group',
         'swiss_rounds',
+        'swiss_top_cut_players',
         'current_round',
         'pts_for_match_win',
         'pts_for_match_tie',
@@ -39,6 +40,7 @@ class Tournament extends Model
         'enable_voting',
         'enable_predictions',
         'third_place_match',
+        'placement_matches_fifth_seventh',
         'notify_participants',
         'status',
     ];
@@ -54,8 +56,10 @@ class Tournament extends Model
             'enable_voting' => 'boolean',
             'enable_predictions' => 'boolean',
             'third_place_match' => 'boolean',
+            'placement_matches_fifth_seventh' => 'boolean',
             'notify_participants' => 'boolean',
             'start_time' => 'datetime',
+            'swiss_top_cut_players' => 'integer',
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\SiteVisitorStat;
 use App\Support\SiteAssets;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -32,8 +33,13 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
 
+        $visitCount = $request->attributes->has('_site_visit_count')
+            ? (int) $request->attributes->get('_site_visit_count')
+            : SiteVisitorStat::currentTotal();
+
         return [
             ...parent::share($request),
+            'site_visit_count' => $visitCount,
             'site_logo_url' => SiteAssets::logoUrl(),
             'auth' => [
                 'user' => $user,

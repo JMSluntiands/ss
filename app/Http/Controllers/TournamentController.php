@@ -7,6 +7,7 @@ use App\Models\TournamentMatch;
 use App\Services\SwissService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class TournamentController extends Controller
@@ -14,6 +15,43 @@ class TournamentController extends Controller
     public function __construct(
         private SwissService $swissService
     ) {}
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function normalizeSwissTopCut(Request $request, array $validated): array
+    {
+        if (($validated['format'] ?? '') !== 'swiss') {
+            $validated['swiss_top_cut_players'] = null;
+
+            return $validated;
+        }
+
+        $raw = $request->input('swiss_top_cut_players');
+        if ($raw === '' || $raw === null) {
+            $validated['swiss_top_cut_players'] = null;
+
+            return $validated;
+        }
+
+        if (! is_numeric($raw)) {
+            throw ValidationException::withMessages([
+                'swiss_top_cut_players' => 'Top cut must be a number or left blank for Swiss only (no playoff bracket).',
+            ]);
+        }
+
+        $n = (int) $raw;
+        if ($n < 2 || $n > 512) {
+            throw ValidationException::withMessages([
+                'swiss_top_cut_players' => 'Top cut must be between 2 and 512 players.',
+            ]);
+        }
+
+        $validated['swiss_top_cut_players'] = $n;
+
+        return $validated;
+    }
 
     public function index()
     {
@@ -40,8 +78,16 @@ class TournamentController extends Controller
 
                         $champion = $match?->winner?->name;
                     } elseif ($tournament->format === 'swiss') {
-                        $topStanding = $tournament->swissStandings->sortBy('rank')->first();
-                        $champion = $topStanding?->participant?->name;
+                        $finalWinners = $tournament->matches
+                            ->where('stage', 'final')
+                            ->filter(fn ($m) => $m->winner_id && ($m->next_match_id === null || $m->bracket === 'grand_final'));
+                        if ($finalWinners->isNotEmpty()) {
+                            $match = $finalWinners->sortByDesc('round')->first();
+                            $champion = $match?->winner?->name;
+                        } else {
+                            $topStanding = $tournament->swissStandings->sortBy('rank')->first();
+                            $champion = $topStanding?->participant?->name;
+                        }
                     } else {
                         $match = $tournament->matches
                             ->first(fn ($m) => $m->bracket === 'grand_final' && $m->winner_id);
@@ -94,6 +140,7 @@ class TournamentController extends Controller
             'participants_per_group' => 'nullable|integer|min:2',
             'advance_per_group' => 'nullable|integer|min:1',
             'swiss_rounds' => 'nullable|integer|min:1',
+            'swiss_top_cut_players' => 'nullable',
             'pts_for_match_win' => 'nullable|numeric|min:0',
             'pts_for_match_tie' => 'nullable|numeric|min:0',
             'pts_for_game_win' => 'nullable|numeric|min:0',
@@ -101,9 +148,11 @@ class TournamentController extends Controller
             'pts_for_bye' => 'nullable|numeric|min:0',
             'break_ties' => 'boolean',
             'third_place_match' => 'boolean',
-            'notify_participants' => 'boolean',
+            'placement_matches_fifth_seventh' => 'boolean',
             'stadiums' => 'nullable|integer|min:1',
         ]);
+
+        $validated = $this->normalizeSwissTopCut($request, $validated);
 
         $slug = $validated['slug'] ?: Str::slug($validated['name']);
         $baseSlug = $slug;
@@ -185,6 +234,7 @@ class TournamentController extends Controller
             'participants_per_group' => 'nullable|integer|min:2',
             'advance_per_group' => 'nullable|integer|min:1',
             'swiss_rounds' => 'nullable|integer|min:1',
+            'swiss_top_cut_players' => 'nullable',
             'pts_for_match_win' => 'nullable|numeric|min:0',
             'pts_for_match_tie' => 'nullable|numeric|min:0',
             'pts_for_game_win' => 'nullable|numeric|min:0',
@@ -192,9 +242,11 @@ class TournamentController extends Controller
             'pts_for_bye' => 'nullable|numeric|min:0',
             'break_ties' => 'boolean',
             'third_place_match' => 'boolean',
-            'notify_participants' => 'boolean',
+            'placement_matches_fifth_seventh' => 'boolean',
             'stadiums' => 'nullable|integer|min:1',
         ]);
+
+        $validated = $this->normalizeSwissTopCut($request, $validated);
 
         $tournament->update($validated);
 
@@ -268,6 +320,50 @@ class TournamentController extends Controller
         }
 
         $match->update($data);
+
+        return back();
+    }
+
+    public function updateMatchPlayers(Request $request, Tournament $tournament, TournamentMatch $match)
+    {
+        if ($tournament->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'player1_id' => 'nullable|exists:participants,id',
+            'player2_id' => 'nullable|exists:participants,id|different:player1_id',
+        ]);
+
+        $player1Id = $validated['player1_id'] ?? null;
+        $player2Id = $validated['player2_id'] ?? null;
+
+        $participantIds = $tournament->participants()->pluck('id')->toArray();
+        if (($player1Id && !in_array($player1Id, $participantIds)) || ($player2Id && !in_array($player2Id, $participantIds))) {
+            return back()->withErrors(['match' => 'Selected players must belong to this tournament.']);
+        }
+
+        $isElim = in_array($tournament->format, ['single_elimination', 'double_elimination'], true);
+        $hasAnyScore = !is_null($match->player1_score) || !is_null($match->player2_score) || $match->winner_id;
+        $canEdit = $match->round === 1 || ($isElim && !$hasAnyScore);
+
+        if (!$canEdit) {
+            return back()->withErrors(['match' => 'Players can only be edited in round 1, or in elimination matches without scores yet.']);
+        }
+
+        $match->update([
+            'player1_id' => $player1Id,
+            'player2_id' => $player2Id,
+            'winner_id' => null,
+            'player1_score' => null,
+            'player2_score' => null,
+            'player1_battle_points' => 0,
+            'player2_battle_points' => 0,
+            'is_draw' => false,
+            'round_details' => null,
+            'status' => 'pending',
+            'stadium' => null,
+        ]);
 
         return back();
     }
@@ -429,6 +525,13 @@ class TournamentController extends Controller
             $this->startFinalStage($tournament);
         }
 
+        if (! $continued
+            && $tournament->format === 'swiss'
+            && (int) ($tournament->swiss_top_cut_players ?? 0) >= 2
+            && $tournament->tournament_type === 'single_elimination') {
+            $this->startFinalStage($tournament);
+        }
+
         return back();
     }
 
@@ -437,8 +540,20 @@ class TournamentController extends Controller
         $tournament->matches()->where('stage', 'final')->delete();
 
         $totalParticipants = $tournament->participants()->count();
-        $advancePerGroup = $tournament->advance_per_group ?: 2;
-        $totalAdvancing = min($advancePerGroup * 2, $totalParticipants);
+
+        $swissTopCut = (int) ($tournament->swiss_top_cut_players ?? 0);
+        if ($tournament->format === 'swiss' && $swissTopCut >= 2) {
+            $totalAdvancing = min($swissTopCut, $totalParticipants);
+        } elseif ($tournament->tournament_type === 'two_stage') {
+            $advancePerGroup = $tournament->advance_per_group ?: 2;
+            $perGroup = (int) ($tournament->participants_per_group ?? 0);
+            $groupCount = $perGroup > 0
+                ? max(2, (int) ceil($totalParticipants / $perGroup))
+                : 2;
+            $totalAdvancing = min($advancePerGroup * $groupCount, $totalParticipants);
+        } else {
+            return;
+        }
 
         if ($totalAdvancing < 2) {
             $totalAdvancing = 2;
@@ -451,7 +566,9 @@ class TournamentController extends Controller
             ->get()
             ->map(fn ($s) => $s->participant);
 
-        $finalFormat = $tournament->final_stage_format ?: 'single_elimination';
+        $finalFormat = $tournament->tournament_type === 'two_stage'
+            ? ($tournament->final_stage_format ?: 'single_elimination')
+            : 'single_elimination';
 
         if ($finalFormat === 'double_elimination') {
             $this->generateDoubleEliminationBracket($tournament, $topPlayers, 'final');
@@ -550,7 +667,7 @@ class TournamentController extends Controller
             $previousRoundMatches = $currentRoundMatches;
         }
 
-        // Placement matches (3rd place, 5th place)
+        // 3rd / 4th: bronze match between semi-final losers (optional)
         if ($tournament->third_place_match && $totalRounds >= 2) {
             $semiFinals = $matchesByRound[$totalRounds - 1] ?? [];
 
@@ -567,45 +684,45 @@ class TournamentController extends Controller
                 $semiFinals[0]->update(['loser_next_match_id' => $thirdPlaceMatch->id]);
                 $semiFinals[1]->update(['loser_next_match_id' => $thirdPlaceMatch->id]);
             }
+        }
 
-            // 5th place: QF losers play a mini bracket
-            if ($totalRounds >= 3) {
-                $quarterFinals = $matchesByRound[$totalRounds - 2] ?? [];
+        // 5th–7th: mini-bracket for quarter-final losers (separate option from 3rd place)
+        if ($tournament->placement_matches_fifth_seventh && $totalRounds >= 3) {
+            $quarterFinals = $matchesByRound[$totalRounds - 2] ?? [];
 
-                if (count($quarterFinals) === 4) {
-                    $fifthSemi1 = TournamentMatch::create([
-                        'tournament_id' => $tournament->id,
-                        'stage' => $stage,
-                        'bracket' => 'placement_5',
-                        'round' => 1,
-                        'match_number' => 1,
-                        'status' => 'pending',
-                    ]);
-                    $fifthSemi2 = TournamentMatch::create([
-                        'tournament_id' => $tournament->id,
-                        'stage' => $stage,
-                        'bracket' => 'placement_5',
-                        'round' => 1,
-                        'match_number' => 2,
-                        'status' => 'pending',
-                    ]);
-                    $fifthFinal = TournamentMatch::create([
-                        'tournament_id' => $tournament->id,
-                        'stage' => $stage,
-                        'bracket' => 'placement_5',
-                        'round' => 2,
-                        'match_number' => 1,
-                        'status' => 'pending',
-                    ]);
+            if (count($quarterFinals) === 4) {
+                $fifthSemi1 = TournamentMatch::create([
+                    'tournament_id' => $tournament->id,
+                    'stage' => $stage,
+                    'bracket' => 'placement_5',
+                    'round' => 1,
+                    'match_number' => 1,
+                    'status' => 'pending',
+                ]);
+                $fifthSemi2 = TournamentMatch::create([
+                    'tournament_id' => $tournament->id,
+                    'stage' => $stage,
+                    'bracket' => 'placement_5',
+                    'round' => 1,
+                    'match_number' => 2,
+                    'status' => 'pending',
+                ]);
+                $fifthFinal = TournamentMatch::create([
+                    'tournament_id' => $tournament->id,
+                    'stage' => $stage,
+                    'bracket' => 'placement_5',
+                    'round' => 2,
+                    'match_number' => 1,
+                    'status' => 'pending',
+                ]);
 
-                    $fifthSemi1->update(['next_match_id' => $fifthFinal->id]);
-                    $fifthSemi2->update(['next_match_id' => $fifthFinal->id]);
+                $fifthSemi1->update(['next_match_id' => $fifthFinal->id]);
+                $fifthSemi2->update(['next_match_id' => $fifthFinal->id]);
 
-                    $quarterFinals[0]->update(['loser_next_match_id' => $fifthSemi1->id]);
-                    $quarterFinals[1]->update(['loser_next_match_id' => $fifthSemi1->id]);
-                    $quarterFinals[2]->update(['loser_next_match_id' => $fifthSemi2->id]);
-                    $quarterFinals[3]->update(['loser_next_match_id' => $fifthSemi2->id]);
-                }
+                $quarterFinals[0]->update(['loser_next_match_id' => $fifthSemi1->id]);
+                $quarterFinals[1]->update(['loser_next_match_id' => $fifthSemi1->id]);
+                $quarterFinals[2]->update(['loser_next_match_id' => $fifthSemi2->id]);
+                $quarterFinals[3]->update(['loser_next_match_id' => $fifthSemi2->id]);
             }
         }
     }
@@ -893,8 +1010,11 @@ class TournamentController extends Controller
             abort(403);
         }
 
-        if ($tournament->tournament_type !== 'two_stage') {
-            return back()->withErrors(['tournament' => 'Only two-stage tournaments have a final stage.']);
+        $hasSwissTopCut = $tournament->format === 'swiss'
+            && (int) ($tournament->swiss_top_cut_players ?? 0) >= 2;
+
+        if ($tournament->tournament_type !== 'two_stage' && ! $hasSwissTopCut) {
+            return back()->withErrors(['tournament' => 'Only two-stage tournaments or single-stage Swiss with a top cut have a resettable final bracket.']);
         }
 
         $tournament->update(['status' => 'active']);
@@ -947,8 +1067,13 @@ class TournamentController extends Controller
         return back();
     }
 
-    public function judgeLogin(Tournament $tournament)
+    public function judgeLogin(Request $request, Tournament $tournament)
     {
+        if ($tournament->status === 'completed') {
+            session()->forget("judge_access_{$tournament->id}");
+            abort(403, 'Judge access is disabled after the tournament is completed.');
+        }
+
         if (!$tournament->judge_code) {
             abort(404);
         }
@@ -957,13 +1082,26 @@ class TournamentController extends Controller
             return redirect()->route('judge.panel', $tournament);
         }
 
+        $codeFromQuery = strtoupper(preg_replace('/[^A-Z0-9]/', '', (string) $request->query('code', '')));
+        if ($codeFromQuery !== '' && $codeFromQuery === $tournament->judge_code) {
+            session(["judge_access_{$tournament->id}" => true]);
+
+            return redirect()->route('judge.panel', $tournament);
+        }
+
         return Inertia::render('Tournaments/JudgeLogin', [
             'tournament' => $tournament->only(['id', 'name', 'slug']),
+            'prefillCode' => $codeFromQuery !== '' ? $codeFromQuery : null,
         ]);
     }
 
     public function judgeVerify(Request $request, Tournament $tournament)
     {
+        if ($tournament->status === 'completed') {
+            session()->forget("judge_access_{$tournament->id}");
+            abort(403, 'Judge access is disabled after the tournament is completed.');
+        }
+
         if (!$tournament->judge_code) {
             abort(404);
         }
@@ -983,6 +1121,11 @@ class TournamentController extends Controller
 
     public function judgePanel(Tournament $tournament)
     {
+        if ($tournament->status === 'completed') {
+            session()->forget("judge_access_{$tournament->id}");
+            abort(403, 'Judge access is disabled after the tournament is completed.');
+        }
+
         if (!session("judge_access_{$tournament->id}")) {
             return redirect()->route('judge.login', $tournament);
         }
@@ -996,12 +1139,17 @@ class TournamentController extends Controller
 
     public function judgeReportMatch(Request $request, Tournament $tournament, TournamentMatch $match)
     {
+        if ($tournament->status === 'completed') {
+            session()->forget("judge_access_{$tournament->id}");
+            abort(403, 'Judge access is disabled after the tournament is completed.');
+        }
+
         if (!session("judge_access_{$tournament->id}")) {
             abort(403);
         }
 
-        if ($match->status !== 'playing') {
-            return back()->withErrors(['match' => 'This match is not currently playing.']);
+        if ($match->status !== 'playing' && $match->status !== 'completed') {
+            return back()->withErrors(['match' => 'Only playing or completed matches can be scored.']);
         }
 
         $validated = $request->validate([
@@ -1014,6 +1162,10 @@ class TournamentController extends Controller
         $p1Score = $validated['player1_score'] ?? 0;
         $p2Score = $validated['player2_score'] ?? 0;
         $isDraw = $p1Score > 0 && $p1Score === $p2Score;
+
+        if ($match->status === 'completed' && $match->winner_id && $tournament->format !== 'swiss' && $validated['winner_id'] != $match->winner_id) {
+            return back()->withErrors(['match' => 'For completed elimination matches, keep the same winner and only update round points.']);
+        }
 
         if ($tournament->format === 'swiss' && $match->stage !== 'final') {
             $winnerId = $isDraw ? 0 : $validated['winner_id'];

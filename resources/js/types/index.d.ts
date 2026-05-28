@@ -30,4 +30,6 @@ export type PageProps<
         error?: string;
     };
     site_logo_url: string;
+    /** Total counted page views on public site routes (see TrackSiteVisit middleware). */
+    site_visit_count: number;
 };

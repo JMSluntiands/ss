@@ -36,7 +36,7 @@ function SiteNav({ active }: { active?: 'blog' }) {
                         >
                             Blog
                         </Link>
-                        <Link href={route('jersey')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Jersey</Link>
+                        <Link href={route('jersey')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Shop</Link>
                     </div>
                 </div>
             </div>
@@ -52,7 +52,6 @@ export default function BlogShow({ post }: { post: BlogPostData }) {
             <Head title={`${post.title} - Shadow Syndicate Blog`} />
             <div className="min-h-screen bg-zinc-950 text-white">
                 <SiteNav active="blog" />
-
                 <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
                     <Link
                         href={route('blog')}

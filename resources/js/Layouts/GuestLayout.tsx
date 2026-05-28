@@ -1,4 +1,5 @@
 import SiteLogo from '@/Components/SiteLogo';
+import SiteVisitsStrip from '@/Components/SiteVisitsStrip';
 import { PageProps } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
@@ -81,6 +82,10 @@ export default function Guest({ children }: PropsWithChildren) {
 
                 <div className="w-full max-w-md">
                     {children}
+                </div>
+
+                <div className="mt-10 w-full max-w-md">
+                    <SiteVisitsStrip brandVisibility="lg-only" className="rounded-xl border border-zinc-800/80 overflow-hidden" />
                 </div>
             </div>
         </div>

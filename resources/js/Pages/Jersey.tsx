@@ -37,22 +37,21 @@ export default function Jersey({ items = [] }: { items?: JerseyItemData[] }) {
                                 <Link href={route('members')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Members</Link>
                                 <Link href={route('events')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Event</Link>
                                 <Link href={route('blog')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Blog</Link>
-                                <Link href={route('jersey')} className="px-4 py-2 text-sm font-medium text-red-400 transition-colors">Jersey</Link>
+                                <Link href={route('jersey')} className="px-4 py-2 text-sm font-medium text-red-400 transition-colors">Shop</Link>
                             </div>
                         </div>
                     </div>
                 </nav>
-
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                     <div className="mb-10">
                         <span className="inline-block px-4 py-1.5 text-xs font-bold tracking-widest text-red-400 bg-red-500/10 border border-red-500/20 rounded-full mb-4 uppercase">
                             Merch
                         </span>
                         <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-4">
-                            Official <span className="text-red-500">Jersey & Merch</span>
+                            Official <span className="text-red-500">Shop & Merch</span>
                         </h1>
                         <p className="text-gray-400 text-lg max-w-2xl">
-                            Rep the Shadow Syndicate with our official merchandise. Message us on Discord or Facebook to place your order.
+                            Browse official Shadow Syndicate jerseys and merch. Message us on Discord or Facebook to place your order.
                         </p>
                     </div>
 

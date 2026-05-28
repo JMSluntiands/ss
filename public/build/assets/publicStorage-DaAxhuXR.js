@@ -1,0 +1,1 @@
+function e(t){const r=t.trim();return r.startsWith("http://")||r.startsWith("https://")||r.startsWith("/storage/")?r:`/storage/${r.replace(/^\/+/,"")}`}function i(t){return t?t.startsWith("http://")||t.startsWith("https://")?t:e(t):null}export{i as m,e as p};

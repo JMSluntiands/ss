@@ -23,6 +23,7 @@ interface TournamentMatch {
     player1: MatchPlayer | null;
     player2: MatchPlayer | null;
     winner: MatchPlayer | null;
+    round_details?: RoundEntry[] | null;
 }
 
 interface Tournament {
@@ -160,10 +161,16 @@ export default function JudgePanel({ tournament }: { tournament: Tournament }) {
         m => m.status === 'playing' && m.player1 && m.player2
     );
     const completedMatches = tournament.matches.filter(m => m.status === 'completed' && m.winner_id).slice(-5).reverse();
+    const [editingMatch, setEditingMatch] = useState<TournamentMatch | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
         const interval = setInterval(() => {
-            router.reload({ only: ['tournament'] });
+            router.reload({
+                only: ['tournament'],
+                onStart: () => setIsRefreshing(true),
+                onFinish: () => setIsRefreshing(false),
+            });
         }, 5000);
         return () => clearInterval(interval);
     }, []);
@@ -188,6 +195,11 @@ export default function JudgePanel({ tournament }: { tournament: Tournament }) {
                         <span className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
                             LIVE
                         </span>
+                    </div>
+                    <div className="max-w-3xl mx-auto px-4 pb-3">
+                        <p className="text-[11px] text-slate-500">
+                            Auto-refresh every 5s {isRefreshing ? '- syncing...' : ''}
+                        </p>
                     </div>
                 </div>
 
@@ -238,9 +250,17 @@ export default function JudgePanel({ tournament }: { tournament: Tournament }) {
                                                 {match.player2?.name}
                                             </span>
                                         </div>
-                                        {match.stadium && (
-                                            <span className="text-xs text-slate-600">Stadium {match.stadium}</span>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {match.stadium && (
+                                                <span className="text-xs text-slate-600">Stadium {match.stadium}</span>
+                                            )}
+                                            <button
+                                                onClick={() => setEditingMatch(match)}
+                                                className="px-2.5 py-1 rounded-lg bg-slate-800/60 border border-slate-700/50 text-[10px] font-medium text-slate-400 hover:text-amber-400 hover:border-amber-500/30 transition-all"
+                                            >
+                                                Edit Points
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -248,13 +268,21 @@ export default function JudgePanel({ tournament }: { tournament: Tournament }) {
                     )}
                 </div>
             </div>
+            {editingMatch && (
+                <JudgeMatchCard
+                    match={editingMatch}
+                    tournamentSlug={tournament.slug}
+                    forceOpen
+                    onDone={() => setEditingMatch(null)}
+                />
+            )}
         </>
     );
 }
 
-function JudgeMatchCard({ match, tournamentSlug }: { match: TournamentMatch; tournamentSlug: string }) {
-    const [showScoreModal, setShowScoreModal] = useState(false);
-    const [rounds, setRounds] = useState<RoundEntry[]>([]);
+function JudgeMatchCard({ match, tournamentSlug, forceOpen = false, onDone }: { match: TournamentMatch; tournamentSlug: string; forceOpen?: boolean; onDone?: () => void }) {
+    const [showScoreModal, setShowScoreModal] = useState(forceOpen);
+    const [rounds, setRounds] = useState<RoundEntry[]>(match.round_details ?? []);
     const [submitting, setSubmitting] = useState(false);
 
     const p1Score = rounds.filter(r => r.winner === 'p1').reduce((s, r) => s + r.points, 0);
@@ -277,10 +305,19 @@ function JudgeMatchCard({ match, tournamentSlug }: { match: TournamentMatch; tou
             },
             {
                 preserveScroll: true,
-                onFinish: () => { setSubmitting(false); setShowScoreModal(false); },
+                onFinish: () => {
+                    setSubmitting(false);
+                    setShowScoreModal(false);
+                    onDone?.();
+                },
             }
         );
     };
+
+    useEffect(() => {
+        if (!showScoreModal) return;
+        setRounds(match.round_details ?? []);
+    }, [showScoreModal, match.round_details]);
 
     return (
         <div className="rounded-2xl border border-emerald-500/30 bg-slate-900/60 overflow-hidden shadow-lg shadow-emerald-500/5">
@@ -314,10 +351,13 @@ function JudgeMatchCard({ match, tournamentSlug }: { match: TournamentMatch; tou
                             </div>
                         </div>
                         <button
-                            onClick={() => setShowScoreModal(true)}
+                            onClick={() => {
+                                setRounds(match.round_details ?? []);
+                                setShowScoreModal(true);
+                            }}
                             className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:brightness-110 transition-all active:scale-[0.98]"
                         >
-                            Submit Score
+                            {match.status === 'completed' ? 'Edit Score' : 'Submit Score'}
                         </button>
                     </>
                 ) : (
@@ -357,7 +397,11 @@ function JudgeMatchCard({ match, tournamentSlug }: { match: TournamentMatch; tou
                         </button>
 
                         <button
-                            onClick={() => { setShowScoreModal(false); setRounds([]); }}
+                            onClick={() => {
+                                setShowScoreModal(false);
+                                setRounds([]);
+                                onDone?.();
+                            }}
                             className="w-full px-3 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-300 transition-colors"
                         >
                             Cancel

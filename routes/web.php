@@ -15,6 +15,7 @@ Route::get('/', [\App\Http\Controllers\SitePageController::class, 'home'])->name
 
 Route::get('/members', [\App\Http\Controllers\SitePageController::class, 'members'])->name('members');
 Route::get('/events', [\App\Http\Controllers\SitePageController::class, 'events'])->name('events');
+Route::get('/events/{event}', [\App\Http\Controllers\SitePageController::class, 'eventShow'])->name('events.show');
 Route::get('/blog', [\App\Http\Controllers\SitePageController::class, 'blog'])->name('blog');
 Route::get('/blog/{post}', [\App\Http\Controllers\SitePageController::class, 'blogShow'])->name('blog.show');
 Route::get('/jersey', [\App\Http\Controllers\SitePageController::class, 'jersey'])->name('jersey');
@@ -74,6 +75,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/tournaments/{tournament}/stadiums', [TournamentController::class, 'updateStadiums'])->name('tournaments.updateStadiums');
     Route::post('/tournaments/{tournament}/judge-code', [TournamentController::class, 'generateJudgeCode'])->name('tournaments.generateJudgeCode');
     Route::patch('/tournaments/{tournament}/matches/{match}/status', [TournamentController::class, 'setMatchStatus'])->name('matches.setStatus');
+    Route::patch('/tournaments/{tournament}/matches/{match}/players', [TournamentController::class, 'updateMatchPlayers'])->name('matches.updatePlayers');
     Route::post('/tournaments/{tournament}/matches/{match}/report', [TournamentController::class, 'reportMatch'])->name('matches.report');
     Route::get('/tournaments/{tournament}/live', [TournamentController::class, 'liveData'])->name('tournaments.liveData');
     Route::delete('/tournaments/{tournament}', [TournamentController::class, 'destroy'])->name('tournaments.destroy');
