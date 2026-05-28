@@ -64,6 +64,33 @@ function getMapEmbedUrl(event: UpcomingEvent): string | null {
     return null;
 }
 
+function formatEventDateTime(date: string, time?: string | null): string {
+    const isoDateTime = time ? `${date}T${time}` : `${date}T00:00`;
+    const parsed = new Date(isoDateTime);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return `${date}${time ? ` ${time}` : ''}`;
+    }
+
+    const dateText = parsed.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+    });
+
+    if (!time) {
+        return dateText;
+    }
+
+    const timeText = parsed.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+    });
+
+    return `${dateText} ${timeText}`;
+}
+
 export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomingEvents?: UpcomingEvent[]; pastEvents?: PastEvent[] }) {
     const { auth, flash } = usePage<PageProps>().props;
     const [regEvent, setRegEvent] = useState<UpcomingEvent | null>(null);
@@ -211,7 +238,7 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
                                                         </div>
                                                         <div>
                                                             <p className="text-gray-500 text-xs">Date & Time</p>
-                                                            <p className="text-white font-medium">{event.date}{event.time ? ` at ${event.time}` : ''}</p>
+                                                            <p className="text-white font-medium">{formatEventDateTime(event.date, event.time)}</p>
                                                         </div>
                                                     </div>
 

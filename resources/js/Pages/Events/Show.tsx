@@ -63,6 +63,33 @@ function getMapEmbedUrl(event: EventData): string | null {
     return null;
 }
 
+function formatEventDateTime(date: string, time?: string | null): string {
+    const isoDateTime = time ? `${date}T${time}` : `${date}T00:00`;
+    const parsed = new Date(isoDateTime);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return `${date}${time ? ` ${time}` : ''}`;
+    }
+
+    const dateText = parsed.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+    });
+
+    if (!time) {
+        return dateText;
+    }
+
+    const timeText = parsed.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+    });
+
+    return `${dateText} ${timeText}`;
+}
+
 export default function EventShow({
     event,
     registrationCounts,
@@ -155,7 +182,7 @@ export default function EventShow({
                                 {event.description && <p className="text-gray-300 mb-6">{event.description}</p>}
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                                    <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-sm"><span className="text-gray-500">Date & Time:</span> <span className="text-white">{event.date}{event.time ? ` at ${event.time}` : ''}</span></div>
+                                    <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-sm"><span className="text-gray-500">Date & Time:</span> <span className="text-white">{formatEventDateTime(event.date, event.time)}</span></div>
                                     <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-sm"><span className="text-gray-500">Location:</span> <span className="text-white">{event.location}</span></div>
                                     <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-sm"><span className="text-gray-500">Format:</span> <span className="text-white">{event.format || '—'}</span></div>
                                     <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-sm"><span className="text-gray-500">Slots:</span> <span className="text-white">{event.slots || '—'}</span></div>
