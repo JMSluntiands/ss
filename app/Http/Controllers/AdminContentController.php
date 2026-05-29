@@ -8,6 +8,7 @@ use App\Support\ImageOptimizer;
 use App\Models\JerseyItem;
 use App\Models\SiteEvent;
 use App\Models\SiteMember;
+use App\Models\Tournament;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -22,7 +23,7 @@ class AdminContentController extends Controller
         }
 
         $events = SiteEvent::withCount('registrations')->latest()->paginate(20);
-        $tournaments = auth()->user()->tournaments()->select('id', 'name', 'description')->latest()->get();
+        $tournaments = auth()->user()->tournaments()->select($this->tournamentFieldsForEvents())->latest()->get();
 
         return Inertia::render('MyEvents', [
             'events' => $events,
@@ -144,7 +145,36 @@ class AdminContentController extends Controller
     public function eventsIndex()
     {
         $events = SiteEvent::latest()->paginate(20);
-        return Inertia::render('Admin/Content/Events', ['events' => $events]);
+        $tournaments = Tournament::query()
+            ->select($this->tournamentFieldsForEvents())
+            ->latest()
+            ->get();
+
+        return Inertia::render('Admin/Content/Events', [
+            'events' => $events,
+            'tournaments' => $tournaments,
+            'userName' => auth()->user()->name,
+        ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function tournamentFieldsForEvents(): array
+    {
+        return [
+            'id',
+            'name',
+            'description',
+            'tournament_type',
+            'format',
+            'group_stage_format',
+            'final_stage_format',
+            'swiss_rounds',
+            'swiss_top_cut_players',
+            'participants_per_group',
+            'advance_per_group',
+        ];
     }
 
     private function eventRules(): array

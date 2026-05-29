@@ -557,12 +557,22 @@ class TournamentController extends Controller
         if (in_array($tournament->format, ['swiss', 'round_robin'], true) && $swissTopCut >= 2) {
             $totalAdvancing = min($swissTopCut, $totalParticipants);
         } elseif ($tournament->tournament_type === 'two_stage') {
-            $advancePerGroup = $tournament->advance_per_group ?: 2;
-            $perGroup = (int) ($tournament->participants_per_group ?? 0);
-            $groupCount = $perGroup > 0
-                ? max(2, (int) ceil($totalParticipants / $perGroup))
-                : 2;
-            $totalAdvancing = min($advancePerGroup * $groupCount, $totalParticipants);
+            $finalFormat = $tournament->final_stage_format ?: 'single_elimination';
+            $groupPlayers = $this->buildTwoStageFinalGroupParticipants($tournament);
+
+            foreach ($groupPlayers as $index => $players) {
+                if ($players->count() < 2) {
+                    continue;
+                }
+                $tag = 'final_g'.($index + 1);
+                if ($finalFormat === 'double_elimination') {
+                    $this->generateDoubleEliminationBracket($tournament, $players, 'final', $tag);
+                } else {
+                    $this->generateSingleEliminationBracket($tournament, $players, 'final', $tag);
+                }
+            }
+
+            return;
         } else {
             return;
         }
@@ -578,9 +588,7 @@ class TournamentController extends Controller
             ->get()
             ->map(fn ($s) => $s->participant);
 
-        $finalFormat = $tournament->tournament_type === 'two_stage'
-            ? ($tournament->final_stage_format ?: 'single_elimination')
-            : 'single_elimination';
+        $finalFormat = 'single_elimination';
 
         if ($finalFormat === 'double_elimination') {
             $this->generateDoubleEliminationBracket($tournament, $topPlayers, 'final');
@@ -589,7 +597,68 @@ class TournamentController extends Controller
         }
     }
 
-    private function generateSingleEliminationBracket(Tournament $tournament, $participants, string $stage = 'group')
+    /**
+     * @return \Illuminate\Support\Collection<int, \Illuminate\Support\Collection<int, \App\Models\Participant>>
+     */
+    private function buildTwoStageFinalGroupParticipants(Tournament $tournament): array
+    {
+        $participants = $tournament->participants()->orderBy('seed')->get();
+        $total = $participants->count();
+        $perGroup = (int) ($tournament->participants_per_group ?? 0);
+        $groupCount = $perGroup > 0 ? max(2, (int) ceil($total / $perGroup)) : 2;
+        $groupSize = (int) ceil($total / $groupCount);
+        $advancePerGroup = max(2, (int) ($tournament->advance_per_group ?: 2));
+
+        $groups = [];
+        for ($g = 0; $g < $groupCount; $g++) {
+            $memberIds = $participants->slice($g * $groupSize, $groupSize)->pluck('id');
+            $advancing = $tournament->swissStandings()
+                ->whereIn('participant_id', $memberIds)
+                ->with('participant')
+                ->get()
+                ->sort(function ($a, $b) {
+                    $cmp = (float) $b->tournament_points <=> (float) $a->tournament_points;
+                    if ($cmp !== 0) {
+                        return $cmp;
+                    }
+                    $cmp = $b->battle_points <=> $a->battle_points;
+                    if ($cmp !== 0) {
+                        return $cmp;
+                    }
+
+                    return (float) $b->opponent_strength <=> (float) $a->opponent_strength;
+                })
+                ->take($advancePerGroup)
+                ->map(fn ($s) => $s->participant)
+                ->values();
+
+            $groups[] = $advancing;
+        }
+
+        return $groups;
+    }
+
+    private function resolveBracketTag(?string $prefix, ?string $suffix): ?string
+    {
+        if ($prefix === null && $suffix === null) {
+            return null;
+        }
+        if ($prefix === null) {
+            return $suffix;
+        }
+        if ($suffix === null) {
+            return $prefix;
+        }
+
+        return "{$prefix}_{$suffix}";
+    }
+
+    private function generateSingleEliminationBracket(
+        Tournament $tournament,
+        $participants,
+        string $stage = 'group',
+        ?string $bracketTag = null,
+    )
     {
         $count = $participants->count();
 
@@ -626,6 +695,7 @@ class TournamentController extends Controller
             $match = TournamentMatch::create([
                 'tournament_id' => $tournament->id,
                 'stage' => $stage,
+                'bracket' => $this->resolveBracketTag($bracketTag, null),
                 'round' => 1,
                 'match_number' => $matchNumber++,
                 'player1_id' => $p1?->id,
@@ -662,6 +732,7 @@ class TournamentController extends Controller
                 $match = TournamentMatch::create([
                     'tournament_id' => $tournament->id,
                     'stage' => $stage,
+                    'bracket' => $this->resolveBracketTag($bracketTag, null),
                     'round' => $round,
                     'match_number' => $rmn++,
                     'player1_id' => $p1Id,
@@ -687,7 +758,7 @@ class TournamentController extends Controller
                 $thirdPlaceMatch = TournamentMatch::create([
                     'tournament_id' => $tournament->id,
                     'stage' => $stage,
-                    'bracket' => 'placement_3',
+                    'bracket' => $this->resolveBracketTag($bracketTag, 'placement_3'),
                     'round' => 1,
                     'match_number' => 1,
                     'status' => 'pending',
@@ -706,7 +777,7 @@ class TournamentController extends Controller
                 $fifthSemi1 = TournamentMatch::create([
                     'tournament_id' => $tournament->id,
                     'stage' => $stage,
-                    'bracket' => 'placement_5',
+                    'bracket' => $this->resolveBracketTag($bracketTag, 'placement_5'),
                     'round' => 1,
                     'match_number' => 1,
                     'status' => 'pending',
@@ -714,7 +785,7 @@ class TournamentController extends Controller
                 $fifthSemi2 = TournamentMatch::create([
                     'tournament_id' => $tournament->id,
                     'stage' => $stage,
-                    'bracket' => 'placement_5',
+                    'bracket' => $this->resolveBracketTag($bracketTag, 'placement_5'),
                     'round' => 1,
                     'match_number' => 2,
                     'status' => 'pending',
@@ -722,7 +793,7 @@ class TournamentController extends Controller
                 $fifthFinal = TournamentMatch::create([
                     'tournament_id' => $tournament->id,
                     'stage' => $stage,
-                    'bracket' => 'placement_5',
+                    'bracket' => $this->resolveBracketTag($bracketTag, 'placement_5'),
                     'round' => 2,
                     'match_number' => 1,
                     'status' => 'pending',
@@ -739,8 +810,16 @@ class TournamentController extends Controller
         }
     }
 
-    private function generateDoubleEliminationBracket(Tournament $tournament, $participants, string $stage = 'group')
-    {
+    private function generateDoubleEliminationBracket(
+        Tournament $tournament,
+        $participants,
+        string $stage = 'group',
+        ?string $bracketPrefix = null,
+    ) {
+        $winnersBracket = $this->resolveBracketTag($bracketPrefix, 'winners') ?? 'winners';
+        $losersBracket = $this->resolveBracketTag($bracketPrefix, 'losers') ?? 'losers';
+        $grandFinalBracket = $this->resolveBracketTag($bracketPrefix, 'grand_final') ?? 'grand_final';
+
         $count = $participants->count();
         $bracketSize = 1;
         while ($bracketSize < $count) {
@@ -771,7 +850,7 @@ class TournamentController extends Controller
             $match = TournamentMatch::create([
                 'tournament_id' => $tournament->id,
                 'stage' => $stage,
-                'bracket' => 'winners',
+                'bracket' => $winnersBracket,
                 'round' => 1,
                 'match_number' => $matchNumber++,
                 'player1_id' => $p1?->id,
@@ -810,7 +889,7 @@ class TournamentController extends Controller
                 $match = TournamentMatch::create([
                     'tournament_id' => $tournament->id,
                     'stage' => $stage,
-                    'bracket' => 'winners',
+                    'bracket' => $winnersBracket,
                     'round' => $round,
                     'match_number' => $matchNumber++,
                     'player1_id' => $p1Id,
@@ -848,7 +927,7 @@ class TournamentController extends Controller
                 $match = TournamentMatch::create([
                     'tournament_id' => $tournament->id,
                     'stage' => $stage,
-                    'bracket' => 'losers',
+                    'bracket' => $losersBracket,
                     'round' => $r,
                     'match_number' => $matchNumber++,
                     'status' => 'pending',
@@ -905,7 +984,7 @@ class TournamentController extends Controller
         $grandFinal = TournamentMatch::create([
             'tournament_id' => $tournament->id,
             'stage' => $stage,
-            'bracket' => 'grand_final',
+            'bracket' => $grandFinalBracket,
             'round' => 1,
             'match_number' => $matchNumber++,
             'status' => 'pending',

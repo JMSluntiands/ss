@@ -84,6 +84,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/tournaments/{tournament}/participants/bulk', [ParticipantController::class, 'bulkStore'])->name('participants.bulk');
     Route::post('/tournaments/{tournament}/participants/randomize', [ParticipantController::class, 'randomize'])->name('participants.randomize');
     Route::patch('/tournaments/{tournament}/participants/{participant}/judge', [ParticipantController::class, 'updateJudge'])->name('participants.updateJudge');
+    Route::post('/tournaments/{tournament}/participants/{participant}/avatar', [ParticipantController::class, 'updateAvatar'])->name('participants.updateAvatar');
     Route::delete('/tournaments/{tournament}/participants/{participantId}', [ParticipantController::class, 'destroy'])->name('participants.destroy');
 });
 

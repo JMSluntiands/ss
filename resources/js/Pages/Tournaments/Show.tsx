@@ -1,3 +1,4 @@
+import ParticipantAvatar from '@/Components/ParticipantAvatar';
 import SiteLogo from '@/Components/SiteLogo';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -9,6 +10,7 @@ import { PageProps } from '@/types';
 interface Participant {
     id: number;
     name: string;
+    avatar_url?: string | null;
     seed: number;
     judge: string | null;
 }
@@ -119,11 +121,156 @@ function getSwissPlayoffCutSize(
     return null;
 }
 
+function sortStandingsRows(
+    standings: SwissStanding[],
+    ptsDiff: Record<number, number>,
+): SwissStanding[] {
+    return [...standings].sort((a, b) => {
+        const scoreDiff = Number(b.tournament_points) - Number(a.tournament_points);
+        if (scoreDiff !== 0) return scoreDiff;
+        const tbDiff = b.battle_points - a.battle_points;
+        if (tbDiff !== 0) return tbDiff;
+        const osDiff = Number(b.opponent_strength) - Number(a.opponent_strength);
+        if (osDiff !== 0) return osDiff;
+        const pdA = ptsDiff[a.participant_id] || 0;
+        const pdB = ptsDiff[b.participant_id] || 0;
+        return pdB - pdA;
+    });
+}
+
+function getTwoStageGroupCount(tournament: Tournament, participantCount: number): number {
+    const perGroup = tournament.participants_per_group ?? 0;
+    return perGroup > 0 ? Math.max(2, Math.ceil(participantCount / perGroup)) : 2;
+}
+
+function buildTwoStageStandingGroups(
+    standings: SwissStanding[],
+    participants: Participant[],
+    tournament: Tournament,
+    participantCount: number,
+    ptsDiff: Record<number, number>,
+): { label: string; rows: SwissStanding[]; topCut: number | null }[] {
+    const groupCount = getTwoStageGroupCount(tournament, participantCount);
+    const groupSize = Math.ceil(participantCount / groupCount);
+    const bySeed = [...participants].sort((a, b) => a.seed - b.seed);
+    const advancePerGroup = tournament.advance_per_group ?? 0;
+    const perGroupTopCut =
+        advancePerGroup >= 2 ? Math.min(advancePerGroup, groupSize) : null;
+
+    const groups: { label: string; rows: SwissStanding[]; topCut: number | null }[] = [];
+
+    for (let g = 0; g < groupCount; g++) {
+        const memberIds = new Set(
+            bySeed.slice(g * groupSize, (g + 1) * groupSize).map((p) => p.id),
+        );
+        const groupStandings = standings.filter((s) => memberIds.has(s.participant_id));
+        const sorted = sortStandingsRows(groupStandings, ptsDiff);
+        if (sorted.length === 0) continue;
+
+        groups.push({
+            label: `Group ${g + 1} · Ranks 1–${sorted.length}`,
+            rows: sorted,
+            topCut: perGroupTopCut !== null ? Math.min(perGroupTopCut, sorted.length) : null,
+        });
+    }
+
+    return groups;
+}
+
+function getGroupMemberIds(
+    groupIndex: number,
+    participants: Participant[],
+    tournament: Tournament,
+    participantCount: number,
+): Set<number> {
+    const groupCount = getTwoStageGroupCount(tournament, participantCount);
+    const groupSize = Math.ceil(participantCount / groupCount);
+    const bySeed = [...participants].sort((a, b) => a.seed - b.seed);
+    return new Set(
+        bySeed.slice(groupIndex * groupSize, (groupIndex + 1) * groupSize).map((p) => p.id),
+    );
+}
+
+function filterMatchesForFinalGroupTag(matches: TournamentMatch[], bracketTag: string): TournamentMatch[] {
+    return matches.filter(
+        (m) => m.bracket === bracketTag || (m.bracket?.startsWith(`${bracketTag}_`) ?? false),
+    );
+}
+
+function splitFinalStageGroups(
+    matches: TournamentMatch[],
+    tournament: Tournament,
+    participants: Participant[],
+): { label: string; tag: string; matches: TournamentMatch[] }[] {
+    const groupCount = getTwoStageGroupCount(tournament, participants.length);
+    const tags = Array.from({ length: groupCount }, (_, i) => `final_g${i + 1}`);
+
+    const tagged = tags
+        .map((tag, i) => ({
+            label: `Group ${i + 1}`,
+            tag,
+            matches: filterMatchesForFinalGroupTag(matches, tag),
+        }))
+        .filter((g) => g.matches.length > 0);
+
+    if (tagged.length >= 2) {
+        return tagged;
+    }
+
+    if (tagged.length === 1 && groupCount === 2) {
+        const filled = [...tagged];
+        const missingIndex = tags.findIndex((tag) => !filled.some((g) => g.tag === tag));
+        if (missingIndex >= 0) {
+            const memberIds = getGroupMemberIds(missingIndex, participants, tournament, participants.length);
+            const legacyMatches = matches.filter(
+                (m) =>
+                    !m.bracket?.startsWith('final_g') &&
+                    matchUsesOnlyGroupMembers(m, memberIds),
+            );
+            if (legacyMatches.length > 0) {
+                filled.push({
+                    label: `Group ${missingIndex + 1}`,
+                    tag: tags[missingIndex],
+                    matches: legacyMatches,
+                });
+            }
+        }
+        if (filled.length >= 2) {
+            return filled.sort((a, b) => a.tag.localeCompare(b.tag));
+        }
+    }
+
+    return tags
+        .map((tag, i) => {
+            const memberIds = getGroupMemberIds(i, participants, tournament, participants.length);
+            return {
+                label: `Group ${i + 1}`,
+                tag,
+                matches: matches.filter(
+                    (m) => !m.bracket?.startsWith('final_g') && matchUsesOnlyGroupMembers(m, memberIds),
+                ),
+            };
+        })
+        .filter((g) => g.matches.length > 0);
+}
+
+function matchUsesOnlyGroupMembers(match: TournamentMatch, memberIds: Set<number>): boolean {
+    if (match.player1_id && !memberIds.has(match.player1_id)) return false;
+    if (match.player2_id && !memberIds.has(match.player2_id)) return false;
+    if (!match.player1_id && !match.player2_id) return false;
+    return true;
+}
+
 const statusColors: Record<string, string> = {
     pending: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
     active: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     completed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
 };
+
+const PARTICIPANT_NAME_MAX = 32;
+
+/** Visible width for participant name / judge scroll (keeps horizontal scroll short). */
+const participantTextMaxClass = 'max-w-[9.5rem] sm:max-w-[11rem]';
 
 interface RoundEntry {
     [key: string]: string | number;
@@ -444,9 +591,9 @@ function MatchCard({
     if (isBye && match.round === 1) return null;
 
     const JudgeBadge = ({ judge }: { judge: string }) => (
-        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] font-medium text-amber-400 leading-none">
-            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
-            {judge}
+        <span className="inline-flex items-center gap-0.5 max-w-[5rem] px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] font-medium text-amber-400 leading-none shrink-0" title={judge}>
+            <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
+            <span className="truncate">{judge}</span>
         </span>
     );
 
@@ -489,17 +636,17 @@ function MatchCard({
                         ? 'bg-cyan-500/10 text-cyan-400 font-semibold'
                         : match.player1_id ? 'text-slate-300' : 'text-slate-600 italic'
                 }`}>
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                         {match.winner_id && match.winner_id === match.player1_id && (
                             <svg className="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                         )}
-                        <span className="truncate">{p1Name}</span>
+                        <span className="truncate" title={p1Name}>{p1Name}</span>
                         {p1Judge && <JudgeBadge judge={p1Judge} />}
                     </div>
                     {match.player1_score !== null && match.player1_score > 0 && (
-                        <span className={`text-xs font-bold ml-2 ${match.winner_id === match.player1_id ? 'text-cyan-400' : 'text-slate-500'}`}>{match.player1_score}</span>
+                        <span className={`text-xs font-bold ml-2 shrink-0 ${match.winner_id === match.player1_id ? 'text-cyan-400' : 'text-slate-500'}`}>{match.player1_score}</span>
                     )}
                 </div>
                 <div className={`flex items-center justify-between px-3 py-2.5 transition-all ${
@@ -507,13 +654,13 @@ function MatchCard({
                         ? 'bg-cyan-500/10 text-cyan-400 font-semibold'
                         : match.player2_id ? 'text-slate-300' : 'text-slate-600 italic'
                 }`}>
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                         {match.winner_id && match.winner_id === match.player2_id && (
                             <svg className="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                         )}
-                        <span className="truncate">{p2Name}</span>
+                        <span className="truncate" title={p2Name}>{p2Name}</span>
                         {p2Judge && <JudgeBadge judge={p2Judge} />}
                     </div>
                     {match.player2_score !== null && match.player2_score > 0 && (
@@ -1023,9 +1170,9 @@ function SwissMatchCard({
     };
 
     const JudgeBadge = ({ judge }: { judge: string }) => (
-        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] font-medium text-amber-400 leading-none">
-            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
-            {judge}
+        <span className="inline-flex items-center gap-0.5 max-w-[5rem] px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] font-medium text-amber-400 leading-none shrink-0" title={judge}>
+            <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
+            <span className="truncate">{judge}</span>
         </span>
     );
 
@@ -1079,17 +1226,17 @@ function SwissMatchCard({
                             )}
                             <span className={`text-sm truncate ${
                                 isCompleted && match.winner_id === match.player1_id ? 'text-cyan-400 font-semibold' : 'text-white'
-                            }`}>{p1Name}</span>
+                            }`} title={p1Name}>{p1Name}</span>
                             {p1Judge && <JudgeBadge judge={p1Judge} />}
                         </div>
                         {isCompleted && match.player1_battle_points > 0 && (
-                            <span className={`text-xs font-bold ml-2 ${match.winner_id === match.player1_id ? 'text-cyan-400' : 'text-slate-500'}`}>{match.player1_battle_points} BP</span>
+                            <span className={`text-xs font-bold ml-2 shrink-0 ${match.winner_id === match.player1_id ? 'text-cyan-400' : 'text-slate-500'}`}>{match.player1_battle_points} BP</span>
                         )}
                     </div>
                     <div className={`flex items-center justify-between px-4 py-2.5 ${
                         isCompleted && match.winner_id === match.player2_id ? 'bg-cyan-500/5' : ''
                     }`}>
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                             {isCompleted && match.winner_id === match.player2_id && (
                                 <svg className="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -1098,7 +1245,7 @@ function SwissMatchCard({
                             <span className={`text-sm truncate ${
                                 match.is_bye ? 'text-slate-500 italic' :
                                 isCompleted && match.winner_id === match.player2_id ? 'text-cyan-400 font-semibold' : 'text-white'
-                            }`}>{match.is_bye ? 'BYE' : p2Name}</span>
+                            }`} title={match.is_bye ? undefined : p2Name}>{match.is_bye ? 'BYE' : p2Name}</span>
                             {!match.is_bye && p2Judge && <JudgeBadge judge={p2Judge} />}
                         </div>
                         {isCompleted && !match.is_bye && match.player2_battle_points > 0 && (
@@ -1228,17 +1375,178 @@ function SwissMatchCard({
     );
 }
 
+function StandingsTableHead({ tournament }: { tournament: Tournament }) {
+    return (
+        <thead>
+            <tr className="border-b border-slate-700/60 bg-slate-800/40">
+                <th className="px-3 py-2.5 text-center text-xs font-bold text-slate-400 uppercase tracking-wider w-14">Rank</th>
+                <th className="px-3 py-2.5 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Participant</th>
+                <th className="px-3 py-2.5 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <div>Match W-L-T</div>
+                    <div className="text-[10px] font-normal text-slate-500 normal-case">(wins +{Number(tournament.pts_for_match_win).toFixed(1)}, ties +{Number(tournament.pts_for_match_tie).toFixed(1)})</div>
+                </th>
+                <th className="px-3 py-2.5 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">1. Score</th>
+                <th className="px-3 py-2.5 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">2. TB</th>
+                <th className="px-3 py-2.5 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">3. Buchholz</th>
+                <th className="px-3 py-2.5 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">4. Pts Diff</th>
+            </tr>
+        </thead>
+    );
+}
+
+function StandingsTableBody({
+    rows,
+    ptsDiff,
+    topCut,
+    tournament,
+}: {
+    rows: SwissStanding[];
+    ptsDiff: Record<number, number>;
+    topCut: number | null;
+    tournament: Tournament;
+}) {
+    return (
+        <tbody>
+            {rows.map((s, localI) => {
+                const diff = ptsDiff[s.participant_id] || 0;
+                const rank = localI + 1;
+                const isAdvancing = topCut !== null && rank <= topCut;
+                const isCutoffRow = topCut !== null && rank === topCut;
+                const isLastInGroup = localI === rows.length - 1 && rows.length > 3;
+                return (
+                    <React.Fragment key={s.id}>
+                        <tr className={`border-b transition-colors hover:bg-slate-800/30 ${
+                            isCutoffRow ? 'border-b-0' : 'border-slate-800/40'
+                        } ${
+                            localI === 0 ? 'bg-yellow-500/5' :
+                            isAdvancing ? 'bg-cyan-500/[0.03]' :
+                            localI % 2 === 0 ? 'bg-slate-900/20' : ''
+                        }`}>
+                            <td className="px-3 py-2.5 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                    {isLastInGroup && (
+                                        <span className="text-base" title="Last place in group">🐦</span>
+                                    )}
+                                    {localI < 3 && (
+                                        <svg className={`w-4 h-4 ${localI === 0 ? 'text-yellow-400' : localI === 1 ? 'text-slate-300' : 'text-amber-500'}`} viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M2.5 7.5L5 14h14l2.5-6.5L17.5 10 12 4l-5.5 6L2.5 7.5zM5 16h14v2H5v-2z"/>
+                                        </svg>
+                                    )}
+                                    <span className={`text-sm font-bold ${
+                                        localI === 0 ? 'text-yellow-400' :
+                                        localI === 1 ? 'text-slate-300' :
+                                        localI === 2 ? 'text-amber-500' :
+                                        'text-slate-500'
+                                    }`}>
+                                        {rank}
+                                    </span>
+                                </div>
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                                <span
+                                    className={`inline-block max-w-[8rem] sm:max-w-[10rem] truncate font-semibold ${
+                                        localI === 0 ? 'text-yellow-400' :
+                                        !isAdvancing && topCut !== null ? 'text-slate-500' :
+                                        'text-white'
+                                    }`}
+                                    title={s.participant.name}
+                                >
+                                    {s.participant.name}
+                                </span>
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                                <span className={`font-medium ${!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}`}>{s.wins}</span>
+                                <span className="text-slate-600 mx-0.5">-</span>
+                                <span className={`font-medium ${!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}`}>{s.losses}</span>
+                                <span className="text-slate-600 mx-0.5">-</span>
+                                <span className={`font-medium ${!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}`}>{s.draws}</span>
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                                <span className={`font-bold ${!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}`}>{Number(s.tournament_points).toFixed(1)}</span>
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                                <span className={`font-medium ${!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}`}>{s.battle_points}</span>
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                                <span className={!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}>{Number(s.opponent_strength).toFixed(0)}</span>
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                                <span className={`font-medium ${
+                                    !isAdvancing && topCut !== null ? 'text-slate-500' :
+                                    diff > 0 ? 'text-emerald-400' : diff < 0 ? 'text-red-400' : 'text-white'
+                                }`}>
+                                    {diff > 0 ? `+${diff}` : diff}
+                                </span>
+                            </td>
+                        </tr>
+                        {isCutoffRow && (
+                            <tr>
+                                <td colSpan={7} className="px-0 py-0">
+                                    <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-800/60">
+                                        <div className="flex-1 h-px bg-gradient-to-r from-cyan-500/40 to-transparent" />
+                                        <span className="text-[10px] font-bold text-cyan-400/70 uppercase tracking-widest whitespace-nowrap">
+                                            Top {topCut} Cut
+                                        </span>
+                                        <div className="flex-1 h-px bg-gradient-to-l from-cyan-500/40 to-transparent" />
+                                    </div>
+                                </td>
+                            </tr>
+                        )}
+                    </React.Fragment>
+                );
+            })}
+        </tbody>
+    );
+}
+
+function StandingsTablePanel({
+    label,
+    rows,
+    ptsDiff,
+    topCut,
+    tournament,
+}: {
+    label: string;
+    rows: SwissStanding[];
+    ptsDiff: Record<number, number>;
+    topCut: number | null;
+    tournament: Tournament;
+}) {
+    if (rows.length === 0) return null;
+
+    return (
+        <div className="min-w-0 flex flex-col">
+            <div className="px-4 py-2 border-b border-slate-800/60 bg-slate-800/20">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</span>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <StandingsTableHead tournament={tournament} />
+                    <StandingsTableBody
+                        rows={rows}
+                        ptsDiff={ptsDiff}
+                        topCut={topCut}
+                        tournament={tournament}
+                    />
+                </table>
+            </div>
+        </div>
+    );
+}
+
 /* ─── Swiss Standings Table ─── */
 function StandingsTable({
     standings,
     matches,
     tournament,
     participantCount,
+    participants,
 }: {
     standings: SwissStanding[];
     matches: TournamentMatch[];
     tournament: Tournament;
     participantCount: number;
+    participants: Participant[];
 }) {
     if (!standings || standings.length === 0) return null;
 
@@ -1250,17 +1558,12 @@ function StandingsTable({
         if (m.player2_id) ptsDiff[m.player2_id] = (ptsDiff[m.player2_id] || 0) + m.player2_battle_points - m.player1_battle_points;
     });
 
-    const sortedStandings = [...standings].sort((a, b) => {
-        const scoreDiff = Number(b.tournament_points) - Number(a.tournament_points);
-        if (scoreDiff !== 0) return scoreDiff;
-        const tbDiff = b.battle_points - a.battle_points;
-        if (tbDiff !== 0) return tbDiff;
-        const osDiff = Number(b.opponent_strength) - Number(a.opponent_strength);
-        if (osDiff !== 0) return osDiff;
-        const pdA = ptsDiff[a.participant_id] || 0;
-        const pdB = ptsDiff[b.participant_id] || 0;
-        return pdB - pdA;
-    });
+    const sortedStandings = sortStandingsRows(standings, ptsDiff);
+
+    const isTwoStage = tournament.tournament_type === 'two_stage';
+    const stageGroups = isTwoStage && participants.length > 0
+        ? buildTwoStageStandingGroups(standings, participants, tournament, participantCount, ptsDiff)
+        : [];
 
     const topCut = getSwissPlayoffCutSize(
         tournament,
@@ -1268,17 +1571,24 @@ function StandingsTable({
         participantCount,
     );
 
+    const perGroupCut = tournament.advance_per_group ?? 0;
+    const headerCutLabel = stageGroups.length > 0 && perGroupCut >= 2
+        ? `Top ${perGroupCut} per group`
+        : topCut
+            ? `Top ${topCut} Cut`
+            : null;
+
     return (
         <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-800/80 space-y-1">
                 <div className="flex items-center justify-between mb-3">
                     <h2 className="text-lg font-semibold text-white">Standings</h2>
-                    {topCut && (
+                    {headerCutLabel && (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-xs font-bold text-cyan-400 uppercase tracking-wider">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                             </svg>
-                            Top {topCut} Cut
+                            {headerCutLabel}
                         </span>
                     )}
                 </div>
@@ -1293,111 +1603,32 @@ function StandingsTable({
                 )}
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="border-b border-slate-700/60 bg-slate-800/40">
-                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider w-16">Rank</th>
-                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Participant</th>
-                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                <div>Match W-L-T</div>
-                                <div className="text-[10px] font-normal text-slate-500 normal-case">(wins +{Number(tournament.pts_for_match_win).toFixed(1)}, ties +{Number(tournament.pts_for_match_tie).toFixed(1)})</div>
-                            </th>
-                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">1. Score</th>
-                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">2. TB</th>
-                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">3. Buchholz</th>
-                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">4. Pts Diff</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sortedStandings.map((s, i) => {
-                            const diff = ptsDiff[s.participant_id] || 0;
-                            const rank = i + 1;
-                            const isAdvancing = topCut !== null && rank <= topCut;
-                            const isCutoffRow = topCut !== null && rank === topCut;
-                            return (
-                                <React.Fragment key={s.id}>
-                                    <tr className={`border-b transition-colors hover:bg-slate-800/30 ${
-                                        isCutoffRow ? 'border-b-0' :
-                                        'border-slate-800/40'
-                                    } ${
-                                        i === 0 ? 'bg-yellow-500/5' :
-                                        isAdvancing ? 'bg-cyan-500/[0.03]' :
-                                        i % 2 === 0 ? 'bg-slate-900/20' : ''
-                                    }`}>
-                                        <td className="px-4 py-3 text-center">
-                                            <div className="flex items-center justify-center gap-1">
-                                                {i === sortedStandings.length - 1 && sortedStandings.length > 3 && (
-                                                    <span className="text-base" title="Last place">🐦</span>
-                                                )}
-                                                {i < 3 && (
-                                                    <svg className={`w-4 h-4 ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-slate-300' : 'text-amber-500'}`} viewBox="0 0 24 24" fill="currentColor">
-                                                        <path d="M2.5 7.5L5 14h14l2.5-6.5L17.5 10 12 4l-5.5 6L2.5 7.5zM5 16h14v2H5v-2z"/>
-                                                    </svg>
-                                                )}
-                                                <span className={`text-sm font-bold ${
-                                                    i === 0 ? 'text-yellow-400' :
-                                                    i === 1 ? 'text-slate-300' :
-                                                    i === 2 ? 'text-amber-500' :
-                                                    'text-slate-500'
-                                                }`}>
-                                                    {rank}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={`font-semibold ${
-                                                i === 0 ? 'text-yellow-400' :
-                                                !isAdvancing && topCut !== null ? 'text-slate-500' :
-                                                'text-white'
-                                            }`}>
-                                                {s.participant.name}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={`font-medium ${!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}`}>{s.wins}</span>
-                                            <span className="text-slate-600 mx-0.5">-</span>
-                                            <span className={`font-medium ${!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}`}>{s.losses}</span>
-                                            <span className="text-slate-600 mx-0.5">-</span>
-                                            <span className={`font-medium ${!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}`}>{s.draws}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={`font-bold ${!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}`}>{Number(s.tournament_points).toFixed(1)}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={`font-medium ${!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}`}>{s.battle_points}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={!isAdvancing && topCut !== null ? 'text-slate-500' : 'text-white'}>{Number(s.opponent_strength).toFixed(0)}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={`font-medium ${
-                                                !isAdvancing && topCut !== null ? 'text-slate-500' :
-                                                diff > 0 ? 'text-emerald-400' : diff < 0 ? 'text-red-400' : 'text-white'
-                                            }`}>
-                                                {diff > 0 ? `+${diff}` : diff}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    {isCutoffRow && (
-                                        <tr>
-                                            <td colSpan={7} className="px-0 py-0">
-                                                <div className="flex items-center gap-3 px-4 py-1.5 bg-slate-800/60">
-                                                    <div className="flex-1 h-px bg-gradient-to-r from-cyan-500/40 to-transparent" />
-                                                    <span className="text-[10px] font-bold text-cyan-400/70 uppercase tracking-widest whitespace-nowrap">
-                                                        Top {topCut} Cut
-                                                    </span>
-                                                    <div className="flex-1 h-px bg-gradient-to-l from-cyan-500/40 to-transparent" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </React.Fragment>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
+            {stageGroups.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-800/80">
+                    {stageGroups.map((group) => (
+                        <StandingsTablePanel
+                            key={group.label}
+                            label={group.label}
+                            rows={group.rows}
+                            ptsDiff={ptsDiff}
+                            topCut={group.topCut}
+                            tournament={tournament}
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <StandingsTableHead tournament={tournament} />
+                        <StandingsTableBody
+                            rows={sortedStandings}
+                            ptsDiff={ptsDiff}
+                            topCut={topCut}
+                            tournament={tournament}
+                        />
+                    </table>
+                </div>
+            )}
         </div>
     );
 }
@@ -1494,7 +1725,7 @@ function PlayerStatsTable({ participants, matches, standings }: {
                                     }`}>{i + 1}</span>
                                 </td>
                                 <td className="px-4 py-3">
-                                    <span className={`font-semibold ${i === 0 ? 'text-yellow-400' : 'text-white'}`}>{ps.participant.name}</span>
+                                    <span className={`font-semibold truncate max-w-[10rem] sm:max-w-[14rem] inline-block ${i === 0 ? 'text-yellow-400' : 'text-white'}`} title={ps.participant.name}>{ps.participant.name}</span>
                                 </td>
                                 <td className="px-4 py-3 text-center">
                                     <span className="font-medium text-white">{ps.wins}</span>
@@ -1535,6 +1766,9 @@ function EliminationBracket({
     stadiumPickerMatchId = null,
     onOpenStadiumPicker,
     onCloseStadiumPicker,
+    groupSplit = true,
+    embedded = false,
+    panelTitle,
 }: {
     matches: TournamentMatch[];
     tournament: Tournament;
@@ -1544,7 +1778,13 @@ function EliminationBracket({
     stadiumPickerMatchId?: number | null;
     onOpenStadiumPicker?: (matchId: number) => void;
     onCloseStadiumPicker?: () => void;
+    groupSplit?: boolean;
+    embedded?: boolean;
+    panelTitle?: string;
 }) {
+    const participants = tournament.participants || [];
+    const isTwoStage = tournament.tournament_type === 'two_stage';
+
     const isActive = !readOnly && tournament.status === 'active';
     const occupiedStadiums = matches
         .filter(m => m.status === 'playing' && m.stadium)
@@ -1583,10 +1823,48 @@ function EliminationBracket({
         );
     };
 
+    if (groupSplit && isTwoStage && participants.length > 0) {
+        const groups = splitFinalStageGroups(matches, tournament, participants);
+        if (groups.length >= 2) {
+            return (
+                <div className="space-y-6">
+                    <NowPlayingBanner />
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                        {groups.map((group) => (
+                            <div
+                                key={group.tag}
+                                className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden min-w-0"
+                            >
+                                <div className="px-4 py-3 border-b border-slate-800/80 bg-slate-800/20">
+                                    <h3 className="text-sm font-semibold text-white">
+                                        {group.label} — Final Bracket
+                                    </h3>
+                                </div>
+                                <EliminationBracket
+                                    matches={group.matches}
+                                    tournament={tournament}
+                                    format={format}
+                                    readOnly={readOnly}
+                                    canScore={canScore}
+                                    stadiumPickerMatchId={stadiumPickerMatchId}
+                                    onOpenStadiumPicker={onOpenStadiumPicker}
+                                    onCloseStadiumPicker={onCloseStadiumPicker}
+                                    groupSplit={false}
+                                    embedded
+                                    panelTitle={group.label}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+    }
+
     if (format === 'double_elimination') {
-        const winnersMatches = matches.filter(m => m.bracket === 'winners');
-        const losersMatches = matches.filter(m => m.bracket === 'losers');
-        const grandFinalMatches = matches.filter(m => m.bracket === 'grand_final');
+        const winnersMatches = matches.filter(m => m.bracket === 'winners' || m.bracket?.endsWith('_winners'));
+        const losersMatches = matches.filter(m => m.bracket === 'losers' || m.bracket?.endsWith('_losers'));
+        const grandFinalMatches = matches.filter(m => m.bracket === 'grand_final' || m.bracket?.endsWith('_grand_final'));
 
         const wRoundsMap: Record<number, TournamentMatch[]> = {};
         winnersMatches.forEach(m => {
@@ -1695,9 +1973,18 @@ function EliminationBracket({
     }
 
     // Single Elimination
-    const mainMatches = matches.filter(m => !m.bracket || m.bracket === 'winners');
-    const placement3Matches = matches.filter(m => m.bracket === 'placement_3');
-    const placement5Matches = matches.filter(m => m.bracket === 'placement_5');
+    const mainMatches = matches.filter(
+        (m) =>
+            !m.bracket ||
+            m.bracket === 'winners' ||
+            (m.bracket?.startsWith('final_g') ?? false),
+    );
+    const placement3Matches = matches.filter(
+        (m) => m.bracket === 'placement_3' || m.bracket?.includes('_placement_3'),
+    );
+    const placement5Matches = matches.filter(
+        (m) => m.bracket === 'placement_5' || m.bracket?.includes('_placement_5'),
+    );
 
     const roundsMap: Record<number, TournamentMatch[]> = {};
     mainMatches.forEach(m => {
@@ -1721,110 +2008,124 @@ function EliminationBracket({
     });
     const p5Rounds = Object.keys(p5RoundsMap).map(Number).sort((a, b) => a - b);
 
+    const bracketSection = (
+        <div className={embedded ? 'p-4 overflow-x-auto' : 'p-6 overflow-x-auto'}>
+            <div className="flex gap-8 min-w-max">
+                {rounds.map(round => {
+                    const isFirstRound = round === rounds[0];
+                    const roundMatches = roundsMap[round].filter(m => {
+                        if ((!m.player1_id || !m.player2_id) && m.winner_id) return false;
+                        if (isFirstRound && !m.player1_id && !m.player2_id) return false;
+                        return true;
+                    });
+                    if (roundMatches.length === 0) return null;
+                    return (
+                        <div key={round} className="flex flex-col">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 text-center">
+                                {getRoundName(round)}
+                            </h4>
+                            <div className="flex flex-col justify-around flex-1 gap-4">
+                                {roundMatches.map(match => (
+                                    <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+
+    const placementSection = (() => {
+        const p3Visible = placement3Matches.filter(m => m.player1_id || m.player2_id);
+        const p5Visible = placement5Matches.filter(m => m.player1_id || m.player2_id);
+        if (p3Visible.length === 0 && p5Visible.length === 0) return null;
+
+        const p5vRoundsMap: Record<number, TournamentMatch[]> = {};
+        p5Visible.forEach(m => {
+            if (!p5vRoundsMap[m.round]) p5vRoundsMap[m.round] = [];
+            p5vRoundsMap[m.round].push(m);
+        });
+        const p5vRounds = Object.keys(p5vRoundsMap).map(Number).sort((a, b) => a - b);
+
+        return (
+            <div className={`rounded-2xl border border-amber-500/20 bg-amber-500/5 overflow-hidden ${embedded ? 'mx-4 mb-4' : ''}`}>
+                <div className={`${embedded ? 'px-4 py-3' : 'px-6 py-4'} border-b border-amber-500/20 flex items-center gap-3`}>
+                    <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3l3.057-3L12 4.5 15.943 0 19 3l-2 6.5L19 21H5l2-11.5L5 3z" />
+                    </svg>
+                    <h3 className="text-base font-semibold text-amber-400">Placement Matches</h3>
+                </div>
+                <div className={embedded ? 'p-4' : 'p-6'}>
+                    <div className="flex flex-wrap gap-8">
+                        {p3Visible.length > 0 && (
+                            <div className="flex flex-col">
+                                <h4 className="text-xs font-bold text-amber-500/70 uppercase tracking-wider mb-4 text-center">
+                                    Battle for 3rd Place
+                                </h4>
+                                <div className="flex flex-col gap-4">
+                                    {p3Visible.map(match => (
+                                        <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {p5Visible.length > 0 && (
+                            <div className="flex flex-col">
+                                <h4 className="text-xs font-bold text-amber-500/70 uppercase tracking-wider mb-4 text-center">
+                                    Battle for 5th Place
+                                </h4>
+                                {p5vRounds.length > 1 && (
+                                    <p className="text-[10px] text-slate-500 text-center mb-3 -mt-2">
+                                        QF losers play a mini bracket — two semis, then a final for 5th
+                                    </p>
+                                )}
+                                <div className="space-y-4">
+                                    {p5vRounds.map(round => (
+                                        <div key={`p5-${round}`}>
+                                            {p5vRounds.length > 1 && (
+                                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2 text-center">
+                                                    {round === p5vRounds[p5vRounds.length - 1] ? '5th Place Final' : `Semi ${round}`}
+                                                </p>
+                                            )}
+                                            <div className="flex flex-wrap gap-4 justify-center">
+                                                {p5vRoundsMap[round].map(match => (
+                                                    <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    })();
+
+    if (embedded) {
+        return (
+            <>
+                {bracketSection}
+                {placementSection}
+            </>
+        );
+    }
+
     return (
         <div className="space-y-6">
             <NowPlayingBanner />
 
             <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between">
-                    <h3 className="text-base font-semibold text-white">Bracket</h3>
+                    <h3 className="text-base font-semibold text-white">{panelTitle ? `${panelTitle} Bracket` : 'Bracket'}</h3>
                     {isActive && <span className="text-xs text-cyan-400 font-medium">Click a name to report winner</span>}
                 </div>
-                <div className="p-6 overflow-x-auto">
-                    <div className="flex gap-8 min-w-max">
-                        {rounds.map(round => {
-                            const isFirstRound = round === rounds[0];
-                            const roundMatches = roundsMap[round].filter(m => {
-                                if ((!m.player1_id || !m.player2_id) && m.winner_id) return false;
-                                if (isFirstRound && !m.player1_id && !m.player2_id) return false;
-                                return true;
-                            });
-                            if (roundMatches.length === 0) return null;
-                            return (
-                                <div key={round} className="flex flex-col">
-                                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 text-center">
-                                        {getRoundName(round)}
-                                    </h4>
-                                    <div className="flex flex-col justify-around flex-1 gap-4">
-                                        {roundMatches.map(match => (
-                                            <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
+                {bracketSection}
             </div>
 
-            {/* Placement Matches */}
-            {(() => {
-                const p3Visible = placement3Matches.filter(m => m.player1_id || m.player2_id);
-                const p5Visible = placement5Matches.filter(m => m.player1_id || m.player2_id);
-                if (p3Visible.length === 0 && p5Visible.length === 0) return null;
-
-                const p5vRoundsMap: Record<number, TournamentMatch[]> = {};
-                p5Visible.forEach(m => {
-                    if (!p5vRoundsMap[m.round]) p5vRoundsMap[m.round] = [];
-                    p5vRoundsMap[m.round].push(m);
-                });
-                const p5vRounds = Object.keys(p5vRoundsMap).map(Number).sort((a, b) => a - b);
-
-                return (
-                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-amber-500/20 flex items-center gap-3">
-                        <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3l3.057-3L12 4.5 15.943 0 19 3l-2 6.5L19 21H5l2-11.5L5 3z" />
-                        </svg>
-                        <h3 className="text-base font-semibold text-amber-400">Placement Matches</h3>
-                    </div>
-                    <div className="p-6">
-                        <div className="flex flex-wrap gap-8">
-                            {p3Visible.length > 0 && (
-                                <div className="flex flex-col">
-                                    <h4 className="text-xs font-bold text-amber-500/70 uppercase tracking-wider mb-4 text-center">
-                                        Battle for 3rd Place
-                                    </h4>
-                                    <div className="flex flex-col gap-4">
-                                        {p3Visible.map(match => (
-                                            <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            {p5Visible.length > 0 && (
-                                <div className="flex flex-col">
-                                    <h4 className="text-xs font-bold text-amber-500/70 uppercase tracking-wider mb-4 text-center">
-                                        Battle for 5th Place
-                                    </h4>
-                                    {p5vRounds.length > 1 && (
-                                        <p className="text-[10px] text-slate-500 text-center mb-3 -mt-2">
-                                            QF losers play a mini bracket — two semis, then a final for 5th
-                                        </p>
-                                    )}
-                                    <div className="space-y-4">
-                                        {p5vRounds.map(round => (
-                                            <div key={`p5-${round}`}>
-                                                {p5vRounds.length > 1 && (
-                                                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2 text-center">
-                                                        {round === p5vRounds[p5vRounds.length - 1] ? '5th Place Final' : `Semi ${round}`}
-                                                    </p>
-                                                )}
-                                                <div className="flex flex-wrap gap-4 justify-center">
-                                                    {p5vRoundsMap[round].map(match => (
-                                                        <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-                );
-            })()}
+            {placementSection}
         </div>
     );
 }
@@ -2227,6 +2528,7 @@ function SwissView({
                     matches={groupMatches}
                     tournament={tournament}
                     participantCount={participantCount}
+                    participants={tournament.participants || []}
                 />
             )}
 
@@ -2396,7 +2698,7 @@ function SwissView({
                                                 i === 2 ? 'text-amber-500' :
                                                 'text-slate-500'
                                             }`}>{s.rank}</span>
-                                            <span className={`flex-1 text-sm font-medium ${i === 0 ? 'text-yellow-400' : 'text-white'}`}>{s.participant.name}</span>
+                                            <span className={`flex-1 min-w-0 text-sm font-medium truncate ${i === 0 ? 'text-yellow-400' : 'text-white'}`} title={s.participant.name}>{s.participant.name}</span>
                                             <span className="text-sm text-slate-400">{s.wins}W-{s.losses}L</span>
                                             <span className="text-sm font-bold text-cyan-400 w-16 text-right">{Number(s.tournament_points).toFixed(1)}</span>
                                         </div>
@@ -2456,31 +2758,89 @@ function SwissView({
 /* ─── Single Add Form (isolated to prevent parent re-renders) ─── */
 function SingleAddForm({ tournamentId }: { tournamentId: number }) {
     const inputRef = useRef<HTMLInputElement>(null);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
     const [processing, setProcessing] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+    const clearAvatar = () => {
+        if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+        setAvatarPreview(null);
+        setAvatarFile(null);
+        if (avatarInputRef.current) avatarInputRef.current.value = '';
+    };
+
+    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+        setAvatarFile(file);
+        setAvatarPreview(URL.createObjectURL(file));
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const name = inputRef.current?.value?.trim();
         if (!name || processing) return;
         setProcessing(true);
-        router.post(route('participants.store', tournamentId), { name }, {
+
+        const payload = new FormData();
+        payload.append('name', name);
+        if (avatarFile) payload.append('avatar', avatarFile);
+
+        router.post(route('participants.store', tournamentId), payload, {
+            forceFormData: true,
             preserveScroll: true,
             preserveState: true,
-            onSuccess: () => { if (inputRef.current) inputRef.current.value = ''; },
+            onSuccess: () => {
+                if (inputRef.current) inputRef.current.value = '';
+                clearAvatar();
+            },
             onFinish: () => setProcessing(false),
         });
     };
 
     return (
-        <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
-            <input
-                ref={inputRef}
-                placeholder="Participant name"
-                className="flex-1 rounded-xl border border-slate-700/50 bg-slate-800/50 py-2.5 px-4 text-sm text-white placeholder-slate-500 transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
-            />
-            <button type="submit" disabled={processing} className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            </button>
+        <form onSubmit={handleSubmit} className="mb-4 space-y-2">
+            <div className="flex gap-2">
+                <input
+                    ref={inputRef}
+                    placeholder="Participant name"
+                    maxLength={PARTICIPANT_NAME_MAX}
+                    className="flex-1 min-w-0 rounded-xl border border-slate-700/50 bg-slate-800/50 py-2.5 px-4 text-sm text-white placeholder-slate-500 transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                />
+                <button type="submit" disabled={processing} className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                </button>
+            </div>
+            <div className="flex items-center gap-2">
+                <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                />
+                <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="text-xs text-slate-500 hover:text-cyan-400 transition-colors"
+                >
+                    {avatarFile ? 'Change photo' : 'Add photo (optional)'}
+                </button>
+                {avatarPreview && (
+                    <>
+                        <ParticipantAvatar name="Preview" avatarUrl={avatarPreview} size="sm" />
+                        <button
+                            type="button"
+                            onClick={clearAvatar}
+                            className="text-xs text-slate-600 hover:text-red-400 transition-colors"
+                        >
+                            Remove
+                        </button>
+                    </>
+                )}
+            </div>
         </form>
     );
 }
@@ -2517,7 +2877,7 @@ function BulkAddModal({ tournamentId, onClose }: { tournamentId: number; onClose
                     </div>
                     <form onSubmit={handleSubmit}>
                         <textarea value={names} onChange={(e) => setNames(e.target.value)} placeholder={"Enter one name per line:\n\nPlayer 1\nPlayer 2\nPlayer 3"} rows={10} autoFocus className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 px-4 text-white placeholder-slate-500 transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 resize-none font-mono text-sm" />
-                        <p className="mt-2 text-xs text-slate-500">{count} participant(s) detected.</p>
+                        <p className="mt-2 text-xs text-slate-500">{count} participant(s) detected. Max {PARTICIPANT_NAME_MAX} characters per name.</p>
                         <div className="mt-6 flex justify-end gap-3">
                             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl bg-slate-800 border border-slate-700/50 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all">Cancel</button>
                             <button type="submit" disabled={processing || !names.trim()} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">Add All</button>
@@ -2545,7 +2905,9 @@ function ParticipantRow({
 }) {
     const [editingJudge, setEditingJudge] = useState(false);
     const [judgeValue, setJudgeValue] = useState(participant.judge || '');
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const judgeInputRef = useRef<HTMLInputElement>(null);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (editingJudge && judgeInputRef.current) {
@@ -2573,11 +2935,69 @@ function ParticipantRow({
         }
     };
 
+    const scrollTextClass =
+        'min-w-0 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600';
+
+    const canEditAvatar = !readOnly && isPending;
+
+    const uploadAvatar = (file: File) => {
+        const payload = new FormData();
+        payload.append('avatar', file);
+        setUploadingAvatar(true);
+        router.post(route('participants.updateAvatar', [tournamentId, participant.id]), payload, {
+            forceFormData: true,
+            preserveScroll: true,
+            preserveState: true,
+            onFinish: () => setUploadingAvatar(false),
+        });
+    };
+
+    const removeAvatar = () => {
+        setUploadingAvatar(true);
+        router.post(route('participants.updateAvatar', [tournamentId, participant.id]), { remove_avatar: true }, {
+            preserveScroll: true,
+            preserveState: true,
+            onFinish: () => setUploadingAvatar(false),
+        });
+    };
+
     return (
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800/60 group transition-colors">
-            <span className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700/50 flex items-center justify-center text-xs font-bold text-slate-400 shrink-0">{participant.seed}</span>
-            <div className="flex-1 min-w-0">
-                <span className="text-sm text-white truncate block">{participant.name}</span>
+        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-800/60 group transition-colors min-w-0">
+            <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadAvatar(file);
+                    e.target.value = '';
+                }}
+            />
+            <span className="w-6 h-6 rounded-md bg-slate-800 border border-slate-700/50 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">{participant.seed}</span>
+            <div className="relative shrink-0">
+                <ParticipantAvatar
+                    name={participant.name}
+                    avatarUrl={participant.avatar_url}
+                    size="sm"
+                    editable={canEditAvatar && !uploadingAvatar}
+                    onClick={canEditAvatar ? () => avatarInputRef.current?.click() : undefined}
+                />
+                {canEditAvatar && participant.avatar_url && !uploadingAvatar && (
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeAvatar(); }}
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-900 border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500/50 text-[10px] leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove photo"
+                    >
+                        ×
+                    </button>
+                )}
+            </div>
+            <div className={`min-w-0 flex flex-col gap-0.5 flex-1 ${participantTextMaxClass}`}>
+                <div className={scrollTextClass}>
+                    <span className="text-sm text-white whitespace-nowrap block leading-tight">{participant.name}</span>
+                </div>
                 {!readOnly ? (
                     editingJudge ? (
                         <input
@@ -2587,21 +3007,27 @@ function ParticipantRow({
                             onBlur={saveJudge}
                             onKeyDown={handleKeyDown}
                             placeholder="Judge name"
-                            className="mt-1 w-full rounded-lg border border-cyan-500/40 bg-slate-800 py-1 px-2 text-xs text-cyan-300 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+                            maxLength={PARTICIPANT_NAME_MAX}
+                            className="w-full min-w-0 rounded-lg border border-cyan-500/40 bg-slate-800 py-1 px-2 text-xs text-cyan-300 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
                         />
                     ) : (
                         <button
+                            type="button"
                             onClick={() => { setJudgeValue(participant.judge || ''); setEditingJudge(true); }}
-                            className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 hover:text-cyan-400 transition-colors"
+                            className="flex items-center gap-1 min-w-0 w-full text-left text-xs text-slate-500 hover:text-cyan-400 transition-colors"
                         >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
-                            {participant.judge || 'Set Judge'}
+                            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
+                            <span className={`${scrollTextClass} flex-1`}>
+                                <span className="whitespace-nowrap block leading-tight">{participant.judge || 'Set Judge'}</span>
+                            </span>
                         </button>
                     )
                 ) : participant.judge ? (
-                    <span className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
-                        {participant.judge}
+                    <span className="flex items-center gap-1 min-w-0 w-full text-xs text-slate-500">
+                        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
+                        <span className={`${scrollTextClass} flex-1`}>
+                            <span className="whitespace-nowrap block leading-tight">{participant.judge}</span>
+                        </span>
                     </span>
                 ) : null}
             </div>
@@ -2941,15 +3367,15 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                     <div className="flex items-center gap-2 text-sm text-slate-500 mb-6">
                         <Link href={route('dashboard')} className="hover:text-cyan-400 transition-colors">Your Tournaments</Link>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                        <span className="text-slate-300">{tournament.name}</span>
+                        <span className="text-slate-300 truncate max-w-[12rem] sm:max-w-xs" title={tournament.name}>{tournament.name}</span>
                     </div>
                 )}
 
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <h1 className="text-3xl font-bold text-white">{tournament.name}</h1>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8 min-w-0">
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-3 mb-2 min-w-0">
+                            <h1 className="text-3xl font-bold text-white truncate" title={tournament.name}>{tournament.name}</h1>
                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${statusColors[liveTournament.status] || statusColors.pending}`}>
                                 {liveTournament.status.charAt(0).toUpperCase() + liveTournament.status.slice(1)}
                             </span>
@@ -3017,11 +3443,12 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                             </span>
                                         </div>
                                         {tournament.participants_per_group && (
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm text-slate-500">Groups</span>
-                                                <span className="text-sm font-medium text-white">
-                                                    {tournament.participants_per_group} per group, top {tournament.advance_per_group || 2} advance per group
-                                                </span>
+                                            <div className="flex items-start justify-between gap-3">
+                                                <span className="text-sm text-slate-500 shrink-0">Groups</span>
+                                                <div className="text-sm font-medium text-white text-right leading-snug min-w-0">
+                                                    <div>{tournament.participants_per_group} per group</div>
+                                                    <div className="text-xs text-slate-400">Top {tournament.advance_per_group || 2} advance each</div>
+                                                </div>
                                             </div>
                                         )}
                                     </>
@@ -3180,7 +3607,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                     {!readOnly && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border-t border-slate-800/80 divide-y sm:divide-y-0 sm:divide-x divide-slate-800/80 items-stretch">
                         {/* Participants */}
-                        <div className="p-5 flex flex-col h-full min-h-[220px]">
+                        <div className="p-5 flex flex-col min-h-0 min-w-0 self-stretch overflow-hidden">
                             <div className="flex items-center justify-between mb-3 shrink-0">
                                 <div className="flex items-center gap-2">
                                     <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -3190,9 +3617,9 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                             </div>
                             <div className="flex flex-col flex-1 min-h-0">
                                 {liveTournament.status === 'pending' && (
-                                    <div className="shrink-0">
+                                    <div className="shrink-0 mb-3">
                                         <SingleAddForm tournamentId={tournament.id} />
-                                        <button onClick={() => setShowAddModal(true)} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-xs text-slate-400 hover:text-white hover:bg-slate-700/50 hover:border-slate-600/50 transition-all mb-3">
+                                        <button onClick={() => setShowAddModal(true)} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-xs text-slate-400 hover:text-white hover:bg-slate-700/50 hover:border-slate-600/50 transition-all mt-3">
                                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                             Bulk Add
                                         </button>
@@ -3201,7 +3628,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                 {participants.length === 0 ? (
                                     <p className="text-slate-500 text-xs text-center py-4">No participants yet</p>
                                 ) : (
-                                    <div className="flex-1 min-h-[14rem] overflow-y-auto pr-1 space-y-1">
+                                    <div className="flex-1 min-h-[10rem] max-h-52 min-w-0 overflow-y-auto overflow-x-hidden pr-2 space-y-1 [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600">
                                         {participants.map((p) => (
                                             <ParticipantRow
                                                 key={p.id}

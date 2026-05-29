@@ -1,4 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { applyTournamentToEventForm, type TournamentForEvent } from '@/utils/eventTournament';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -22,6 +23,7 @@ interface SiteEvent {
     winner: string | null;
     runner_up: string | null;
     is_upcoming: boolean;
+    tournament_id: number | null;
     created_at: string;
 }
 
@@ -52,6 +54,7 @@ interface EventForm {
     winner: string;
     runner_up: string;
     is_upcoming: boolean;
+    tournament_id: string;
 }
 
 const emptyEvent: EventForm = {
@@ -73,6 +76,7 @@ const emptyEvent: EventForm = {
     winner: '',
     runner_up: '',
     is_upcoming: true,
+    tournament_id: '',
 };
 
 const inputClass =
@@ -87,14 +91,30 @@ const statusColors: Record<string, string> = {
     cancelled: 'bg-zinc-700/30 text-gray-400 border-zinc-700/50',
 };
 
-export default function Events({ events }: { events: PaginatedData<SiteEvent> }) {
+export default function Events({
+    events,
+    tournaments,
+    userName,
+}: {
+    events: PaginatedData<SiteEvent>;
+    tournaments: TournamentForEvent[];
+    userName: string;
+}) {
     const [showModal, setShowModal] = useState(false);
     const [editingEvent, setEditingEvent] = useState<SiteEvent | null>(null);
     const [form, setForm] = useState<EventForm>(emptyEvent);
     const [confirmDelete, setConfirmDelete] = useState<SiteEvent | null>(null);
     const [processing, setProcessing] = useState(false);
 
+    const handleTournamentChange = (tournamentId: string) => {
+        setForm((prev) => applyTournamentToEventForm(prev, tournamentId, tournaments, userName));
+    };
+
     const openCreate = () => {
+        if (tournaments.length === 0) {
+            alert('Create a tournament first before adding an event.');
+            return;
+        }
         setEditingEvent(null);
         setForm({ ...emptyEvent, prizes: [] });
         setShowModal(true);
@@ -121,6 +141,7 @@ export default function Events({ events }: { events: PaginatedData<SiteEvent> })
             winner: event.winner ?? '',
             runner_up: event.runner_up ?? '',
             is_upcoming: event.is_upcoming,
+            tournament_id: event.tournament_id?.toString() ?? '',
         });
         setShowModal(true);
     };
@@ -161,6 +182,7 @@ export default function Events({ events }: { events: PaginatedData<SiteEvent> })
             winner: form.winner || null,
             runner_up: form.runner_up || null,
             is_upcoming: form.is_upcoming,
+            tournament_id: form.tournament_id ? parseInt(form.tournament_id, 10) : null,
         };
 
         if (editingEvent) {
@@ -335,6 +357,27 @@ export default function Events({ events }: { events: PaginatedData<SiteEvent> })
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-4">
+                                {/* Link Tournament */}
+                                <div>
+                                    <label className={labelClass}>Link to Tournament *</label>
+                                    <select
+                                        value={form.tournament_id}
+                                        onChange={(e) => handleTournamentChange(e.target.value)}
+                                        required
+                                        className={inputClass}
+                                    >
+                                        <option value="">Select a tournament...</option>
+                                        {tournaments.map((t) => (
+                                            <option key={t.id} value={t.id}>
+                                                {t.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-[11px] text-gray-600 mt-1">
+                                        Auto-fills title, description, organizer, and format from the tournament.
+                                    </p>
+                                </div>
+
                                 {/* Title */}
                                 <div>
                                     <label className={labelClass}>Title</label>

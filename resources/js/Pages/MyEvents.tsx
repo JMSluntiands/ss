@@ -1,12 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { applyTournamentToEventForm, type TournamentForEvent } from '@/utils/eventTournament';
 import { Head, router, Link } from '@inertiajs/react';
 import { useState, useRef } from 'react';
-
-interface TournamentOption {
-    id: number;
-    name: string;
-    description: string | null;
-}
 
 interface SiteEvent {
     id: number;
@@ -105,7 +100,7 @@ const statusColors: Record<string, string> = {
     cancelled: 'bg-zinc-700/30 text-gray-400 border-zinc-700/50',
 };
 
-export default function MyEvents({ events, tournaments, userName }: { events: PaginatedData<SiteEvent>; tournaments: TournamentOption[]; userName: string }) {
+export default function MyEvents({ events, tournaments, userName }: { events: PaginatedData<SiteEvent>; tournaments: TournamentForEvent[]; userName: string }) {
     const [showModal, setShowModal] = useState(false);
     const [editingEvent, setEditingEvent] = useState<SiteEvent | null>(null);
     const [form, setForm] = useState<EventForm>(emptyEvent);
@@ -114,14 +109,7 @@ export default function MyEvents({ events, tournaments, userName }: { events: Pa
     const qrInputRef = useRef<HTMLInputElement>(null);
 
     const handleTournamentChange = (tournamentId: string) => {
-        const t = tournaments.find(t => t.id === parseInt(tournamentId));
-        setForm(prev => ({
-            ...prev,
-            tournament_id: tournamentId,
-            title: prev.title || (t?.name ?? ''),
-            description: prev.description || (t?.description ?? ''),
-            organizer: prev.organizer || userName,
-        }));
+        setForm((prev) => applyTournamentToEventForm(prev, tournamentId, tournaments, userName));
     };
 
     const openCreate = () => {
@@ -398,7 +386,9 @@ export default function MyEvents({ events, tournaments, userName }: { events: Pa
                                             <option key={t.id} value={t.id}>{t.name}</option>
                                         ))}
                                     </select>
-                                    <p className="text-[11px] text-gray-600 mt-1">Confirmed registrants will be added as participants to this tournament.</p>
+                                    <p className="text-[11px] text-gray-600 mt-1">
+                                        Auto-fills title, description, organizer, and format. Confirmed registrants join this tournament.
+                                    </p>
                                 </div>
 
                                 {/* Title */}
