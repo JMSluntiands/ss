@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Tournament;
 use App\Models\TournamentMatch;
+use App\Services\RoundRobinService;
 use App\Services\SwissService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -13,7 +14,8 @@ use Inertia\Inertia;
 class TournamentController extends Controller
 {
     public function __construct(
-        private SwissService $swissService
+        private SwissService $swissService,
+        private RoundRobinService $roundRobinService
     ) {}
 
     /**
@@ -22,7 +24,7 @@ class TournamentController extends Controller
      */
     private function normalizeSwissTopCut(Request $request, array $validated): array
     {
-        if (($validated['format'] ?? '') !== 'swiss') {
+        if (! in_array($validated['format'] ?? '', ['swiss', 'round_robin'], true)) {
             $validated['swiss_top_cut_players'] = null;
 
             return $validated;
@@ -77,7 +79,7 @@ class TournamentController extends Controller
                         }
 
                         $champion = $match?->winner?->name;
-                    } elseif ($tournament->format === 'swiss') {
+                    } elseif (in_array($tournament->format, ['swiss', 'round_robin'], true)) {
                         $finalWinners = $tournament->matches
                             ->where('stage', 'final')
                             ->filter(fn ($m) => $m->winner_id && ($m->next_match_id === null || $m->bracket === 'grand_final'));
@@ -178,7 +180,7 @@ class TournamentController extends Controller
 
         $tournament->load(['participants', 'matches.player1', 'matches.player2', 'matches.winner']);
 
-        if ($tournament->format === 'swiss') {
+        if (in_array($tournament->format, ['swiss', 'round_robin'], true)) {
             $tournament->load(['swissStandings' => function ($query) {
                 $query->orderBy('rank')->with('participant');
             }]);
@@ -195,7 +197,7 @@ class TournamentController extends Controller
     {
         $tournament->load(['participants', 'matches.player1', 'matches.player2', 'matches.winner']);
 
-        if ($tournament->format === 'swiss') {
+        if (in_array($tournament->format, ['swiss', 'round_robin'], true)) {
             $tournament->load(['swissStandings' => function ($query) {
                 $query->orderBy('rank')->with('participant');
             }]);
@@ -271,6 +273,8 @@ class TournamentController extends Controller
 
         if ($tournament->format === 'swiss') {
             $this->swissService->startTournament($tournament);
+        } elseif ($tournament->format === 'round_robin') {
+            $this->roundRobinService->startTournament($tournament);
         } else {
             $tournament->matches()->delete();
 
@@ -378,8 +382,8 @@ class TournamentController extends Controller
             abort(403, 'You do not have permission to score matches.');
         }
 
-        // Swiss group stage flow
-        if ($tournament->format === 'swiss' && $match->stage !== 'final') {
+        // Swiss / Round Robin group stage flow
+        if (in_array($tournament->format, ['swiss', 'round_robin'], true) && $match->stage !== 'final') {
             $validated = $request->validate([
                 'winner_id' => 'nullable|exists:participants,id',
                 'player1_battle_points' => 'required|integer|min:0',
@@ -391,7 +395,11 @@ class TournamentController extends Controller
             $isDraw = $validated['is_draw'] ?? false;
             $winnerId = $isDraw ? 0 : ($validated['winner_id'] ?? 0);
 
-            $this->swissService->submitMatchResult(
+            $groupService = $tournament->format === 'round_robin'
+                ? $this->roundRobinService
+                : $this->swissService;
+
+            $groupService->submitMatchResult(
                 $match,
                 $winnerId,
                 $validated['player1_battle_points'],
@@ -511,22 +519,26 @@ class TournamentController extends Controller
             abort(403);
         }
 
-        if ($tournament->format !== 'swiss') {
-            return back()->withErrors(['tournament' => 'Only Swiss tournaments support round advancement.']);
+        if (! in_array($tournament->format, ['swiss', 'round_robin'], true)) {
+            return back()->withErrors(['tournament' => 'Only Swiss and Round Robin tournaments support round advancement.']);
         }
 
-        if (!$this->swissService->isCurrentRoundComplete($tournament)) {
+        $groupService = $tournament->format === 'round_robin'
+            ? $this->roundRobinService
+            : $this->swissService;
+
+        if (! $groupService->isCurrentRoundComplete($tournament)) {
             return back()->withErrors(['tournament' => 'All matches in the current round must be completed first.']);
         }
 
-        $continued = $this->swissService->advanceToNextRound($tournament);
+        $continued = $groupService->advanceToNextRound($tournament);
 
-        if (!$continued && $tournament->tournament_type === 'two_stage') {
+        if (! $continued && $tournament->tournament_type === 'two_stage') {
             $this->startFinalStage($tournament);
         }
 
         if (! $continued
-            && $tournament->format === 'swiss'
+            && in_array($tournament->format, ['swiss', 'round_robin'], true)
             && (int) ($tournament->swiss_top_cut_players ?? 0) >= 2
             && $tournament->tournament_type === 'single_elimination') {
             $this->startFinalStage($tournament);
@@ -542,7 +554,7 @@ class TournamentController extends Controller
         $totalParticipants = $tournament->participants()->count();
 
         $swissTopCut = (int) ($tournament->swiss_top_cut_players ?? 0);
-        if ($tournament->format === 'swiss' && $swissTopCut >= 2) {
+        if (in_array($tournament->format, ['swiss', 'round_robin'], true) && $swissTopCut >= 2) {
             $totalAdvancing = min($swissTopCut, $totalParticipants);
         } elseif ($tournament->tournament_type === 'two_stage') {
             $advancePerGroup = $tournament->advance_per_group ?: 2;
@@ -1010,11 +1022,11 @@ class TournamentController extends Controller
             abort(403);
         }
 
-        $hasSwissTopCut = $tournament->format === 'swiss'
+        $hasGroupTopCut = in_array($tournament->format, ['swiss', 'round_robin'], true)
             && (int) ($tournament->swiss_top_cut_players ?? 0) >= 2;
 
-        if ($tournament->tournament_type !== 'two_stage' && ! $hasSwissTopCut) {
-            return back()->withErrors(['tournament' => 'Only two-stage tournaments or single-stage Swiss with a top cut have a resettable final bracket.']);
+        if ($tournament->tournament_type !== 'two_stage' && ! $hasGroupTopCut) {
+            return back()->withErrors(['tournament' => 'Only two-stage tournaments or single-stage Swiss/Round Robin with a top cut have a resettable final bracket.']);
         }
 
         $tournament->update(['status' => 'active']);
@@ -1033,7 +1045,7 @@ class TournamentController extends Controller
             'current_round' => $tournament->current_round,
         ];
 
-        if ($tournament->format === 'swiss') {
+        if (in_array($tournament->format, ['swiss', 'round_robin'], true)) {
             $tournament->load(['swissStandings' => fn ($q) => $q->orderBy('rank')->with('participant')]);
             $data['swiss_standings'] = $tournament->swissStandings;
         }
@@ -1163,14 +1175,18 @@ class TournamentController extends Controller
         $p2Score = $validated['player2_score'] ?? 0;
         $isDraw = $p1Score > 0 && $p1Score === $p2Score;
 
-        if ($match->status === 'completed' && $match->winner_id && $tournament->format !== 'swiss' && $validated['winner_id'] != $match->winner_id) {
+        if ($match->status === 'completed' && $match->winner_id && ! in_array($tournament->format, ['swiss', 'round_robin'], true) && $validated['winner_id'] != $match->winner_id) {
             return back()->withErrors(['match' => 'For completed elimination matches, keep the same winner and only update round points.']);
         }
 
-        if ($tournament->format === 'swiss' && $match->stage !== 'final') {
+        if (in_array($tournament->format, ['swiss', 'round_robin'], true) && $match->stage !== 'final') {
             $winnerId = $isDraw ? 0 : $validated['winner_id'];
 
-            $this->swissService->submitMatchResult(
+            $groupService = $tournament->format === 'round_robin'
+                ? $this->roundRobinService
+                : $this->swissService;
+
+            $groupService->submitMatchResult(
                 $match,
                 $winnerId,
                 $p1Score,

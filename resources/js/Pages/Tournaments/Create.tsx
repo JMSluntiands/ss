@@ -176,10 +176,12 @@ function PlacementRanksSummary({
                         </div>
                     </div>
                 </div>
-            ) : tournament_type === 'single_elimination' && format === 'swiss' && topCutN >= 2 ? (
+            ) : tournament_type === 'single_elimination' && (format === 'swiss' || format === 'round_robin') && topCutN >= 2 ? (
                 <div className="space-y-4">
                     <div>
-                        <p className="text-[10px] font-bold text-cyan-500/90 uppercase tracking-wider mb-2">Swiss rounds (before cut)</p>
+                        <p className="text-[10px] font-bold text-cyan-500/90 uppercase tracking-wider mb-2">
+                            {format === 'round_robin' ? 'Round Robin' : 'Swiss rounds'} (before cut)
+                        </p>
                         <div className="space-y-2 pl-1 border-l border-slate-700/60 ml-1">
                             {rowsStandings('Swiss rounds').map((r) => (
                                 <div key={r.rank} className="pl-3">
@@ -309,7 +311,7 @@ export default function Create({ tournament }: Props) {
     const finalElimForPlacement =
         data.tournament_type === 'two_stage'
             ? (data.final_stage_format || 'single_elimination')
-            : data.tournament_type === 'single_elimination' && data.format === 'swiss' && topCutPlayers >= 2
+            : data.tournament_type === 'single_elimination' && (data.format === 'swiss' || data.format === 'round_robin') && topCutPlayers >= 2
               ? 'single_elimination'
               : data.format;
     const usesSingleElimPlacement = finalElimForPlacement === 'single_elimination';
@@ -508,28 +510,86 @@ export default function Create({ tournament }: Props) {
                                     </select>
 
                                     {data.format === 'round_robin' && (
-                                        <div className="mt-4 rounded-xl border border-cyan-500/25 bg-cyan-500/5 px-4 py-3 space-y-3">
-                                            <p className="text-xs font-bold uppercase tracking-wider text-cyan-400/90">Top cut</p>
-                                            <p className="text-xs text-slate-400 leading-relaxed">
-                                                Single-stage round robin ends in standings only. For a bracket after groups, choose{' '}
-                                                <span className="text-slate-300 font-medium">Two stage tournament</span> and set how many advance from each
-                                                group into the finals.
-                                            </p>
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    setData((prev) => ({
-                                                        ...prev,
-                                                        tournament_type: 'two_stage',
-                                                        group_stage_format: 'round_robin',
-                                                        format: 'round_robin',
-                                                        final_stage_format: 'single_elimination',
-                                                    }))
-                                                }
-                                                className="text-xs font-semibold rounded-lg px-3 py-2 bg-cyan-600/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-600/30 transition-colors"
-                                            >
-                                                Switch to two-stage (top cut layout)
-                                            </button>
+                                        <div className="mt-5 pt-5 border-t border-slate-700/30 space-y-4">
+                                            <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 px-4 py-3 space-y-3">
+                                                <p className="text-xs font-bold uppercase tracking-wider text-cyan-400/90">Top cut (optional)</p>
+                                                <p className="text-xs text-slate-400 leading-relaxed">
+                                                    After all Round Robin rounds finish, the top players by standings can enter a{' '}
+                                                    <span className="text-slate-300 font-medium">single elimination playoff</span>. Leave blank for
+                                                    standings-only (no playoff bracket). For two parallel groups into one finals bracket, use Two stage.
+                                                </p>
+                                                <div>
+                                                    <label htmlFor="rr_top_cut_players" className={labelClass}>
+                                                        Players in playoff bracket (top N)
+                                                    </label>
+                                                    <input
+                                                        id="rr_top_cut_players"
+                                                        type="number"
+                                                        min={2}
+                                                        max={512}
+                                                        value={data.swiss_top_cut_players}
+                                                        onChange={(e) => setData('swiss_top_cut_players', e.target.value)}
+                                                        placeholder="e.g. 8 — leave blank for no playoff"
+                                                        className={`${inputClass} max-w-[200px]`}
+                                                    />
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        Must be at least 2 if set. Bracket is seeded from Round Robin standings (1st vs lowest, etc.).
+                                                    </p>
+                                                    <InputError message={errors.swiss_top_cut_players} className="mt-2" />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setData((prev) => ({
+                                                            ...prev,
+                                                            tournament_type: 'two_stage',
+                                                            group_stage_format: 'round_robin',
+                                                            format: 'round_robin',
+                                                            final_stage_format: 'single_elimination',
+                                                        }))
+                                                    }
+                                                    className="text-xs font-semibold rounded-lg px-3 py-2 bg-cyan-600/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-600/30 transition-colors"
+                                                >
+                                                    Switch to two-stage (top cut layout)
+                                                </button>
+                                            </div>
+                                            <div>
+                                                <label htmlFor="rr_rounds_single" className={labelClass}>Number of rounds</label>
+                                                <input
+                                                    id="rr_rounds_single"
+                                                    type="number"
+                                                    value={data.swiss_rounds}
+                                                    onChange={(e) => setData('swiss_rounds', e.target.value)}
+                                                    placeholder="Auto (recommended)"
+                                                    min="1"
+                                                    className={`${inputClass} max-w-[200px]`}
+                                                />
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                    Default (blank): full round robin — everyone plays everyone once. Even players: participants − 1 rounds.
+                                                    Odd players: participants rounds (one bye per round). Set a lower number only if you want a shortened
+                                                    schedule (not everyone will meet).
+                                                </p>
+                                            </div>
+                                            <div className="space-y-4">
+                                                {[
+                                                    { key: 'pts_for_match_win' as const, label: 'points per match win' },
+                                                    { key: 'pts_for_match_tie' as const, label: 'points per match tie' },
+                                                    { key: 'pts_for_game_win' as const, label: 'points per game/set win' },
+                                                    { key: 'pts_for_game_tie' as const, label: 'points per game/set tie' },
+                                                    { key: 'pts_for_bye' as const, label: 'points per bye' },
+                                                ].map((field) => (
+                                                    <div key={field.key} className="flex items-center gap-4">
+                                                        <input
+                                                            type="number"
+                                                            step="0.1"
+                                                            value={data[field.key]}
+                                                            onChange={(e) => setData(field.key, e.target.value)}
+                                                            className="w-24 rounded-xl border border-slate-700/50 bg-slate-800/50 py-2.5 px-4 text-white text-sm text-center transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                                                        />
+                                                        <span className="text-sm text-slate-400">{field.label}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
 
@@ -678,7 +738,7 @@ export default function Create({ tournament }: Props) {
                                                     participants <em className="text-slate-500">advance</em> from each group
                                                 </span>
                                             </div>
-                                            {data.group_stage_format === 'swiss' && (
+                                            {(data.group_stage_format === 'swiss' || data.group_stage_format === 'round_robin') && (
                                                 <div className="pt-2">
                                                     <label htmlFor="swiss_top_cut_two_stage" className={labelClass}>
                                                         Total in playoff bracket (optional)
@@ -701,7 +761,7 @@ export default function Create({ tournament }: Props) {
                                             )}
                                         </div>
 
-                                        {data.group_stage_format === 'swiss' && (
+                                        {(data.group_stage_format === 'swiss' || data.group_stage_format === 'round_robin') && (
                                             <div className="mt-5 pt-5 border-t border-slate-700/30 space-y-4">
                                                 <div>
                                                     <label htmlFor="swiss_rounds_two_stage" className={labelClass}>Number of rounds</label>
@@ -714,7 +774,11 @@ export default function Create({ tournament }: Props) {
                                                         min="1"
                                                         className={`${inputClass} max-w-[200px]`}
                                                     />
-                                                    <p className="mt-1 text-xs text-slate-500">Leave blank for automatic calculation based on participant count.</p>
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        {data.group_stage_format === 'round_robin'
+                                                            ? 'Leave blank for full round robin (everyone vs everyone). Set fewer rounds only for a shortened group stage.'
+                                                            : 'Leave blank for automatic calculation based on participant count.'}
+                                                    </p>
                                                 </div>
                                             </div>
                                         )}

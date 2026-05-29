@@ -106,7 +106,7 @@ function getSwissPlayoffCutSize(
     participantCount: number,
 ): number | null {
     const configuredTop = tournament.swiss_top_cut_players ?? 0;
-    if (tournament.format === 'swiss' && configuredTop >= 2) {
+    if (['swiss', 'round_robin'].includes(tournament.format) && configuredTop >= 2) {
         return Math.min(configuredTop, standingCount);
     }
     if (tournament.tournament_type === 'two_stage' && tournament.advance_per_group) {
@@ -1878,8 +1878,9 @@ function SwissView({
     const hasFinalStage = finalMatches.length > 0;
     const isTwoStage = tournament.tournament_type === 'two_stage';
 
+    const isRoundRobin = tournament.format === 'round_robin';
     const hasSwissTopCut =
-        tournament.format === 'swiss' && (tournament.swiss_top_cut_players ?? 0) >= 2;
+        ['swiss', 'round_robin'].includes(tournament.format) && (tournament.swiss_top_cut_players ?? 0) >= 2;
     const wantsSwissPlayoff = isTwoStage || hasSwissTopCut;
 
     const mainBracket = finalMatches.filter(m => !m.bracket || m.bracket === 'winners' || m.bracket === 'grand_final');
@@ -1978,7 +1979,7 @@ function SwissView({
     const tabs = [
         {
             id: 'bracket' as const,
-            label: isTwoStage ? 'Group Stage' : hasSwissTopCut ? 'Swiss rounds' : 'Bracket',
+            label: isTwoStage ? 'Group Stage' : hasSwissTopCut ? (isRoundRobin ? 'Round Robin' : 'Swiss rounds') : isRoundRobin ? 'Round Robin' : 'Bracket',
             icon: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z',
         },
         {
@@ -2063,7 +2064,7 @@ function SwissView({
                 <NowPlayingBanner />
                 <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
                     <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between gap-3">
-                        <h2 className="text-lg font-semibold text-white">{isTwoStage ? 'Group Stage Rounds' : hasSwissTopCut ? 'Swiss rounds' : 'Rounds'}</h2>
+                        <h2 className="text-lg font-semibold text-white">{isTwoStage ? 'Group Stage Rounds' : hasSwissTopCut ? (isRoundRobin ? 'Round Robin' : 'Swiss rounds') : isRoundRobin ? 'Round Robin Rounds' : 'Rounds'}</h2>
                         <span className="text-xs text-slate-500 shrink-0">
                             Round {currentRound} of {totalRounds}
                         </span>
@@ -2822,11 +2823,12 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
     const occupiedStadiums = matches
         .filter(m => m.status === 'playing' && m.stadium)
         .map(m => m.stadium as number);
-    const isSwiss = tournament.format === 'swiss';
+    const isGroupStage = ['swiss', 'round_robin'].includes(tournament.format);
+    const isRoundRobin = tournament.format === 'round_robin';
     const isTwoStage = tournament.tournament_type === 'two_stage';
     const hasSwissTopCut =
-        isSwiss && (tournament.swiss_top_cut_players ?? 0) >= 2;
-    const playoffCutSize = isSwiss
+        isGroupStage && (tournament.swiss_top_cut_players ?? 0) >= 2;
+    const playoffCutSize = isGroupStage
         ? getSwissPlayoffCutSize(tournament, standings.length, participantCount)
         : null;
     const effectiveElimFormat = isTwoStage
@@ -2838,7 +2840,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
 
     // Single elimination: group main-bracket matches by round (exclude placement brackets)
     const roundsMap: Record<number, TournamentMatch[]> = {};
-    if (!isSwiss) {
+    if (!isGroupStage) {
         matches
             .filter(m => !m.bracket || m.bracket === 'winners')
             .forEach((m) => {
@@ -2847,7 +2849,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
             });
     }
     const rounds = Object.keys(roundsMap).map(Number).sort((a, b) => a - b);
-    const totalRounds = isSwiss ? (tournament.swiss_rounds || 0) : rounds.length;
+    const totalRounds = isGroupStage ? (tournament.swiss_rounds || 0) : rounds.length;
 
     const getRoundName = (round: number) => {
         if (round === totalRounds) return 'Finals';
@@ -2860,7 +2862,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
     const formatDescription = isTwoStage
         ? `${formatLabel[tournament.group_stage_format || tournament.format] || tournament.format} \u2192 ${formatLabel[tournament.final_stage_format || 'single_elimination']}`
         : hasSwissTopCut
-            ? `Swiss \u2192 Single elimination (top ${tournament.swiss_top_cut_players})`
+            ? `${isRoundRobin ? 'Round Robin' : 'Swiss'} \u2192 Single elimination (top ${tournament.swiss_top_cut_players})`
             : (formatLabel[tournament.format] || tournament.format);
 
     // Find champion
@@ -2876,7 +2878,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
     const champion =
         finalMatches.length > 0 && (isTwoStage || hasSwissTopCut)
             ? findBracketChampion(finalMatches)
-            : isSwiss
+            : isGroupStage
                 ? (liveTournament.status === 'completed' && standings.length > 0 ? standings[0]?.participant : null)
                 : findBracketChampion(matches);
 
@@ -3076,10 +3078,10 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm text-slate-500">
-                                        {isSwiss ? 'Swiss Rounds' : 'Rounds'}
+                                        {isGroupStage ? (isRoundRobin ? 'Round Robin Rounds' : 'Swiss Rounds') : 'Rounds'}
                                     </span>
                                     <span className="text-sm font-medium text-white">
-                                        {isSwiss
+                                        {isGroupStage
                                             ? (liveTournament.current_round > 0 ? `${liveTournament.current_round} / ${totalRounds}` : totalRounds || '-')
                                             : (totalRounds || '-')
                                         }
@@ -3127,12 +3129,12 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                 {(isTwoStage || hasSwissTopCut) && finalMatches.length === 0 && isActive && (
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-slate-500">Stage</span>
-                                        <span className="text-sm font-medium text-cyan-400">{isTwoStage ? 'Group Stage' : 'Swiss'}</span>
+                                        <span className="text-sm font-medium text-cyan-400">{isTwoStage ? 'Group Stage' : isRoundRobin ? 'Round Robin' : 'Swiss'}</span>
                                     </div>
                                 )}
                             </div>
                             {/* Scoring (Swiss only) */}
-                            {isSwiss && isActive && (
+                            {isGroupStage && isActive && (
                                 <div className="pt-3 mt-3 border-t border-slate-700/30">
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Scoring</p>
                                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
@@ -3176,30 +3178,30 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
 
                     {/* Row 2: Participants & Quick Actions */}
                     {!readOnly && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border-t border-slate-800/80 divide-y sm:divide-y-0 sm:divide-x divide-slate-800/80">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border-t border-slate-800/80 divide-y sm:divide-y-0 sm:divide-x divide-slate-800/80 items-stretch">
                         {/* Participants */}
-                        <div className="p-5 space-y-3">
-                            <div className="flex items-center justify-between mb-3">
+                        <div className="p-5 flex flex-col h-full min-h-[220px]">
+                            <div className="flex items-center justify-between mb-3 shrink-0">
                                 <div className="flex items-center gap-2">
                                     <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Participants</span>
                                 </div>
                                 <span className="text-xs text-slate-500">{participantCount} / {maxLabel}</span>
                             </div>
-                            <div>
+                            <div className="flex flex-col flex-1 min-h-0">
                                 {liveTournament.status === 'pending' && (
-                                    <>
+                                    <div className="shrink-0">
                                         <SingleAddForm tournamentId={tournament.id} />
                                         <button onClick={() => setShowAddModal(true)} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-xs text-slate-400 hover:text-white hover:bg-slate-700/50 hover:border-slate-600/50 transition-all mb-3">
                                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                             Bulk Add
                                         </button>
-                                    </>
+                                    </div>
                                 )}
                                 {participants.length === 0 ? (
                                     <p className="text-slate-500 text-xs text-center py-4">No participants yet</p>
                                 ) : (
-                                    <div className="space-y-1 max-h-44 overflow-y-auto pr-1">
+                                    <div className="flex-1 min-h-[14rem] overflow-y-auto pr-1 space-y-1">
                                         {participants.map((p) => (
                                             <ParticipantRow
                                                 key={p.id}
@@ -3344,7 +3346,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                 {/* Main Content */}
                 <div className="min-w-0">
                     <div className="space-y-6 min-w-0">
-                        {isSwiss ? (
+                        {isGroupStage ? (
                             liveTournament.status === 'active' || liveTournament.status === 'completed' ? (
                                 <SwissView
                                     tournament={liveTournament}
@@ -3371,7 +3373,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                             ) : (
                                 <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
                                     <div className="px-6 py-4 border-b border-slate-800/80">
-                                        <h2 className="text-lg font-semibold text-white">Swiss Rounds</h2>
+                                        <h2 className="text-lg font-semibold text-white">{isRoundRobin ? 'Round Robin Rounds' : 'Swiss Rounds'}</h2>
                                     </div>
                                     <div className="flex flex-col items-center justify-center py-20 px-6">
                                         <div className="w-16 h-16 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center mb-4">
@@ -3380,11 +3382,15 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                             </svg>
                                         </div>
                                         <p className="text-slate-400 text-sm text-center">
-                                            {participantCount < 2 ? 'Add at least 2 participants first.' : 'Click "Start Tournament" to generate Swiss pairings.'}
+                                            {participantCount < 2
+                                                ? 'Add at least 2 participants first.'
+                                                : `Click "Start Tournament" to generate ${isRoundRobin ? 'Round Robin' : 'Swiss'} pairings.`}
                                         </p>
                                         {participantCount >= 2 && (
                                             <p className="text-slate-500 text-xs mt-2 text-center">
-                                                {Math.ceil(Math.log2(participantCount))} rounds will be generated for {participantCount} participants.
+                                                {isRoundRobin
+                                                    ? `${tournament.swiss_rounds || (participantCount % 2 === 0 ? participantCount - 1 : participantCount)} rounds — full round robin: everyone plays everyone once.`
+                                                    : `${Math.ceil(Math.log2(participantCount))} rounds will be generated for ${participantCount} participants.`}
                                             </p>
                                         )}
                                     </div>
@@ -3482,7 +3488,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                         )}
 
                         {/* Player Stats for elimination formats */}
-                        {!isSwiss && matches.length > 0 && (
+                        {!isGroupStage && matches.length > 0 && (
                             <PlayerStatsTable
                                 participants={participants}
                                 matches={matches}

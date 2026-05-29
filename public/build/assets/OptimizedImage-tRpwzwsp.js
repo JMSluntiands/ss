@@ -1,0 +1,1 @@
+import{j as n}from"./app-BSn6Rccv.js";function s({priority:e=!1,loading:i,decoding:a,fetchPriority:o,...t}){return n.jsx("img",{...t,loading:i??(e?"eager":"lazy"),decoding:a??"async",fetchPriority:o??(e?"high":"low")})}export{s as O};
