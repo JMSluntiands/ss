@@ -26,10 +26,13 @@ Route::get('/dashboard', [TournamentController::class, 'index'])
 
 Route::get('/t/{tournament:slug}', [TournamentController::class, 'showPublic'])->name('tournaments.public');
 Route::get('/t/{tournament:slug}/live', [TournamentController::class, 'liveData'])->name('tournaments.liveDataPublic');
+Route::get('/t/{tournament:slug}/matches', [TournamentController::class, 'playerMatching'])->name('tournaments.playerMatching');
+Route::get('/t/{tournament:slug}/matches/live', [TournamentController::class, 'playerMatchingLive'])->name('tournaments.playerMatchingLive');
 Route::get('/t/{tournament:slug}/judge', [TournamentController::class, 'judgeLogin'])->name('judge.login');
 Route::post('/t/{tournament:slug}/judge', [TournamentController::class, 'judgeVerify'])->name('judge.verify');
 Route::get('/t/{tournament:slug}/judge/panel', [TournamentController::class, 'judgePanel'])->name('judge.panel');
 Route::post('/t/{tournament:slug}/judge/matches/{match}/report', [TournamentController::class, 'judgeReportMatch'])->name('judge.report');
+Route::patch('/t/{tournament:slug}/judge/matches/{match}/live-score', [TournamentController::class, 'judgeUpdateMatchLiveScore'])->name('judge.liveScore');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -75,6 +78,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/tournaments/{tournament}/stadiums', [TournamentController::class, 'updateStadiums'])->name('tournaments.updateStadiums');
     Route::post('/tournaments/{tournament}/judge-code', [TournamentController::class, 'generateJudgeCode'])->name('tournaments.generateJudgeCode');
     Route::patch('/tournaments/{tournament}/matches/{match}/status', [TournamentController::class, 'setMatchStatus'])->name('matches.setStatus');
+    Route::patch('/tournaments/{tournament}/matches/{match}/live-score', [TournamentController::class, 'updateMatchLiveScore'])->name('matches.liveScore');
     Route::patch('/tournaments/{tournament}/matches/{match}/players', [TournamentController::class, 'updateMatchPlayers'])->name('matches.updatePlayers');
     Route::post('/tournaments/{tournament}/matches/{match}/report', [TournamentController::class, 'reportMatch'])->name('matches.report');
     Route::get('/tournaments/{tournament}/live', [TournamentController::class, 'liveData'])->name('tournaments.liveData');

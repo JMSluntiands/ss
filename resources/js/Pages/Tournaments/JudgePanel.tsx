@@ -1,5 +1,6 @@
+import { patchLiveScore, type RoundEntry as LiveRoundEntry } from '@/utils/liveScoreSync';
 import { Head, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 
 interface MatchPlayer {
     id: number;
@@ -51,6 +52,10 @@ const FINISH_TYPES = [
 ];
 
 const FINISH_BADGE: Record<string, string> = Object.fromEntries(FINISH_TYPES.map(f => [f.label, f.badge]));
+
+function judgeLiveScoreUrl(tournamentSlug: string, matchId: number): string {
+    return route('judge.liveScore', { tournament: tournamentSlug, match: matchId });
+}
 
 function RoundScorer({ p1Name, p2Name, rounds, onAddRound, onRemoveRound, onReset }: {
     p1Name: string;
@@ -163,8 +168,10 @@ export default function JudgePanel({ tournament }: { tournament: Tournament }) {
     const completedMatches = tournament.matches.filter(m => m.status === 'completed' && m.winner_id).slice(-5).reverse();
     const [editingMatch, setEditingMatch] = useState<TournamentMatch | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [scoringActive, setScoringActive] = useState(false);
 
     useEffect(() => {
+        if (scoringActive) return;
         const interval = setInterval(() => {
             router.reload({
                 only: ['tournament'],
@@ -173,7 +180,7 @@ export default function JudgePanel({ tournament }: { tournament: Tournament }) {
             });
         }, 5000);
         return () => clearInterval(interval);
-    }, []);
+    }, [scoringActive]);
 
     return (
         <>
@@ -226,6 +233,7 @@ export default function JudgePanel({ tournament }: { tournament: Tournament }) {
                                     key={match.id}
                                     match={match}
                                     tournamentSlug={tournament.slug}
+                                    onScoringChange={setScoringActive}
                                 />
                             ))}
                         </>
@@ -273,6 +281,7 @@ export default function JudgePanel({ tournament }: { tournament: Tournament }) {
                     match={editingMatch}
                     tournamentSlug={tournament.slug}
                     forceOpen
+                    onScoringChange={setScoringActive}
                     onDone={() => setEditingMatch(null)}
                 />
             )}
@@ -280,10 +289,27 @@ export default function JudgePanel({ tournament }: { tournament: Tournament }) {
     );
 }
 
-function JudgeMatchCard({ match, tournamentSlug, forceOpen = false, onDone }: { match: TournamentMatch; tournamentSlug: string; forceOpen?: boolean; onDone?: () => void }) {
-    const [showScoreModal, setShowScoreModal] = useState(forceOpen);
+function JudgeMatchCard({
+    match,
+    tournamentSlug,
+    forceOpen = false,
+    onDone,
+    onScoringChange,
+}: {
+    match: TournamentMatch;
+    tournamentSlug: string;
+    forceOpen?: boolean;
+    onDone?: () => void;
+    onScoringChange?: (active: boolean) => void;
+}) {
+    const [showScoreModal, setShowScoreModal] = useState(forceOpen || match.status === 'playing');
     const [rounds, setRounds] = useState<RoundEntry[]>(match.round_details ?? []);
     const [submitting, setSubmitting] = useState(false);
+
+    const setScoringOpen = (open: boolean) => {
+        setShowScoreModal(open);
+        onScoringChange?.(open);
+    };
 
     const p1Score = rounds.filter(r => r.winner === 'p1').reduce((s, r) => s + r.points, 0);
     const p2Score = rounds.filter(r => r.winner === 'p2').reduce((s, r) => s + r.points, 0);
@@ -307,7 +333,7 @@ function JudgeMatchCard({ match, tournamentSlug, forceOpen = false, onDone }: { 
                 preserveScroll: true,
                 onFinish: () => {
                     setSubmitting(false);
-                    setShowScoreModal(false);
+                    setScoringOpen(false);
                     onDone?.();
                 },
             }
@@ -315,9 +341,33 @@ function JudgeMatchCard({ match, tournamentSlug, forceOpen = false, onDone }: { 
     };
 
     useEffect(() => {
+        onScoringChange?.(showScoreModal);
+    }, [showScoreModal, onScoringChange]);
+
+    useEffect(() => {
         if (!showScoreModal) return;
-        setRounds(match.round_details ?? []);
+        const server = match.round_details ?? [];
+        setRounds((prev) => (server.length >= prev.length ? server : prev));
     }, [showScoreModal, match.round_details]);
+
+    const syncRoundsToServer = useCallback(
+        (next: RoundEntry[]) => {
+            if (match.status !== 'playing') return;
+            void patchLiveScore(judgeLiveScoreUrl(tournamentSlug, match.id), next as LiveRoundEntry[]);
+        },
+        [match.status, match.id, tournamentSlug],
+    );
+
+    const updateRounds = useCallback(
+        (updater: RoundEntry[] | ((prev: RoundEntry[]) => RoundEntry[])) => {
+            setRounds((prev) => {
+                const next = typeof updater === 'function' ? updater(prev) : updater;
+                syncRoundsToServer(next);
+                return next;
+            });
+        },
+        [syncRoundsToServer],
+    );
 
     return (
         <div className="rounded-2xl border border-emerald-500/30 bg-slate-900/60 overflow-hidden shadow-lg shadow-emerald-500/5">
@@ -353,7 +403,7 @@ function JudgeMatchCard({ match, tournamentSlug, forceOpen = false, onDone }: { 
                         <button
                             onClick={() => {
                                 setRounds(match.round_details ?? []);
-                                setShowScoreModal(true);
+                                setScoringOpen(true);
                             }}
                             className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:brightness-110 transition-all active:scale-[0.98]"
                         >
@@ -366,9 +416,13 @@ function JudgeMatchCard({ match, tournamentSlug, forceOpen = false, onDone }: { 
                             p1Name={match.player1?.name || 'Player 1'}
                             p2Name={match.player2?.name || 'Player 2'}
                             rounds={rounds}
-                            onAddRound={(entry) => setRounds(prev => [...prev, entry])}
-                            onRemoveRound={(i) => setRounds(prev => prev.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, round: idx + 1 })))}
-                            onReset={() => setRounds([])}
+                            onAddRound={(entry) => updateRounds((prev) => [...prev, entry])}
+                            onRemoveRound={(i) =>
+                                updateRounds((prev) =>
+                                    prev.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, round: idx + 1 })),
+                                )
+                            }
+                            onReset={() => updateRounds([])}
                         />
 
                         {canSubmit && (
@@ -398,8 +452,8 @@ function JudgeMatchCard({ match, tournamentSlug, forceOpen = false, onDone }: { 
 
                         <button
                             onClick={() => {
-                                setShowScoreModal(false);
-                                setRounds([]);
+                                setScoringOpen(false);
+                                setRounds(match.round_details ?? []);
                                 onDone?.();
                             }}
                             className="w-full px-3 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-300 transition-colors"

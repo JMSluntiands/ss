@@ -328,6 +328,47 @@ class TournamentController extends Controller
         return back();
     }
 
+    public function updateMatchLiveScore(Request $request, Tournament $tournament, TournamentMatch $match)
+    {
+        if ($tournament->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($match->tournament_id !== $tournament->id) {
+            abort(404);
+        }
+
+        if ($match->status !== 'playing') {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Only playing matches can sync live scores.'], 422);
+            }
+
+            return back()->withErrors(['match' => 'Only playing matches can sync live scores.']);
+        }
+
+        $validated = $request->validate([
+            'round_details' => ['nullable', 'array'],
+            'round_details.*.round' => ['required', 'integer', 'min:1'],
+            'round_details.*.winner' => ['required', 'in:p1,p2'],
+            'round_details.*.finish' => ['required', 'string', 'max:8'],
+            'round_details.*.points' => ['required', 'integer', 'min:0', 'max:10'],
+            'player1_score' => 'nullable|integer|min:0',
+            'player2_score' => 'nullable|integer|min:0',
+        ]);
+
+        $match->update([
+            'round_details' => $validated['round_details'] ?? [],
+            'player1_score' => $validated['player1_score'] ?? 0,
+            'player2_score' => $validated['player2_score'] ?? 0,
+        ]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return back();
+    }
+
     public function updateMatchPlayers(Request $request, Tournament $tournament, TournamentMatch $match)
     {
         if ($tournament->user_id !== auth()->id()) {
@@ -1132,6 +1173,39 @@ class TournamentController extends Controller
         return response()->json($data);
     }
 
+    public function playerMatching(Tournament $tournament)
+    {
+        return Inertia::render('Tournaments/PlayerMatching', [
+            'tournament' => $tournament->only(['id', 'name', 'slug', 'status', 'format', 'current_round']),
+            'matches' => $this->playingMatchesForDisplay($tournament),
+        ]);
+    }
+
+    public function playerMatchingLive(Tournament $tournament)
+    {
+        return response()->json([
+            'matches' => $this->playingMatchesForDisplay($tournament),
+            'status' => $tournament->status,
+            'current_round' => $tournament->current_round,
+        ]);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, TournamentMatch>
+     */
+    private function playingMatchesForDisplay(Tournament $tournament)
+    {
+        return $tournament->matches()
+            ->with(['player1', 'player2'])
+            ->where('status', 'playing')
+            ->whereNotNull('player1_id')
+            ->whereNotNull('player2_id')
+            ->where('is_bye', false)
+            ->orderBy('stadium')
+            ->orderBy('match_number')
+            ->get();
+    }
+
     public function destroy(Tournament $tournament)
     {
         if ($tournament->user_id !== auth()->id()) {
@@ -1225,6 +1299,51 @@ class TournamentController extends Controller
 
         return Inertia::render('Tournaments/JudgePanel', [
             'tournament' => $tournament,
+        ]);
+    }
+
+    public function judgeUpdateMatchLiveScore(Request $request, Tournament $tournament, TournamentMatch $match)
+    {
+        if ($tournament->status === 'completed') {
+            session()->forget("judge_access_{$tournament->id}");
+            abort(403);
+        }
+
+        if (! session("judge_access_{$tournament->id}")) {
+            abort(403);
+        }
+
+        if ($match->tournament_id !== $tournament->id) {
+            abort(404);
+        }
+
+        if ($match->status !== 'playing') {
+            return response()->json(['message' => 'Only playing matches can sync live scores.'], 422);
+        }
+
+        $validated = $request->validate([
+            'round_details' => ['nullable', 'array'],
+            'round_details.*.round' => ['required', 'integer', 'min:1'],
+            'round_details.*.winner' => ['required', 'in:p1,p2'],
+            'round_details.*.finish' => ['required', 'string', 'max:8'],
+            'round_details.*.points' => ['required', 'integer', 'min:0', 'max:10'],
+            'player1_score' => 'nullable|integer|min:0',
+            'player2_score' => 'nullable|integer|min:0',
+        ]);
+
+        $roundDetails = $validated['round_details'] ?? [];
+
+        $match->update([
+            'round_details' => $roundDetails,
+            'player1_score' => $validated['player1_score'] ?? 0,
+            'player2_score' => $validated['player2_score'] ?? 0,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'match' => $match->fresh(['player1', 'player2'])->only([
+                'id', 'status', 'player1_score', 'player2_score', 'round_details',
+            ]),
         ]);
     }
 

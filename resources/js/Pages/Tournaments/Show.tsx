@@ -6,6 +6,7 @@ import QRCode from 'react-qr-code';
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageProps } from '@/types';
+import { patchLiveScore, type RoundEntry as LiveRoundEntry } from '@/utils/liveScoreSync';
 
 interface Participant {
     id: number;
@@ -532,8 +533,21 @@ function MatchCard({
     const p2Score = rounds.filter(r => r.winner === 'p2').reduce((s, r) => s + r.points, 0);
 
     const openScoreModal = () => {
-        setRounds([]);
+        setRounds((match.round_details as RoundEntry[] | null) ?? []);
         setShowScoreModal(true);
+    };
+
+    const updateRounds = (updater: RoundEntry[] | ((prev: RoundEntry[]) => RoundEntry[])) => {
+        setRounds((prev) => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            if (isPlaying) {
+                void patchLiveScore(
+                    route('matches.liveScore', { tournament: tournamentId, match: match.id }),
+                    next as LiveRoundEntry[],
+                );
+            }
+            return next;
+        });
     };
 
     const submitScore = () => {
@@ -860,9 +874,13 @@ function MatchCard({
                                 p1Name={p1Name}
                                 p2Name={p2Name}
                                 rounds={rounds}
-                                onAddRound={(entry) => setRounds(prev => [...prev, entry])}
-                                onRemoveRound={(i) => setRounds(prev => prev.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, round: idx + 1 })))}
-                                onReset={() => setRounds([])}
+                                onAddRound={(entry) => updateRounds((prev) => [...prev, entry])}
+                                onRemoveRound={(i) =>
+                                    updateRounds((prev) =>
+                                        prev.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, round: idx + 1 })),
+                                    )
+                                }
+                                onReset={() => updateRounds([])}
                             />
 
                             {(() => {
@@ -3383,7 +3401,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                         <div className="mt-2 w-16 h-1 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400" />
                     </div>
                     {!readOnly && liveTournament.status === 'pending' && (
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 shrink-0">
                             <Link href={route('tournaments.edit', tournament.id)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 border border-slate-700/50 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                 Edit
@@ -3391,6 +3409,31 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                             <button onClick={() => setShowDeleteConfirm(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-sm font-medium text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 Delete
+                            </button>
+                        </div>
+                    )}
+                    {!readOnly && liveTournament.status === 'active' && (
+                        <div className="flex items-center gap-2 shrink-0">
+                            <a
+                                href={`/t/${tournament.slug}/matches`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700/50 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                Preview
+                            </a>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const shareUrl = `${window.location.origin}/t/${tournament.slug}/matches`;
+                                    navigator.clipboard.writeText(shareUrl);
+                                    setToast('Live matches link copied!');
+                                }}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600/90 to-cyan-600/90 border border-purple-500/30 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 hover:brightness-110 transition-all active:scale-[0.98]"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                Share Live Matches
                             </button>
                         </div>
                     )}
