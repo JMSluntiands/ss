@@ -13,3 +13,8 @@ export function memberImageSrc(url: string | null): string | null {
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     return publicStorageUrl(url);
 }
+
+/** Participant avatars from API (path or /storage/... or full URL). */
+export function participantImageSrc(url: string | null | undefined): string | null {
+    return memberImageSrc(url ?? null);
+}

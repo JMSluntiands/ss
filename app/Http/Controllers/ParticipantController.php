@@ -113,8 +113,8 @@ class ParticipantController extends Controller
             abort(404);
         }
 
-        if ($tournament->status !== 'pending') {
-            return back()->withErrors(['avatar' => 'Photos can only be changed before the tournament starts.']);
+        if ($tournament->status === 'completed') {
+            return back()->withErrors(['avatar' => 'Photos cannot be changed after the tournament is completed.']);
         }
 
         $request->validate([

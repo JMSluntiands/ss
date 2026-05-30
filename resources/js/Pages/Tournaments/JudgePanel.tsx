@@ -1,6 +1,6 @@
-import { patchLiveScore, type RoundEntry as LiveRoundEntry } from '@/utils/liveScoreSync';
+import { persistLiveScoreQueued, type RoundEntry as LiveRoundEntry } from '@/utils/liveScoreSync';
 import { Head, router } from '@inertiajs/react';
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 
 interface MatchPlayer {
     id: number;
@@ -305,6 +305,13 @@ function JudgeMatchCard({
     const [showScoreModal, setShowScoreModal] = useState(forceOpen || match.status === 'playing');
     const [rounds, setRounds] = useState<RoundEntry[]>(match.round_details ?? []);
     const [submitting, setSubmitting] = useState(false);
+    const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const roundsRef = useRef(rounds);
+    const liveScoreUrl = match.status === 'playing' ? judgeLiveScoreUrl(tournamentSlug, match.id) : null;
+
+    useEffect(() => {
+        roundsRef.current = rounds;
+    }, [rounds]);
 
     const setScoringOpen = (open: boolean) => {
         setShowScoreModal(open);
@@ -318,8 +325,11 @@ function JudgeMatchCard({
     const hasScores = p1Score > 0 || p2Score > 0;
     const canSubmit = hasScores && p1Score !== p2Score;
 
-    const submitScore = () => {
+    const submitScore = async () => {
         const winnerId = p1Wins ? match.player1_id! : match.player2_id!;
+        if (liveScoreUrl) {
+            await persistLiveScoreQueued(liveScoreUrl, rounds as LiveRoundEntry[]);
+        }
         setSubmitting(true);
         router.post(
             route('judge.report', [tournamentSlug, match.id]),
@@ -345,28 +355,30 @@ function JudgeMatchCard({
     }, [showScoreModal, onScoringChange]);
 
     useEffect(() => {
-        if (!showScoreModal) return;
-        const server = match.round_details ?? [];
+        const server = (match.round_details ?? []) as RoundEntry[];
         setRounds((prev) => (server.length >= prev.length ? server : prev));
-    }, [showScoreModal, match.round_details]);
+    }, [match.id, match.round_details]);
 
-    const syncRoundsToServer = useCallback(
-        (next: RoundEntry[]) => {
-            if (match.status !== 'playing') return;
-            void patchLiveScore(judgeLiveScoreUrl(tournamentSlug, match.id), next as LiveRoundEntry[]);
+    const persistRounds = useCallback(
+        async (next: RoundEntry[]) => {
+            if (!liveScoreUrl) return true;
+            setSaveState('saving');
+            const ok = await persistLiveScoreQueued(liveScoreUrl, next as LiveRoundEntry[]);
+            setSaveState(ok ? 'saved' : 'error');
+            return ok;
         },
-        [match.status, match.id, tournamentSlug],
+        [liveScoreUrl],
     );
 
     const updateRounds = useCallback(
         (updater: RoundEntry[] | ((prev: RoundEntry[]) => RoundEntry[])) => {
-            setRounds((prev) => {
-                const next = typeof updater === 'function' ? updater(prev) : updater;
-                syncRoundsToServer(next);
-                return next;
-            });
+            const prev = roundsRef.current;
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            roundsRef.current = next;
+            setRounds(next);
+            void persistRounds(next);
         },
-        [syncRoundsToServer],
+        [persistRounds],
     );
 
     return (
@@ -425,6 +437,12 @@ function JudgeMatchCard({
                             onReset={() => updateRounds([])}
                         />
 
+                        {liveScoreUrl && saveState !== 'idle' && (
+                            <p className={`text-center text-[10px] ${saveState === 'error' ? 'text-red-400' : saveState === 'saving' ? 'text-slate-500' : 'text-emerald-500/80'}`}>
+                                {saveState === 'saving' ? 'Saving to server…' : saveState === 'error' ? 'Could not save — check connection' : 'Saved to server'}
+                            </p>
+                        )}
+
                         {canSubmit && (
                             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                                 <svg className="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
@@ -443,7 +461,7 @@ function JudgeMatchCard({
                         )}
 
                         <button
-                            onClick={submitScore}
+                            onClick={() => void submitScore()}
                             disabled={!canSubmit || submitting}
                             className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                         >

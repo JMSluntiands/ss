@@ -6,7 +6,7 @@ import QRCode from 'react-qr-code';
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageProps } from '@/types';
-import { patchLiveScore, type RoundEntry as LiveRoundEntry } from '@/utils/liveScoreSync';
+import { persistLiveScoreQueued, type RoundEntry as LiveRoundEntry } from '@/utils/liveScoreSync';
 
 interface Participant {
     id: number;
@@ -537,22 +537,26 @@ function MatchCard({
         setShowScoreModal(true);
     };
 
+    const liveScoreUrl = isPlaying
+        ? route('matches.liveScore', { tournament: tournamentId, match: match.id })
+        : null;
+
     const updateRounds = (updater: RoundEntry[] | ((prev: RoundEntry[]) => RoundEntry[])) => {
         setRounds((prev) => {
             const next = typeof updater === 'function' ? updater(prev) : updater;
-            if (isPlaying) {
-                void patchLiveScore(
-                    route('matches.liveScore', { tournament: tournamentId, match: match.id }),
-                    next as LiveRoundEntry[],
-                );
+            if (liveScoreUrl) {
+                void persistLiveScoreQueued(liveScoreUrl, next as LiveRoundEntry[]);
             }
             return next;
         });
     };
 
-    const submitScore = () => {
+    const submitScore = async () => {
         const winnerId = p1Score > p2Score ? match.player1_id : match.player2_id;
         if (!winnerId) return;
+        if (liveScoreUrl) {
+            await persistLiveScoreQueued(liveScoreUrl, rounds as LiveRoundEntry[]);
+        }
         setSubmitting(true);
         router.post(
             route('matches.report', [tournamentId, match.id]),
@@ -906,7 +910,7 @@ function MatchCard({
                                             </div>
                                         )}
                                         <button
-                                            onClick={submitScore}
+                                            onClick={() => void submitScore()}
                                             disabled={!canSubmit || submitting}
                                             className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
@@ -934,8 +938,22 @@ function SwissScoreModal({
     onClose: () => void;
 }) {
     const isEdit = match.status === 'completed';
-    const [rounds, setRounds] = useState<RoundEntry[]>([]);
+    const isPlaying = match.status === 'playing';
+    const liveScoreUrl = isPlaying
+        ? route('matches.liveScore', { tournament: tournamentId, match: match.id })
+        : null;
+    const [rounds, setRounds] = useState<RoundEntry[]>(() => (match.round_details as RoundEntry[] | null) ?? []);
     const [submitting, setSubmitting] = useState(false);
+
+    const updateRounds = (updater: RoundEntry[] | ((prev: RoundEntry[]) => RoundEntry[])) => {
+        setRounds((prev) => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            if (liveScoreUrl) {
+                void persistLiveScoreQueued(liveScoreUrl, next as LiveRoundEntry[]);
+            }
+            return next;
+        });
+    };
 
     const p1BP = rounds.filter(r => r.winner === 'p1').reduce((s, r) => s + r.points, 0);
     const p2BP = rounds.filter(r => r.winner === 'p2').reduce((s, r) => s + r.points, 0);
@@ -946,8 +964,11 @@ function SwissScoreModal({
     const winnerId = p1BP > p2BP ? match.player1_id : p2BP > p1BP ? match.player2_id : null;
     const canSubmit = winnerId !== null;
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!canSubmit) return;
+        if (liveScoreUrl) {
+            await persistLiveScoreQueued(liveScoreUrl, rounds as LiveRoundEntry[]);
+        }
         setSubmitting(true);
         router.post(
             route('matches.report', [tournamentId, match.id]),
@@ -986,9 +1007,13 @@ function SwissScoreModal({
                             p1Name={p1Name}
                             p2Name={p2Name}
                             rounds={rounds}
-                            onAddRound={(entry) => setRounds(prev => [...prev, entry])}
-                            onRemoveRound={(i) => setRounds(prev => prev.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, round: idx + 1 })))}
-                            onReset={() => setRounds([])}
+                            onAddRound={(entry) => updateRounds((prev) => [...prev, entry])}
+                            onRemoveRound={(i) =>
+                                updateRounds((prev) =>
+                                    prev.filter((_, idx) => idx !== i).map((r, idx) => ({ ...r, round: idx + 1 })),
+                                )
+                            }
+                            onReset={() => updateRounds([])}
                         />
 
                         {winnerId && (
@@ -1014,7 +1039,7 @@ function SwissScoreModal({
                             Cancel
                         </button>
                         <button
-                            onClick={handleSubmit}
+                            onClick={() => void handleSubmit()}
                             disabled={!canSubmit || submitting}
                             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -2913,12 +2938,14 @@ function ParticipantRow({
     tournamentId,
     readOnly,
     isPending,
+    canEditAvatar: canEditAvatarProp,
     onRemove,
 }: {
     participant: Participant;
     tournamentId: number;
     readOnly: boolean;
     isPending: boolean;
+    canEditAvatar: boolean;
     onRemove: (id: number) => void;
 }) {
     const [editingJudge, setEditingJudge] = useState(false);
@@ -2956,7 +2983,7 @@ function ParticipantRow({
     const scrollTextClass =
         'min-w-0 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600';
 
-    const canEditAvatar = !readOnly && isPending;
+    const canEditAvatar = canEditAvatarProp;
 
     const uploadAvatar = (file: File) => {
         const payload = new FormData();
@@ -3679,6 +3706,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                                 tournamentId={tournament.id}
                                                 readOnly={readOnly}
                                                 isPending={liveTournament.status === 'pending'}
+                                                canEditAvatar={!readOnly && liveTournament.status !== 'completed'}
                                                 onRemove={handleRemoveParticipant}
                                             />
                                         ))}

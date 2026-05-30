@@ -13,7 +13,9 @@ export function totalsFromRounds(roundDetails: RoundEntry[]) {
     return { p1, p2 };
 }
 
-/** Push live round scores to the server so the public matches board can poll them. */
+const saveChains = new Map<string, Promise<boolean>>();
+
+/** Push live round scores to the server (one in-flight chain per match URL). */
 export async function patchLiveScore(url: string, roundDetails: RoundEntry[]): Promise<boolean> {
     const { p1, p2 } = totalsFromRounds(roundDetails);
 
@@ -33,4 +35,24 @@ export async function patchLiveScore(url: string, roundDetails: RoundEntry[]): P
     } catch {
         return false;
     }
+}
+
+/** Queue saves so rapid clicks stay in order and each click eventually hits the DB. */
+export function persistLiveScoreQueued(url: string, roundDetails: RoundEntry[]): Promise<boolean> {
+    const previous = saveChains.get(url) ?? Promise.resolve(true);
+    const job = previous
+        .catch(() => true)
+        .then(() => patchLiveScore(url, roundDetails));
+
+    saveChains.set(url, job);
+
+    return job.finally(() => {
+        if (saveChains.get(url) === job) {
+            saveChains.delete(url);
+        }
+    });
+}
+
+export function waitForPendingLiveScore(url: string): Promise<void> {
+    return (saveChains.get(url) ?? Promise.resolve(true)).then(() => undefined);
 }

@@ -33,7 +33,14 @@ class Participant extends Model
                 return null;
             }
 
-            return Storage::disk('public')->url($this->avatar_path);
+            $path = $this->avatar_path;
+
+            if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+                return $path;
+            }
+
+            // Relative URL works on any host (avoids wrong APP_URL in Storage::url()).
+            return '/storage/'.ltrim($path, '/');
         });
     }
 }

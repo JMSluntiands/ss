@@ -1,3 +1,4 @@
+import ParticipantAvatar from '@/Components/ParticipantAvatar';
 import SiteLogo from '@/Components/SiteLogo';
 import { Head } from '@inertiajs/react';
 import { useQuery } from '@tanstack/react-query';
@@ -6,6 +7,7 @@ import { useMemo, useState } from 'react';
 interface MatchPlayer {
     id: number;
     name: string;
+    avatar_url?: string | null;
 }
 
 interface RoundEntry {
@@ -90,23 +92,35 @@ function MatchBoardCard({ match }: { match: LiveMatch }) {
             </div>
 
             <div className="p-4 flex-1 flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className={`flex-1 text-center min-w-0 ${p1Leading ? 'text-cyan-400' : 'text-white'}`}>
-                        <p className="text-base sm:text-lg font-bold uppercase truncate tracking-wide" title={match.player1?.name}>
+                <div className="flex items-start gap-2 sm:gap-3 mb-4">
+                    <div className={`flex-1 flex flex-col items-center min-w-0 ${p1Leading ? 'text-cyan-400' : 'text-white'}`}>
+                        <ParticipantAvatar
+                            name={match.player1?.name ?? 'Player 1'}
+                            avatarUrl={match.player1?.avatar_url}
+                            size="xl"
+                            className="mb-2.5 border-slate-600/80"
+                        />
+                        <p className="text-xs sm:text-sm font-bold uppercase truncate tracking-wide w-full text-center px-0.5" title={match.player1?.name}>
                             {match.player1?.name}
                         </p>
-                        <p className={`text-4xl sm:text-5xl font-black mt-1 tabular-nums leading-none ${p1Leading ? 'text-cyan-400' : 'text-white'}`}>
+                        <p className={`text-3xl sm:text-4xl font-black mt-1 tabular-nums leading-none ${p1Leading ? 'text-cyan-400' : 'text-white'}`}>
                             {p1Score}
                         </p>
                     </div>
-                    <div className="shrink-0">
-                        <span className="text-xs font-bold text-slate-600">VS</span>
+                    <div className="shrink-0 pt-10 sm:pt-12">
+                        <span className="text-[10px] sm:text-xs font-bold text-slate-600">VS</span>
                     </div>
-                    <div className={`flex-1 text-center min-w-0 ${p2Leading ? 'text-cyan-400' : 'text-white'}`}>
-                        <p className="text-base sm:text-lg font-bold uppercase truncate tracking-wide" title={match.player2?.name}>
+                    <div className={`flex-1 flex flex-col items-center min-w-0 ${p2Leading ? 'text-cyan-400' : 'text-white'}`}>
+                        <ParticipantAvatar
+                            name={match.player2?.name ?? 'Player 2'}
+                            avatarUrl={match.player2?.avatar_url}
+                            size="xl"
+                            className="mb-2.5 border-slate-600/80"
+                        />
+                        <p className="text-xs sm:text-sm font-bold uppercase truncate tracking-wide w-full text-center px-0.5" title={match.player2?.name}>
                             {match.player2?.name}
                         </p>
-                        <p className={`text-4xl sm:text-5xl font-black mt-1 tabular-nums leading-none ${p2Leading ? 'text-cyan-400' : 'text-white'}`}>
+                        <p className={`text-3xl sm:text-4xl font-black mt-1 tabular-nums leading-none ${p2Leading ? 'text-cyan-400' : 'text-white'}`}>
                             {p2Score}
                         </p>
                     </div>
@@ -171,7 +185,7 @@ export default function PlayerMatching({
             if (data.current_round != null) setCurrentRound(data.current_round);
             return data;
         },
-        refetchInterval: 1500,
+        refetchInterval: 4000,
         refetchIntervalInBackground: true,
         refetchOnWindowFocus: true,
     });
@@ -198,7 +212,7 @@ export default function PlayerMatching({
                     <SiteLogo className="h-10 w-auto" />
                 </header>
 
-                <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+                <main className="flex-1 w-full max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                     <div className="text-center mb-8">
                         <h1 className="text-2xl sm:text-4xl font-bold text-white uppercase tracking-tight truncate px-2" title={tournament.name}>
                             {tournament.name}
@@ -215,7 +229,7 @@ export default function PlayerMatching({
                                 <span className="text-xs text-slate-500">Round {currentRound}</span>
                             )}
                             <span className="text-xs text-slate-600">
-                                {isFetching ? 'Updating…' : 'Auto-refresh every 1.5s'}
+                                {isFetching ? 'Updating…' : 'Auto-refresh every 4s'}
                             </span>
                         </div>
                     </div>
@@ -228,9 +242,9 @@ export default function PlayerMatching({
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <p className="text-slate-300 text-sm font-medium">Walang live match ngayon</p>
+                                <p className="text-slate-300 text-sm font-medium">No live matches right now</p>
                                 <p className="text-slate-600 text-xs mt-1">
-                                    Lalabas dito kapag naka-Play na ang match. Mawawala pag na-submit na ang resulta.
+                                    Matches appear here when they're in play. They disappear once the result is submitted.
                                 </p>
                             </div>
                         </div>
@@ -239,7 +253,7 @@ export default function PlayerMatching({
                             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-center mb-4">
                                 Now Playing ({sortedMatches.length})
                             </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
                                 {sortedMatches.map((match) => (
                                     <MatchBoardCard key={match.id} match={match} />
                                 ))}

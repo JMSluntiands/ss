@@ -1,8 +1,13 @@
-type Size = 'sm' | 'md';
+import { participantImageSrc } from '@/utils/publicStorage';
+import { useEffect, useState } from 'react';
+
+type Size = 'sm' | 'md' | 'lg' | 'xl';
 
 const sizeClass: Record<Size, string> = {
     sm: 'w-8 h-8 text-[10px]',
     md: 'w-10 h-10 text-xs',
+    lg: 'w-14 h-14 sm:w-16 sm:h-16 text-sm',
+    xl: 'w-24 h-24 sm:w-28 sm:h-28 text-lg',
 };
 
 function initialsFromName(name: string): string {
@@ -28,6 +33,13 @@ export default function ParticipantAvatar({
     className?: string;
 }) {
     const clickable = editable && onClick;
+    const [imgFailed, setImgFailed] = useState(false);
+    const src = participantImageSrc(avatarUrl);
+    const showImage = src && !imgFailed;
+
+    useEffect(() => {
+        setImgFailed(false);
+    }, [avatarUrl]);
 
     return (
         <button
@@ -39,8 +51,13 @@ export default function ParticipantAvatar({
                 clickable ? 'cursor-pointer hover:border-cyan-500/50 hover:ring-2 hover:ring-cyan-500/20 transition-all' : 'cursor-default'
             } ${className}`}
         >
-            {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            {showImage ? (
+                <img
+                    src={src}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    onError={() => setImgFailed(true)}
+                />
             ) : (
                 <span className="font-bold text-slate-400">{initialsFromName(name)}</span>
             )}
