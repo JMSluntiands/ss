@@ -3,6 +3,7 @@ import SiteLogo from '@/Components/SiteLogo';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { PageProps } from '@/types';
+import { tournamentxLoginUrl } from '@/utils/tournamentxUrl';
 
 interface EventRegistrationItem {
     id: number;
@@ -97,7 +98,8 @@ export default function EventShow({
     event: EventData;
     registrationCounts: { total: number; confirmed: number; tentative: number };
 }) {
-    const { auth, flash } = usePage<PageProps>().props;
+    const pageProps = usePage<PageProps>().props;
+    const { auth, flash } = pageProps;
     const [regOpen, setRegOpen] = useState(false);
     const [regForm, setRegForm] = useState<RegForm>(emptyReg);
     const [processing, setProcessing] = useState(false);
@@ -106,7 +108,7 @@ export default function EventShow({
 
     const openRegister = () => {
         if (!auth.user) {
-            window.location.href = route('login');
+            window.location.href = tournamentxLoginUrl(pageProps);
             return;
         }
         setRegForm({ ...emptyReg });

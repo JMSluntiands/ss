@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\SiteVisitorStat;
 use App\Support\SiteAssets;
+use App\Support\TournamentXDomain;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -42,6 +43,9 @@ class HandleInertiaRequests extends Middleware
             'site_visit_count' => $visitCount,
             'site_logo_url' => SiteAssets::logoUrl(),
             'tournament_x_logo_url' => SiteAssets::tournamentXLogoUrl(),
+            'tournamentx_url' => TournamentXDomain::baseUrl(),
+            'tournamentx_enabled' => TournamentXDomain::isEnabled(),
+            'main_site_url' => TournamentXDomain::mainSiteUrl(),
             'auth' => [
                 'user' => $user,
             ],

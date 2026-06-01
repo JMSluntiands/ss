@@ -4,10 +4,14 @@ import SiteLogo from '@/Components/SiteLogo';
 import SiteVisitsStrip from '@/Components/SiteVisitsStrip';
 import VisitorCounter from '@/Components/VisitorCounter';
 import { PageProps } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { tournamentxDashboardUrl, tournamentxLoginUrl } from '@/utils/tournamentxUrl';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 export default function Welcome({ auth, members = [] }: PageProps & { members?: MemberSlideData[] }) {
+    const page = usePage<PageProps>();
+    const txLogin = tournamentxLoginUrl(page.props);
+    const txDashboard = tournamentxDashboardUrl(page.props);
     const [scrollY, setScrollY] = useState(0);
     const [menuOpen, setMenuOpen] = useState(false);
     const [joinModalOpen, setJoinModalOpen] = useState(false);
@@ -124,13 +128,13 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
 
                                 <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4">
                                     {auth.user ? (
-                                        <Link
-                                            href={route('dashboard')}
+                                        <a
+                                            href={txDashboard}
                                             className="group relative px-8 py-4 text-lg font-bold bg-red-600 hover:bg-red-500 rounded-xl transition-all shadow-lg shadow-red-600/20 hover:shadow-red-500/30"
                                         >
                                             Go to Dashboard
                                             <span className="absolute inset-0 rounded-xl border border-red-400/20 group-hover:border-red-400/40 transition-colors" />
-                                        </Link>
+                                        </a>
                                     ) : (
                                         <Link
                                             href={route('register')}
@@ -140,15 +144,15 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                                             <span className="absolute inset-0 rounded-xl border border-red-400/20 group-hover:border-red-400/40 transition-colors" />
                                         </Link>
                                     )}
-                                    <Link
-                                        href={route('login')}
+                                    <a
+                                        href={txLogin}
                                         className="group px-8 py-4 text-lg font-bold border border-zinc-700 hover:border-red-500/50 rounded-xl transition-all hover:bg-zinc-900/80 flex items-center gap-3"
                                     >
                                         <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                         </svg>
                                         Manage Tournament
-                                    </Link>
+                                    </a>
                                 </div>
                             </div>
 

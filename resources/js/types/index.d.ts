@@ -31,6 +31,9 @@ export type PageProps<
     };
     site_logo_url: string;
     tournament_x_logo_url: string;
+    tournamentx_url: string;
+    tournamentx_enabled: boolean;
+    main_site_url: string;
     /** Total counted page views on public site routes (see TrackSiteVisit middleware). */
     site_visit_count: number;
 };

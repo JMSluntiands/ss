@@ -1,3 +1,5 @@
+import { PageProps } from '@/types';
+import { tournamentxDashboardUrl } from '@/utils/tournamentxUrl';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, useState } from 'react';
 
@@ -12,7 +14,9 @@ export default function AdminLayout({
     children,
     currentPage = 'dashboard',
 }: PropsWithChildren<{ currentPage?: string }>) {
-    const { auth, flash } = usePage<any>().props;
+    const page = usePage<PageProps>();
+    const { auth, flash, main_site_url } = page.props;
+    const txDashboard = tournamentxDashboardUrl(page.props);
     const user = auth.user;
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -172,9 +176,19 @@ export default function AdminLayout({
                         </Link>
                     ))}
 
-                    <div className="pt-4 mt-4 border-t border-zinc-800/50">
-                        <Link
-                            href={route('dashboard')}
+                    <div className="pt-4 mt-4 border-t border-zinc-800/50 space-y-1">
+                        <a
+                            href={txDashboard}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-white hover:bg-zinc-800/60 border border-transparent transition-all ${sidebarCollapsed ? 'justify-center' : ''}`}
+                            title={sidebarCollapsed ? 'Tournament X' : undefined}
+                        >
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            {!sidebarCollapsed && <span>Tournament X</span>}
+                        </a>
+                        <a
+                            href={main_site_url}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-white hover:bg-zinc-800/60 border border-transparent transition-all ${sidebarCollapsed ? 'justify-center' : ''}`}
                             title={sidebarCollapsed ? 'Back to Site' : undefined}
                         >
@@ -182,7 +196,7 @@ export default function AdminLayout({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                             </svg>
                             {!sidebarCollapsed && <span>Back to Site</span>}
-                        </Link>
+                        </a>
                     </div>
                 </nav>
 
@@ -310,16 +324,25 @@ export default function AdminLayout({
                         </Link>
                     ))}
 
-                    <div className="pt-4 mt-4 border-t border-zinc-800/50">
-                        <Link
-                            href={route('dashboard')}
+                    <div className="pt-4 mt-4 border-t border-zinc-800/50 space-y-1">
+                        <a
+                            href={txDashboard}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-white hover:bg-zinc-800/60 border border-transparent transition-all"
+                        >
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            <span>Tournament X</span>
+                        </a>
+                        <a
+                            href={main_site_url}
                             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-white hover:bg-zinc-800/60 border border-transparent transition-all"
                         >
                             <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                             </svg>
                             <span>Back to Site</span>
-                        </Link>
+                        </a>
                     </div>
                 </nav>
 

@@ -3,6 +3,7 @@ import SiteLogo from '@/Components/SiteLogo';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import { PageProps } from '@/types';
+import { tournamentxLoginUrl } from '@/utils/tournamentxUrl';
 
 interface UpcomingEvent {
     id: number;
@@ -92,7 +93,8 @@ function formatEventDateTime(date: string, time?: string | null): string {
 }
 
 export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomingEvents?: UpcomingEvent[]; pastEvents?: PastEvent[] }) {
-    const { auth, flash } = usePage<PageProps>().props;
+    const pageProps = usePage<PageProps>().props;
+    const { auth, flash } = pageProps;
     const [regEvent, setRegEvent] = useState<UpcomingEvent | null>(null);
     const [regForm, setRegForm] = useState<RegForm>(emptyReg);
     const [processing, setProcessing] = useState(false);
@@ -100,7 +102,7 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
 
     const openRegister = (event: UpcomingEvent) => {
         if (!auth.user) {
-            window.location.href = route('login');
+            window.location.href = tournamentxLoginUrl(pageProps);
             return;
         }
         setRegEvent(event);
