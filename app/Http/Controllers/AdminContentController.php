@@ -72,7 +72,15 @@ class AdminContentController extends Controller
     private function prepareBlogData(array $data, Request $request): array
     {
         unset($data['images'], $data['keep_images']);
-        $data['published'] = filter_var($request->input('published', false), FILTER_VALIDATE_BOOLEAN);
+
+        foreach (['title', 'excerpt', 'content', 'category', 'author', 'read_time'] as $field) {
+            if ($request->exists($field)) {
+                $value = $request->input($field);
+                $data[$field] = is_string($value) ? $value : $data[$field] ?? null;
+            }
+        }
+
+        $data['published'] = $request->boolean('published');
 
         return $data;
     }

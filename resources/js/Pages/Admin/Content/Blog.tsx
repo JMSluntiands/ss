@@ -212,24 +212,7 @@ export default function Blog({ posts }: { posts: PaginatedData<BlogPost> }) {
         e.preventDefault();
         setProcessing(true);
 
-        const formData = new FormData();
-        formData.append('title', form.title);
-        formData.append('excerpt', form.excerpt);
-        formData.append('content', form.content);
-        formData.append('category', form.category);
-        formData.append('author', form.author);
-        if (form.read_time) formData.append('read_time', form.read_time);
-        formData.append('published', form.published ? '1' : '0');
-
-        existingImages.forEach((path) => formData.append('keep_images[]', path));
-        newImages.forEach((file, index) => {
-            if (file.size > 0) {
-                formData.append(`images[${index}]`, file, file.name);
-            }
-        });
-
         const submitOptions = {
-            forceFormData: true,
             preserveScroll: true,
             onFinish: () => setProcessing(false),
             onSuccess: () => {
@@ -239,11 +222,56 @@ export default function Blog({ posts }: { posts: PaginatedData<BlogPost> }) {
             onError: (errs: Record<string, string>) => setFormErrors(errs),
         };
 
+        const hasNewImages = newImages.some((file) => file.size > 0);
+
+        if (hasNewImages) {
+            const formData = new FormData();
+            formData.append('title', form.title);
+            formData.append('excerpt', form.excerpt);
+            formData.append('content', form.content);
+            formData.append('category', form.category);
+            formData.append('author', form.author);
+            if (form.read_time) formData.append('read_time', form.read_time);
+            formData.append('published', form.published ? '1' : '0');
+
+            existingImages.forEach((path) => formData.append('keep_images[]', path));
+            newImages.forEach((file, index) => {
+                if (file.size > 0) {
+                    formData.append(`images[${index}]`, file, file.name);
+                }
+            });
+
+            if (editingPost) {
+                formData.append('_method', 'PUT');
+                router.post(route('admin.content.blog.update', editingPost.id), formData, {
+                    ...submitOptions,
+                    forceFormData: true,
+                });
+            } else {
+                router.post(route('admin.content.blog.store'), formData, {
+                    ...submitOptions,
+                    forceFormData: true,
+                });
+            }
+
+            return;
+        }
+
+        const payload = {
+            title: form.title,
+            excerpt: form.excerpt,
+            content: form.content,
+            category: form.category,
+            author: form.author,
+            read_time: form.read_time || null,
+            published: form.published,
+            keep_images: existingImages,
+        };
+
         if (editingPost) {
-            formData.append('_method', 'PUT');
-            router.post(route('admin.content.blog.update', editingPost.id), formData, submitOptions);
+            router.put(route('admin.content.blog.update', editingPost.id), payload, submitOptions);
         } else {
-            router.post(route('admin.content.blog.store'), formData, submitOptions);
+            router.post(route('admin.content.blog.store'), payload, submitOptions);
         }
     };
 
