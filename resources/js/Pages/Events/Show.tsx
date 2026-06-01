@@ -307,7 +307,35 @@ export default function EventShow({
                                 <input type="text" required value={regForm.blader_name_1} onChange={(e) => setRegForm({ ...regForm, blader_name_1: e.target.value })} className={inputClass} placeholder="Blader Name 1" />
                                 {regForm.entry_type === 'double' && <input type="text" required value={regForm.blader_name_2} onChange={(e) => setRegForm({ ...regForm, blader_name_2: e.target.value })} className={inputClass} placeholder="Blader Name 2" />}
                                 {event.require_payment && (
-                                    <input ref={fileInputRef} type="file" accept="image/*" required onChange={(e) => setRegForm({ ...regForm, payment_proof: e.target.files?.[0] ?? null })} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-red-500/10 file:text-red-400 hover:file:bg-red-500/20 file:cursor-pointer file:transition-colors" />
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-400 mb-1.5">Upload Payment Proof *</label>
+
+                                        {(event.payment_qr || event.payment_method) && (
+                                            <div className="mb-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 text-center">
+                                                {event.payment_qr && (
+                                                    <img
+                                                        src={route('private.payment-qr', event.id)}
+                                                        alt="Payment QR Code"
+                                                        className="w-48 h-48 object-contain mx-auto rounded-lg mb-2"
+                                                    />
+                                                )}
+                                                {event.payment_method && (
+                                                    <p className="text-sm text-gray-300">{event.payment_method}</p>
+                                                )}
+                                                <p className="text-[11px] text-amber-400/70 mt-2">Scan the QR code to pay, then upload proof below</p>
+                                            </div>
+                                        )}
+
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            required
+                                            onChange={(e) => setRegForm({ ...regForm, payment_proof: e.target.files?.[0] ?? null })}
+                                            className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-red-500/10 file:text-red-400 hover:file:bg-red-500/20 file:cursor-pointer file:transition-colors"
+                                        />
+                                        <p className="text-[11px] text-gray-600 mt-1">Upload a screenshot of your payment (max 5MB)</p>
+                                    </div>
                                 )}
                                 <div className="flex gap-3">
                                     <button type="button" onClick={() => setRegOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-400 bg-zinc-800 border border-zinc-700/50 hover:text-white">Cancel</button>
