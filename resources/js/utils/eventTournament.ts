@@ -26,11 +26,14 @@ export function formatSummaryFromTournament(t: TournamentForEvent): string {
     if (t.tournament_type === 'two_stage') {
         const groupFmt = label(t.group_stage_format || t.format);
         const finalFmt = label(t.final_stage_format || 'single_elimination');
-        const rounds = t.swiss_rounds ? `${t.swiss_rounds} Swiss rounds` : 'Swiss';
-        const cut =
-            t.participants_per_group && t.advance_per_group
-                ? `, top ${t.advance_per_group} per group (${t.participants_per_group} per group)`
-                : '';
+        const rounds = t.swiss_rounds ? `${t.swiss_rounds} ${groupFmt} rounds` : groupFmt;
+        let cut = '';
+        const perGroup = t.participants_per_group;
+        const advance = t.advance_per_group;
+        if (perGroup && advance) {
+            const advanceDisplay = Math.min(advance, perGroup);
+            cut = `, top ${advanceDisplay} per group (${perGroup} per group)`;
+        }
         return `Two Stage: ${rounds}${cut} → ${finalFmt}`;
     }
 

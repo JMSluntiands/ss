@@ -6,6 +6,7 @@ use App\Models\BlogPost;
 use App\Models\JerseyItem;
 use App\Models\SiteEvent;
 use App\Models\SiteMember;
+use App\Support\SiteEventDisplay;
 use Inertia\Inertia;
 
 class SitePageController extends Controller
@@ -52,13 +53,19 @@ class SitePageController extends Controller
     public function events()
     {
         return Inertia::render('Event', [
-            'upcomingEvents' => SiteEvent::where('is_upcoming', true)->latest()->get(),
-            'pastEvents' => SiteEvent::where('is_upcoming', false)->latest()->get(),
+            'upcomingEvents' => SiteEventDisplay::loadAndApplyFormat(
+                SiteEvent::where('is_upcoming', true)->latest()->get()
+            ),
+            'pastEvents' => SiteEventDisplay::loadAndApplyFormat(
+                SiteEvent::where('is_upcoming', false)->latest()->get()
+            ),
         ]);
     }
 
     public function eventShow(SiteEvent $event)
     {
+        SiteEventDisplay::loadAndApplyFormat($event);
+
         $event->load([
             'registrations' => function ($query) {
                 $query

@@ -257,7 +257,7 @@ export default function PlayerMatching({
                             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-center mb-4">
                                 Now Playing ({sortedMatches.length})
                             </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
                                 {sortedMatches.map((match) => (
                                     <MatchBoardCard key={match.id} match={match} />
                                 ))}
