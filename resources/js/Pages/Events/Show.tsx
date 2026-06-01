@@ -4,7 +4,6 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { PageProps } from '@/types';
 import { formatEventFeeDisplay, getRegistrationFee } from '@/utils/eventFees';
-import { tournamentxLoginUrl } from '@/utils/tournamentxUrl';
 
 interface EventRegistrationItem {
     id: number;
@@ -102,8 +101,7 @@ export default function EventShow({
     event: EventData;
     registrationCounts: { total: number; confirmed: number; tentative: number };
 }) {
-    const pageProps = usePage<PageProps>().props;
-    const { auth, flash } = pageProps;
+    const { flash } = usePage<PageProps>().props;
     const [regOpen, setRegOpen] = useState(false);
     const [regForm, setRegForm] = useState<RegForm>(emptyReg);
     const [processing, setProcessing] = useState(false);
@@ -111,10 +109,6 @@ export default function EventShow({
     const mapUrl = getMapEmbedUrl(event);
 
     const openRegister = () => {
-        if (!auth.user) {
-            window.location.href = tournamentxLoginUrl(pageProps);
-            return;
-        }
         setRegForm({ ...emptyReg });
         if (fileInputRef.current) fileInputRef.current.value = '';
         setRegOpen(true);

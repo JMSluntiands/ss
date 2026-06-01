@@ -20,19 +20,20 @@ $registerMainSite = function (): void {
     Route::get('/blog/{post}', [\App\Http\Controllers\SitePageController::class, 'blogShow'])->name('blog.show');
     Route::get('/jersey', [\App\Http\Controllers\SitePageController::class, 'jersey'])->name('jersey');
 
+    Route::post('/events/{event}/register', [EventRegistrationController::class, 'register'])->name('events.register');
+
+    Route::get('/private-file/payment-qr/{event}', function (\App\Models\SiteEvent $event) {
+        if (! $event->payment_qr || ! \Illuminate\Support\Facades\Storage::exists($event->payment_qr)) {
+            abort(404);
+        }
+
+        return \Illuminate\Support\Facades\Storage::response($event->payment_qr);
+    })->name('private.payment-qr');
+
     Route::middleware(['auth', 'verified'])->group(function () {
-        Route::post('/events/{event}/register', [EventRegistrationController::class, 'register'])->name('events.register');
         Route::post('/registrations/{registration}/confirm', [EventRegistrationController::class, 'confirm'])->name('registrations.confirm');
         Route::post('/registrations/{registration}/reject', [EventRegistrationController::class, 'reject'])->name('registrations.reject');
         Route::delete('/registrations/{registration}', [EventRegistrationController::class, 'destroy'])->name('registrations.destroy');
-
-        Route::get('/private-file/payment-qr/{event}', function (\App\Models\SiteEvent $event) {
-            if (! $event->payment_qr || ! \Illuminate\Support\Facades\Storage::exists($event->payment_qr)) {
-                abort(404);
-            }
-
-            return \Illuminate\Support\Facades\Storage::response($event->payment_qr);
-        })->name('private.payment-qr');
     });
 
     Route::get('/admin/login', [AdminLoginController::class, 'create'])->name('admin.login');

@@ -4,7 +4,6 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import { PageProps } from '@/types';
 import { formatEventFeeDisplay, getRegistrationFee } from '@/utils/eventFees';
-import { tournamentxLoginUrl } from '@/utils/tournamentxUrl';
 
 interface UpcomingEvent {
     id: number;
@@ -97,18 +96,13 @@ function formatEventDateTime(date: string, time?: string | null): string {
 }
 
 export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomingEvents?: UpcomingEvent[]; pastEvents?: PastEvent[] }) {
-    const pageProps = usePage<PageProps>().props;
-    const { auth, flash } = pageProps;
+    const { flash } = usePage<PageProps>().props;
     const [regEvent, setRegEvent] = useState<UpcomingEvent | null>(null);
     const [regForm, setRegForm] = useState<RegForm>(emptyReg);
     const [processing, setProcessing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const openRegister = (event: UpcomingEvent) => {
-        if (!auth.user) {
-            window.location.href = tournamentxLoginUrl(pageProps);
-            return;
-        }
         setRegEvent(event);
         setRegForm({ ...emptyReg });
         if (fileInputRef.current) fileInputRef.current.value = '';
