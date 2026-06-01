@@ -1,23 +1,38 @@
 import OptimizedImage from '@/Components/OptimizedImage';
 import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
+import {
+    formatPhpPrice,
+    memberImageSrc,
+    SHOP_CATEGORY_LABELS,
+    type ShopCategory,
+} from '@/utils/publicStorage';
 import { Head, Link } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 interface JerseyItemData {
     id: number;
     name: string;
-    price: string;
+    category: ShopCategory;
+    price: string | number;
     sizes: string[];
     color: string | null;
     material: string | null;
     description: string | null;
+    facebook_url: string | null;
     image_url: string | null;
     available: boolean;
 }
 
+type ShopFilter = 'all' | ShopCategory;
+
 export default function Jersey({ items = [] }: { items?: JerseyItemData[] }) {
     const [selected, setSelected] = useState<number | null>(null);
+    const [filter, setFilter] = useState<ShopFilter>('all');
+    const filteredItems = useMemo(() => {
+        if (filter === 'all') return items;
+        return items.filter((item) => (item.category ?? 'jersey') === filter);
+    }, [items, filter]);
     const selectedItem = items.find((j) => j.id === selected);
 
     return (
@@ -52,9 +67,34 @@ export default function Jersey({ items = [] }: { items?: JerseyItemData[] }) {
                             Official <span className="text-red-500">Shop & Merch</span>
                         </h1>
                         <p className="text-gray-400 text-lg max-w-2xl">
-                            Browse official Shadow Syndicate jerseys and merch. Message us on Discord or Facebook to place your order.
+                            Browse official jerseys, Beyblade parts, and merch. Message us on Discord or Facebook to place your order.
                         </p>
                     </div>
+
+                    {items.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-8">
+                            {(
+                                [
+                                    ['all', 'All'],
+                                    ['jersey', SHOP_CATEGORY_LABELS.jersey],
+                                    ['beyblade_part', SHOP_CATEGORY_LABELS.beyblade_part],
+                                ] as const
+                            ).map(([key, label]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setFilter(key)}
+                                    className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide border transition-colors ${
+                                        filter === key
+                                            ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                                            : 'bg-zinc-900/60 text-gray-500 border-zinc-800 hover:text-white'
+                                    }`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     <div className="bg-zinc-900/60 border border-red-500/20 rounded-2xl p-5 mb-10 flex items-start gap-3">
                         <svg className="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,18 +105,25 @@ export default function Jersey({ items = [] }: { items?: JerseyItemData[] }) {
                         </div>
                     </div>
 
-                    {items.length > 0 ? (
+                    {filteredItems.length > 0 ? (
                         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {items.map((item) => (
+                            {filteredItems.map((item) => {
+                                const imgSrc = memberImageSrc(item.image_url);
+                                const category = (item.category ?? 'jersey') as ShopCategory;
+
+                                return (
                                 <div
                                     key={item.id}
                                     className="group bg-zinc-900/60 border border-zinc-800/60 rounded-2xl overflow-hidden hover:border-red-500/30 transition-all cursor-pointer"
                                     onClick={() => setSelected(item.id)}
                                 >
                                     <div className="relative aspect-square overflow-hidden bg-zinc-900">
-                                        {item.image_url ? (
+                                        <span className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-zinc-950/80 text-gray-300 border border-zinc-700/80">
+                                            {SHOP_CATEGORY_LABELS[category]}
+                                        </span>
+                                        {imgSrc ? (
                                             <OptimizedImage
-                                                src={item.image_url}
+                                                src={imgSrc}
                                                 alt={item.name}
                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                             />
@@ -95,13 +142,20 @@ export default function Jersey({ items = [] }: { items?: JerseyItemData[] }) {
                                     </div>
                                     <div className="p-5">
                                         <h3 className="font-bold text-white mb-1">{item.name}</h3>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-red-400 font-black text-lg">{item.price}</span>
-                                            <span className="text-xs text-gray-600">{item.sizes.join(' / ')}</span>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-red-400 font-black text-lg">{formatPhpPrice(item.price)}</span>
+                                            {item.sizes.length > 0 && (
+                                                <span className="text-xs text-gray-600 truncate">{item.sizes.join(' / ')}</span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            );
+                            })}
+                        </div>
+                    ) : items.length > 0 ? (
+                        <div className="text-center py-20 text-gray-600">
+                            <p className="text-lg">No items in this category.</p>
                         </div>
                     ) : (
                         <div className="text-center py-20 text-gray-600">
@@ -127,8 +181,8 @@ export default function Jersey({ items = [] }: { items?: JerseyItemData[] }) {
 
                                 <div className="grid sm:grid-cols-2">
                                     <div className="aspect-square bg-zinc-800">
-                                        {selectedItem.image_url ? (
-                                            <OptimizedImage src={selectedItem.image_url} alt={selectedItem.name} className="w-full h-full object-cover" priority />
+                                        {memberImageSrc(selectedItem.image_url) ? (
+                                            <OptimizedImage src={memberImageSrc(selectedItem.image_url)!} alt={selectedItem.name} className="w-full h-full object-cover" priority />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center">
                                                 <span className="text-lg font-bold text-gray-500 text-center px-4">{selectedItem.name}</span>
@@ -136,21 +190,30 @@ export default function Jersey({ items = [] }: { items?: JerseyItemData[] }) {
                                         )}
                                     </div>
                                     <div className="p-6 flex flex-col justify-center">
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-red-400/90 mb-2">
+                                            {SHOP_CATEGORY_LABELS[(selectedItem.category ?? 'jersey') as ShopCategory]}
+                                        </span>
                                         <h2 className="text-xl font-bold text-white mb-2">{selectedItem.name}</h2>
-                                        <span className="text-2xl font-black text-red-400 mb-4">{selectedItem.price}</span>
+                                        <span className="text-2xl font-black text-red-400 mb-4">{formatPhpPrice(selectedItem.price)}</span>
                                         <p className="text-sm text-gray-400 leading-relaxed mb-5">{selectedItem.description}</p>
 
                                         <div className="space-y-3 text-sm mb-6">
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500">Sizes</span>
-                                                <span className="text-white font-medium">{selectedItem.sizes.join(', ')}</span>
-                                            </div>
+                                            {selectedItem.sizes.length > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-500">
+                                                        {(selectedItem.category ?? 'jersey') === 'jersey' ? 'Sizes' : 'Variant / spec'}
+                                                    </span>
+                                                    <span className="text-white font-medium">{selectedItem.sizes.join(', ')}</span>
+                                                </div>
+                                            )}
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500">Color</span>
                                                 <span className="text-white font-medium">{selectedItem.color || '—'}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-gray-500">Material</span>
+                                                <span className="text-gray-500">
+                                                    {(selectedItem.category ?? 'jersey') === 'jersey' ? 'Material' : 'Part type'}
+                                                </span>
                                                 <span className="text-white font-medium">{selectedItem.material || '—'}</span>
                                             </div>
                                             <div className="flex justify-between">
@@ -161,15 +224,20 @@ export default function Jersey({ items = [] }: { items?: JerseyItemData[] }) {
                                             </div>
                                         </div>
 
-                                        {selectedItem.available && (
+                                        {selectedItem.available && selectedItem.facebook_url && (
                                             <a
-                                                href="https://www.facebook.com/"
+                                                href={selectedItem.facebook_url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="w-full text-center px-6 py-3 text-sm font-bold bg-red-600 hover:bg-red-500 rounded-xl transition-colors"
                                             >
                                                 Order via Facebook
                                             </a>
+                                        )}
+                                        {selectedItem.available && !selectedItem.facebook_url && (
+                                            <p className="text-xs text-center text-gray-500 px-2">
+                                                Walang Facebook order link para sa item na ito. Mag-message sa amin sa Discord o Facebook page ng Shadow Syndicate.
+                                            </p>
                                         )}
                                     </div>
                                 </div>

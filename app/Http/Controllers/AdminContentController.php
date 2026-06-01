@@ -10,6 +10,7 @@ use App\Models\SiteEvent;
 use App\Models\SiteMember;
 use App\Models\Tournament;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class AdminContentController extends Controller
@@ -336,43 +337,114 @@ class AdminContentController extends Controller
 
     public function jerseyStore(Request $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'price' => 'required|string|max:50',
-            'sizes' => 'required|array',
-            'color' => 'nullable|string|max:100',
-            'material' => 'nullable|string|max:100',
-            'description' => 'nullable|string',
-            'image_url' => 'nullable|string|max:500',
-            'available' => 'boolean',
-            'sort_order' => 'integer',
-        ]);
+        $data = $this->validateJerseyItem($request, requireImage: true);
+
+        $data['image_url'] = ImageOptimizer::storeOptimized($request->file('image'), 'shop-images', 1000);
+        unset($data['image']);
 
         JerseyItem::create($data);
+
         return back()->with('success', 'Item created.');
     }
 
     public function jerseyUpdate(Request $request, JerseyItem $item)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'price' => 'required|string|max:50',
-            'sizes' => 'required|array',
-            'color' => 'nullable|string|max:100',
-            'material' => 'nullable|string|max:100',
-            'description' => 'nullable|string',
-            'image_url' => 'nullable|string|max:500',
-            'available' => 'boolean',
-            'sort_order' => 'integer',
-        ]);
+        $data = $this->validateJerseyItem($request);
+
+        if ($request->hasFile('image')) {
+            $this->deleteJerseyImage($item->image_url);
+            $data['image_url'] = ImageOptimizer::storeOptimized($request->file('image'), 'shop-images', 1000);
+        }
+        unset($data['image']);
 
         $item->update($data);
+
         return back()->with('success', 'Item updated.');
     }
 
     public function jerseyDestroy(JerseyItem $item)
     {
+        $this->deleteJerseyImage($item->image_url);
         $item->delete();
+
         return back()->with('success', 'Item deleted.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validateJerseyItem(Request $request, bool $requireImage = false): array
+    {
+        if (! $request->has('sizes')) {
+            $request->merge(['sizes' => []]);
+        }
+
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'category' => ['required', Rule::in([JerseyItem::CATEGORY_JERSEY, JerseyItem::CATEGORY_BEYBLADE_PART])],
+            'price' => 'required|numeric|min:0|max:9999999.99',
+            'sizes' => [
+                Rule::requiredIf(fn () => $request->input('category') === JerseyItem::CATEGORY_JERSEY),
+                'array',
+                Rule::when(
+                    fn () => $request->input('category') === JerseyItem::CATEGORY_JERSEY,
+                    ['min:1']
+                ),
+            ],
+            'sizes.*' => 'string|max:50',
+            'color' => 'nullable|string|max:100',
+            'material' => 'nullable|string|max:100',
+            'description' => 'nullable|string',
+            'facebook_url' => 'nullable|string|max:500',
+            'image' => ($requireImage ? 'required|' : 'nullable|').'image|max:5120',
+            'available' => 'boolean',
+            'sort_order' => 'integer',
+        ]);
+
+        $data['sizes'] = array_values(array_filter(
+            array_map('trim', $data['sizes'] ?? []),
+            fn ($size) => $size !== ''
+        ));
+
+        $data['price'] = round((float) $data['price'], 2);
+        $data['facebook_url'] = self::normalizeFacebookUrl($data['facebook_url'] ?? null);
+
+        return $data;
+    }
+
+    private static function normalizeFacebookUrl(?string $url): ?string
+    {
+        if ($url === null || trim($url) === '') {
+            return null;
+        }
+
+        $trimmed = trim($url);
+        if (! preg_match('~^https?://~i', $trimmed)) {
+            $trimmed = 'https://'.$trimmed;
+        }
+
+        if (! filter_var($trimmed, FILTER_VALIDATE_URL)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'facebook_url' => 'Please enter a valid Facebook link (e.g. https://www.facebook.com/yourpage).',
+            ]);
+        }
+
+        $host = parse_url($trimmed, PHP_URL_HOST);
+        if (! is_string($host) || ! preg_match('/(^|\.)facebook\.com$|(^|\.)fb\.com$|(^|\.)m\.me$/i', $host)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'facebook_url' => 'Link must be a Facebook page or Messenger URL.',
+            ]);
+        }
+
+        return $trimmed;
+    }
+
+    private function deleteJerseyImage(?string $imageUrl): void
+    {
+        if (! $imageUrl || str_starts_with($imageUrl, 'http://') || str_starts_with($imageUrl, 'https://')) {
+            return;
+        }
+
+        \Illuminate\Support\Facades\Storage::disk('public')->delete($imageUrl);
     }
 }

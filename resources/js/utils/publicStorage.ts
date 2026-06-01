@@ -18,3 +18,24 @@ export function memberImageSrc(url: string | null): string | null {
 export function participantImageSrc(url: string | null | undefined): string | null {
     return memberImageSrc(url ?? null);
 }
+
+export function formatPhpPrice(value: number | string | null | undefined): string {
+    const n = typeof value === 'string' ? parseFloat(value) : Number(value ?? 0);
+    if (!Number.isFinite(n)) {
+        return '₱0.00';
+    }
+
+    return new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(n);
+}
+
+export type ShopCategory = 'jersey' | 'beyblade_part';
+
+export const SHOP_CATEGORY_LABELS: Record<ShopCategory, string> = {
+    jersey: 'Jersey / Apparel',
+    beyblade_part: 'Beyblade Part',
+};

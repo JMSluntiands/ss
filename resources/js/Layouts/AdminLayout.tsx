@@ -84,7 +84,7 @@ export default function AdminLayout({
             active: currentPage === 'members',
         },
         {
-            name: 'Jersey & Merch',
+            name: 'Shop',
             href: route('admin.content.jersey'),
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
