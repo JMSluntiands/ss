@@ -33,15 +33,52 @@ class AdminContentController extends Controller
         ]);
     }
 
-    public function eventRegistrations(SiteEvent $event)
+    public function eventRegistrations(Request $request, SiteEvent $event)
     {
-        if (!auth()->user()->isAdmin() && $event->user_id !== auth()->id()) {
+        if (! auth()->user()->isAdmin() && $event->user_id !== auth()->id()) {
             abort(403);
         }
 
-        $event->load(['registrations.user', 'tournament']);
+        $event->load('tournament');
+
+        $search = trim((string) $request->input('search', ''));
+
+        $registrationsQuery = $event->registrations()->with('user')->latest();
+
+        if ($search !== '') {
+            $like = '%'.$search.'%';
+            $registrationsQuery->where(function ($query) use ($like) {
+                $query->where('full_name', 'like', $like)
+                    ->orWhere('blader_name_1', 'like', $like)
+                    ->orWhere('blader_name_2', 'like', $like)
+                    ->orWhere('entry_type', 'like', $like)
+                    ->orWhere('status', 'like', $like)
+                    ->orWhereHas('user', function ($userQuery) use ($like) {
+                        $userQuery->where('email', 'like', $like)
+                            ->orWhere('name', 'like', $like);
+                    });
+            });
+        }
+
         return Inertia::render('EventRegistrations', [
-            'event' => $event,
+            'event' => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'require_payment' => $event->require_payment,
+                'allow_double_entry' => $event->allow_double_entry,
+                'tournament_id' => $event->tournament_id,
+                'tournament' => $event->tournament,
+            ],
+            'registrations' => $registrationsQuery->paginate(15)->withQueryString(),
+            'statusCounts' => [
+                'total' => $event->registrations()->count(),
+                'tentative' => $event->registrations()->where('status', 'tentative')->count(),
+                'confirmed' => $event->registrations()->where('status', 'confirmed')->count(),
+                'rejected' => $event->registrations()->where('status', 'rejected')->count(),
+            ],
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

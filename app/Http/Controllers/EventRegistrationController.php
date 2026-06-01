@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\EventRegistration;
 use App\Models\SiteEvent;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class EventRegistrationController extends Controller
 {
@@ -88,5 +89,31 @@ class EventRegistrationController extends Controller
         $registration->update(['status' => 'rejected']);
 
         return back()->with('success', "{$registration->full_name} has been rejected.");
+    }
+
+    public function destroy(EventRegistration $registration)
+    {
+        $event = $registration->event;
+        $event->loadMissing('tournament');
+
+        if (! auth()->user()->isAdmin() && $event->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($registration->status === 'confirmed' && $event->tournament) {
+            $names = array_filter([$registration->blader_name_1, $registration->blader_name_2]);
+            if ($names !== []) {
+                $event->tournament->participants()->whereIn('name', $names)->delete();
+            }
+        }
+
+        if ($registration->payment_proof && Storage::exists($registration->payment_proof)) {
+            Storage::delete($registration->payment_proof);
+        }
+
+        $fullName = $registration->full_name;
+        $registration->delete();
+
+        return back()->with('success', "Registration for {$fullName} has been deleted.");
     }
 }

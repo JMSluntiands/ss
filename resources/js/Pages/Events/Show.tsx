@@ -261,8 +261,11 @@ export default function EventShow({
                                 </div>
 
                                 <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
-                                    <div className="px-4 py-3 border-b border-zinc-800/60">
+                                    <div className="px-4 py-3 border-b border-zinc-800/60 flex items-center justify-between gap-2">
                                         <h2 className="text-sm font-bold uppercase tracking-wide text-white">Registered Players</h2>
+                                        {registrationCounts.total > 15 && (
+                                            <span className="text-[10px] text-gray-600 shrink-0">Latest 15 shown</span>
+                                        )}
                                     </div>
                                     {event.registrations.length > 0 ? (
                                         <div className="divide-y divide-zinc-800/60 max-h-[340px] overflow-y-auto">

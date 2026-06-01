@@ -43,6 +43,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/my-events/{event}/registrations', [AdminContentController::class, 'eventRegistrations'])->name('my-events.registrations');
     Route::post('/registrations/{registration}/confirm', [EventRegistrationController::class, 'confirm'])->name('registrations.confirm');
     Route::post('/registrations/{registration}/reject', [EventRegistrationController::class, 'reject'])->name('registrations.reject');
+    Route::delete('/registrations/{registration}', [EventRegistrationController::class, 'destroy'])->name('registrations.destroy');
     Route::post('/my-events', [AdminContentController::class, 'eventStore'])->name('my-events.store');
     Route::put('/my-events/{event}', [AdminContentController::class, 'eventUpdate'])->name('my-events.update');
     Route::delete('/my-events/{event}', [AdminContentController::class, 'eventDestroy'])->name('my-events.destroy');
