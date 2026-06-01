@@ -3,6 +3,7 @@ import SiteLogo from '@/Components/SiteLogo';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { PageProps } from '@/types';
+import { formatEventFeeDisplay, getRegistrationFee } from '@/utils/eventFees';
 import { tournamentxLoginUrl } from '@/utils/tournamentxUrl';
 
 interface EventRegistrationItem {
@@ -29,6 +30,8 @@ interface EventData {
     format: string | null;
     slots: string | null;
     entry_fee: string | null;
+    pre_register_fee: string | null;
+    pre_register_until: string | null;
     prizes: Array<{ place: string; prize: string }> | null;
     status: string;
     allow_double_entry: boolean;
@@ -188,7 +191,10 @@ export default function EventShow({
                                     <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-sm"><span className="text-gray-500">Location:</span> <span className="text-white">{event.location}</span></div>
                                     <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-sm"><span className="text-gray-500">Format:</span> <span className="text-white">{event.format || '—'}</span></div>
                                     <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-sm"><span className="text-gray-500">Slots:</span> <span className="text-white">{event.slots || '—'}</span></div>
-                                    <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-sm"><span className="text-gray-500">Entrance Fee:</span> <span className="text-white">{event.entry_fee || 'Free'}</span></div>
+                                    <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-sm sm:col-span-2">
+                                        <span className="text-gray-500">Fees:</span>{' '}
+                                        <span className="text-white">{formatEventFeeDisplay(event)}</span>
+                                    </div>
                                 </div>
 
                                 {event.prizes && event.prizes.length > 0 && (
@@ -286,6 +292,13 @@ export default function EventShow({
                         <div className="w-full max-w-md rounded-2xl bg-zinc-900 border border-zinc-800 shadow-2xl shadow-black/50 p-6 my-8">
                             <h3 className="text-lg font-semibold text-white mb-4">Register - {event.title}</h3>
                             <form onSubmit={handleRegSubmit} className="space-y-4">
+                                <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/20">
+                                    <p className="text-xs text-gray-500">Amount to pay</p>
+                                    <p className="text-lg font-bold text-red-400">{getRegistrationFee(event)}</p>
+                                    {event.pre_register_fee && event.entry_fee && event.pre_register_fee !== event.entry_fee && (
+                                        <p className="text-[11px] text-gray-600 mt-1">Door price: {event.entry_fee}</p>
+                                    )}
+                                </div>
                                 <input type="text" required value={regForm.full_name} onChange={(e) => setRegForm({ ...regForm, full_name: e.target.value })} className={inputClass} placeholder="Full name" />
                                 <div className="grid grid-cols-2 gap-3">
                                     <button type="button" onClick={() => setRegForm({ ...regForm, entry_type: 'single' })} className={`px-4 py-2.5 rounded-xl text-sm font-medium border ${regForm.entry_type === 'single' ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-zinc-800/50 text-gray-400 border-zinc-700/50'}`}>Single</button>

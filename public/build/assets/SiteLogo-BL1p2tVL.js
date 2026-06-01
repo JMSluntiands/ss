@@ -1,1 +1,0 @@
-import{w as i,j as a}from"./app-B3vvdVCN.js";function u({className:o,alt:s="Shadow Syndicate",loading:t,fetchPriority:e}){const{site_logo_url:r}=i().props;return a.jsx("img",{src:r??route("site.logo"),alt:s,className:o,loading:t,fetchPriority:e})}export{u as S};

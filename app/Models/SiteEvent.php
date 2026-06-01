@@ -12,7 +12,7 @@ class SiteEvent extends Model
         'tournament_id', 'user_id',
         'title', 'description', 'organizer', 'date', 'time', 'location',
         'map_address', 'map_lat', 'map_lng',
-        'format', 'slots', 'entry_fee', 'prizes',
+        'format', 'slots', 'entry_fee', 'pre_register_fee', 'pre_register_until', 'prizes',
         'status', 'participants', 'winner', 'runner_up', 'is_upcoming',
         'allow_double_entry', 'require_payment', 'payment_method', 'payment_qr',
     ];
@@ -26,6 +26,7 @@ class SiteEvent extends Model
             'prizes' => 'array',
             'map_lat' => 'float',
             'map_lng' => 'float',
+            'pre_register_until' => 'date',
         ];
     }
 

@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { toDateInputValue } from '@/utils/eventFees';
 import { applyTournamentToEventForm, type TournamentForEvent } from '@/utils/eventTournament';
 import { Head, router, Link } from '@inertiajs/react';
 import { useState, useRef } from 'react';
@@ -17,6 +18,8 @@ interface SiteEvent {
     format: string | null;
     slots: string | null;
     entry_fee: string | null;
+    pre_register_fee: string | null;
+    pre_register_until: string | null;
     prizes: Array<{ place: string; prize: string }> | null;
     status: string;
     participants: number | null;
@@ -51,6 +54,8 @@ interface EventForm {
     format: string;
     slots: string;
     entry_fee: string;
+    pre_register_fee: string;
+    pre_register_until: string;
     prizes: Array<{ place: string; prize: string }>;
     status: string;
     participants: string;
@@ -75,6 +80,8 @@ const emptyEvent: EventForm = {
     format: '',
     slots: '',
     entry_fee: '',
+    pre_register_fee: '',
+    pre_register_until: '',
     prizes: [],
     status: 'upcoming',
     participants: '',
@@ -135,6 +142,8 @@ export default function MyEvents({ events, tournaments, userName }: { events: Pa
             format: event.format ?? '',
             slots: event.slots ?? '',
             entry_fee: event.entry_fee ?? '',
+            pre_register_fee: event.pre_register_fee ?? '',
+            pre_register_until: toDateInputValue(event.pre_register_until),
             prizes: event.prizes ?? [],
             status: event.status,
             participants: event.participants?.toString() ?? '',
@@ -178,6 +187,8 @@ export default function MyEvents({ events, tournaments, userName }: { events: Pa
         if (form.format) formData.append('format', form.format);
         if (form.slots) formData.append('slots', form.slots);
         if (form.entry_fee) formData.append('entry_fee', form.entry_fee);
+        if (form.pre_register_fee) formData.append('pre_register_fee', form.pre_register_fee);
+        if (form.pre_register_until) formData.append('pre_register_until', form.pre_register_until);
         if (form.prizes.length > 0) {
             form.prizes.forEach((p, i) => {
                 formData.append(`prizes[${i}][place]`, p.place);
@@ -488,20 +499,33 @@ export default function MyEvents({ events, tournaments, userName }: { events: Pa
                                     />
                                 </div>
 
-                                {/* Players & Entrance Fee */}
+                                {/* Players */}
+                                <div>
+                                    <label className={labelClass}>Players</label>
+                                    <input
+                                        type="text"
+                                        value={form.slots}
+                                        onChange={(e) => setForm({ ...form, slots: e.target.value })}
+                                        className={inputClass}
+                                        placeholder="e.g. 20"
+                                    />
+                                </div>
+
+                                {/* Fees */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className={labelClass}>Players</label>
+                                        <label className={labelClass}>Pre-register Price</label>
                                         <input
                                             type="text"
-                                            value={form.slots}
-                                            onChange={(e) => setForm({ ...form, slots: e.target.value })}
+                                            value={form.pre_register_fee}
+                                            onChange={(e) => setForm({ ...form, pre_register_fee: e.target.value })}
                                             className={inputClass}
-                                            placeholder="e.g. 20"
+                                            placeholder="e.g. 120"
                                         />
+                                        <p className="text-[11px] text-gray-600 mt-1">Online registration fee</p>
                                     </div>
                                     <div>
-                                        <label className={labelClass}>Entrance Fee</label>
+                                        <label className={labelClass}>Door / Walk-in Price</label>
                                         <input
                                             type="text"
                                             value={form.entry_fee}
@@ -509,7 +533,18 @@ export default function MyEvents({ events, tournaments, userName }: { events: Pa
                                             className={inputClass}
                                             placeholder="e.g. 150"
                                         />
+                                        <p className="text-[11px] text-gray-600 mt-1">On-site or after pre-reg ends</p>
                                     </div>
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Pre-register Price Until (optional)</label>
+                                    <input
+                                        type="date"
+                                        value={form.pre_register_until}
+                                        onChange={(e) => setForm({ ...form, pre_register_until: e.target.value })}
+                                        className={inputClass}
+                                    />
+                                    <p className="text-[11px] text-gray-600 mt-1">Leave blank to keep pre-register price until event day</p>
                                 </div>
 
                                 {/* Prizes */}

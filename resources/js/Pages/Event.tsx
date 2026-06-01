@@ -3,6 +3,7 @@ import SiteLogo from '@/Components/SiteLogo';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import { PageProps } from '@/types';
+import { formatEventFeeDisplay, getRegistrationFee } from '@/utils/eventFees';
 import { tournamentxLoginUrl } from '@/utils/tournamentxUrl';
 
 interface UpcomingEvent {
@@ -19,6 +20,8 @@ interface UpcomingEvent {
     format: string | null;
     slots: string | null;
     entry_fee: string | null;
+    pre_register_fee: string | null;
+    pre_register_until: string | null;
     prizes: Array<{ place: string; prize: string }> | null;
     status: string;
     allow_double_entry: boolean;
@@ -288,8 +291,8 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
                                                             </svg>
                                                         </div>
                                                         <div>
-                                                            <p className="text-gray-500 text-xs">Entrance Fee</p>
-                                                            <p className="text-white font-medium">{event.entry_fee || 'Free'}</p>
+                                                            <p className="text-gray-500 text-xs">Fees</p>
+                                                            <p className="text-white font-medium">{formatEventFeeDisplay(event)}</p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -444,6 +447,14 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
                             </div>
 
                             <form onSubmit={handleRegSubmit} className="space-y-4">
+                                <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/20">
+                                    <p className="text-xs text-gray-500">Amount to pay</p>
+                                    <p className="text-lg font-bold text-red-400">{getRegistrationFee(regEvent)}</p>
+                                    {regEvent.pre_register_fee && regEvent.entry_fee && regEvent.pre_register_fee !== regEvent.entry_fee && (
+                                        <p className="text-[11px] text-gray-600 mt-1">Door price: {regEvent.entry_fee}</p>
+                                    )}
+                                </div>
+
                                 {/* Full Name */}
                                 <div>
                                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Full Name *</label>

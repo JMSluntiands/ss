@@ -30,9 +30,18 @@ const statusStyles: Record<string, string> = {
     rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
 };
 
+type PaymentPreview = { url: string; playerName: string };
+
 export default function EventRegistrations({ event }: { event: EventData }) {
     const [processing, setProcessing] = useState<number | null>(null);
-    const [viewPayment, setViewPayment] = useState<string | null>(null);
+    const [viewPayment, setViewPayment] = useState<PaymentPreview | null>(null);
+
+    const openReceipt = (reg: Registration) => {
+        setViewPayment({
+            url: route('private.payment-proof', reg.id),
+            playerName: reg.full_name,
+        });
+    };
 
     const handleConfirm = (reg: Registration) => {
         setProcessing(reg.id);
@@ -108,9 +117,7 @@ export default function EventRegistrations({ event }: { event: EventData }) {
                                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Player</th>
                                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Entry</th>
                                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Blader Name(s)</th>
-                                    {event.require_payment && (
-                                        <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment</th>
-                                    )}
+                                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Receipt</th>
                                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Date</th>
                                     <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -140,24 +147,24 @@ export default function EventRegistrations({ event }: { event: EventData }) {
                                                 <p className="text-sm text-gray-400">{reg.blader_name_2}</p>
                                             )}
                                         </td>
-                                        {event.require_payment && (
-                                            <td className="px-6 py-4">
-                                                {reg.payment_proof ? (
-                                                    <button
-                                                        onClick={() => setViewPayment(route('private.payment-proof', reg.id))}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
-                                                    >
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
-                                                        View
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-xs text-gray-600">No proof</span>
-                                                )}
-                                            </td>
-                                        )}
+                                        <td className="px-6 py-4">
+                                            {reg.payment_proof ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openReceipt(reg)}
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                    View
+                                                </button>
+                                            ) : event.require_payment ? (
+                                                <span className="text-xs text-amber-400/80">Not uploaded</span>
+                                            ) : (
+                                                <span className="text-xs text-gray-600">—</span>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
                                                 statusStyles[reg.status]
@@ -171,8 +178,18 @@ export default function EventRegistrations({ event }: { event: EventData }) {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-2 flex-wrap">
+                                            {reg.payment_proof && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openReceipt(reg)}
+                                                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all"
+                                                >
+                                                    Receipt
+                                                </button>
+                                            )}
                                             {reg.status === 'tentative' && (
-                                                <div className="flex items-center justify-end gap-2">
+                                                <>
                                                     <button
                                                         onClick={() => handleConfirm(reg)}
                                                         disabled={processing === reg.id}
@@ -187,7 +204,7 @@ export default function EventRegistrations({ event }: { event: EventData }) {
                                                     >
                                                         {processing === reg.id ? '...' : 'Reject'}
                                                     </button>
-                                                </div>
+                                                </>
                                             )}
                                             {reg.status === 'confirmed' && (
                                                 <span className="text-xs text-emerald-400/60">Added to tournament</span>
@@ -195,6 +212,7 @@ export default function EventRegistrations({ event }: { event: EventData }) {
                                             {reg.status === 'rejected' && (
                                                 <span className="text-xs text-gray-600">Rejected</span>
                                             )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -213,25 +231,34 @@ export default function EventRegistrations({ event }: { event: EventData }) {
                 </div>
             </div>
 
-            {/* Payment Proof Viewer */}
+            {/* Payment receipt modal */}
             {viewPayment && (
                 <>
                     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" onClick={() => setViewPayment(null)} />
-                    <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-                        <div className="relative max-w-lg w-full">
-                            <button
-                                onClick={() => setViewPayment(null)}
-                                className="absolute -top-10 right-0 p-2 rounded-lg text-gray-400 hover:text-white transition-colors"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                            <img
-                                src={viewPayment}
-                                alt="Payment proof"
-                                className="w-full rounded-2xl border border-zinc-700 shadow-2xl"
-                            />
+                    <div className="fixed z-50 inset-0 flex items-center justify-center p-4 pointer-events-none">
+                        <div className="relative max-w-lg w-full pointer-events-auto rounded-2xl bg-zinc-900 border border-zinc-800 shadow-2xl overflow-hidden">
+                            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800/80">
+                                <div>
+                                    <h3 className="text-sm font-semibold text-white">Payment Receipt</h3>
+                                    <p className="text-xs text-gray-500 mt-0.5">{viewPayment.playerName}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewPayment(null)}
+                                    className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div className="p-4 bg-zinc-950/50 max-h-[70vh] overflow-y-auto">
+                                <img
+                                    src={viewPayment.url}
+                                    alt={`Payment receipt for ${viewPayment.playerName}`}
+                                    className="w-full rounded-xl border border-zinc-700/80"
+                                />
+                            </div>
                         </div>
                     </div>
                 </>

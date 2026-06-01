@@ -1,7 +1,8 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatEventFeeDisplay, toDateInputValue } from '@/utils/eventFees';
 import { applyTournamentToEventForm, type TournamentForEvent } from '@/utils/eventTournament';
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface SiteEvent {
     id: number;
@@ -17,6 +18,8 @@ interface SiteEvent {
     format: string | null;
     slots: string | null;
     entry_fee: string | null;
+    pre_register_fee: string | null;
+    pre_register_until: string | null;
     prizes: Array<{ place: string; prize: string }> | null;
     status: string;
     participants: number | null;
@@ -24,6 +27,10 @@ interface SiteEvent {
     runner_up: string | null;
     is_upcoming: boolean;
     tournament_id: number | null;
+    allow_double_entry: boolean;
+    require_payment: boolean;
+    payment_method: string | null;
+    payment_qr: string | null;
     created_at: string;
 }
 
@@ -48,6 +55,8 @@ interface EventForm {
     format: string;
     slots: string;
     entry_fee: string;
+    pre_register_fee: string;
+    pre_register_until: string;
     prizes: Array<{ place: string; prize: string }>;
     status: string;
     participants: string;
@@ -55,6 +64,10 @@ interface EventForm {
     runner_up: string;
     is_upcoming: boolean;
     tournament_id: string;
+    allow_double_entry: boolean;
+    require_payment: boolean;
+    payment_method: string;
+    payment_qr: File | null;
 }
 
 const emptyEvent: EventForm = {
@@ -70,6 +83,8 @@ const emptyEvent: EventForm = {
     format: '',
     slots: '',
     entry_fee: '',
+    pre_register_fee: '',
+    pre_register_until: '',
     prizes: [],
     status: 'upcoming',
     participants: '',
@@ -77,6 +92,10 @@ const emptyEvent: EventForm = {
     runner_up: '',
     is_upcoming: true,
     tournament_id: '',
+    allow_double_entry: false,
+    require_payment: false,
+    payment_method: '',
+    payment_qr: null,
 };
 
 const inputClass =
@@ -105,6 +124,7 @@ export default function Events({
     const [form, setForm] = useState<EventForm>(emptyEvent);
     const [confirmDelete, setConfirmDelete] = useState<SiteEvent | null>(null);
     const [processing, setProcessing] = useState(false);
+    const qrInputRef = useRef<HTMLInputElement>(null);
 
     const handleTournamentChange = (tournamentId: string) => {
         setForm((prev) => applyTournamentToEventForm(prev, tournamentId, tournaments, userName));
@@ -135,6 +155,8 @@ export default function Events({
             format: event.format ?? '',
             slots: event.slots ?? '',
             entry_fee: event.entry_fee ?? '',
+            pre_register_fee: event.pre_register_fee ?? '',
+            pre_register_until: toDateInputValue(event.pre_register_until),
             prizes: event.prizes ?? [],
             status: event.status,
             participants: event.participants?.toString() ?? '',
@@ -142,6 +164,10 @@ export default function Events({
             runner_up: event.runner_up ?? '',
             is_upcoming: event.is_upcoming,
             tournament_id: event.tournament_id?.toString() ?? '',
+            allow_double_entry: event.allow_double_entry,
+            require_payment: event.require_payment,
+            payment_method: event.payment_method ?? '',
+            payment_qr: null,
         });
         setShowModal(true);
     };
@@ -163,40 +189,53 @@ export default function Events({
         e.preventDefault();
         setProcessing(true);
 
-        const payload = {
-            title: form.title,
-            description: form.description || null,
-            organizer: form.organizer || null,
-            date: form.date,
-            time: form.time || null,
-            location: form.location,
-            map_address: form.map_address || null,
-            map_lat: form.map_lat ? parseFloat(form.map_lat) : null,
-            map_lng: form.map_lng ? parseFloat(form.map_lng) : null,
-            format: form.format || null,
-            slots: form.slots || null,
-            entry_fee: form.entry_fee || null,
-            prizes: form.prizes.length > 0 ? form.prizes : null,
-            status: form.status,
-            participants: form.participants ? parseInt(form.participants) : null,
-            winner: form.winner || null,
-            runner_up: form.runner_up || null,
-            is_upcoming: form.is_upcoming,
-            tournament_id: form.tournament_id ? parseInt(form.tournament_id, 10) : null,
+        const formData = new FormData();
+        formData.append('title', form.title);
+        if (form.description) formData.append('description', form.description);
+        if (form.organizer) formData.append('organizer', form.organizer);
+        formData.append('date', form.date);
+        if (form.time) formData.append('time', form.time);
+        formData.append('location', form.location);
+        if (form.map_address) formData.append('map_address', form.map_address);
+        if (form.map_lat) formData.append('map_lat', form.map_lat);
+        if (form.map_lng) formData.append('map_lng', form.map_lng);
+        if (form.format) formData.append('format', form.format);
+        if (form.slots) formData.append('slots', form.slots);
+        if (form.entry_fee) formData.append('entry_fee', form.entry_fee);
+        if (form.pre_register_fee) formData.append('pre_register_fee', form.pre_register_fee);
+        if (form.pre_register_until) formData.append('pre_register_until', form.pre_register_until);
+        if (form.prizes.length > 0) {
+            form.prizes.forEach((p, i) => {
+                formData.append(`prizes[${i}][place]`, p.place);
+                formData.append(`prizes[${i}][prize]`, p.prize);
+            });
+        }
+        formData.append('status', form.status);
+        if (form.participants) formData.append('participants', form.participants);
+        if (form.winner) formData.append('winner', form.winner);
+        if (form.runner_up) formData.append('runner_up', form.runner_up);
+        formData.append('is_upcoming', form.is_upcoming ? '1' : '0');
+        if (form.tournament_id) formData.append('tournament_id', form.tournament_id);
+        formData.append('allow_double_entry', form.allow_double_entry ? '1' : '0');
+        formData.append('require_payment', form.require_payment ? '1' : '0');
+        if (form.payment_method) formData.append('payment_method', form.payment_method);
+        if (form.payment_qr) formData.append('payment_qr', form.payment_qr);
+
+        const submitOptions = {
+            forceFormData: true,
+            preserveScroll: true,
+            onFinish: () => setProcessing(false),
+            onSuccess: () => setShowModal(false),
         };
 
         if (editingEvent) {
-            router.put(route('admin.content.events.update', editingEvent.id), payload, {
-                preserveScroll: true,
-                onFinish: () => setProcessing(false),
-                onSuccess: () => setShowModal(false),
-            });
+            router.post(
+                route('admin.content.events.update', editingEvent.id),
+                { ...Object.fromEntries(formData), _method: 'PUT', payment_qr: form.payment_qr },
+                submitOptions,
+            );
         } else {
-            router.post(route('admin.content.events.store'), payload, {
-                preserveScroll: true,
-                onFinish: () => setProcessing(false),
-                onSuccess: () => setShowModal(false),
-            });
+            router.post(route('admin.content.events.store'), formData, submitOptions);
         }
     };
 
@@ -247,7 +286,7 @@ export default function Events({
                                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Date / Time</th>
                                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Location</th>
                                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Entrance Fee</th>
+                                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Fees</th>
                                     <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
@@ -286,7 +325,7 @@ export default function Events({
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 hidden lg:table-cell">
-                                            <span className="text-sm text-gray-400">{event.entry_fee ?? '—'}</span>
+                                            <span className="text-sm text-gray-400">{formatEventFeeDisplay(event)}</span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
@@ -475,20 +514,33 @@ export default function Events({
                                     />
                                 </div>
 
-                                {/* Players & Entrance Fee */}
+                                {/* Players */}
+                                <div>
+                                    <label className={labelClass}>Players</label>
+                                    <input
+                                        type="text"
+                                        value={form.slots}
+                                        onChange={(e) => setForm({ ...form, slots: e.target.value })}
+                                        className={inputClass}
+                                        placeholder="e.g. 20"
+                                    />
+                                </div>
+
+                                {/* Fees */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className={labelClass}>Players</label>
+                                        <label className={labelClass}>Pre-register Price</label>
                                         <input
                                             type="text"
-                                            value={form.slots}
-                                            onChange={(e) => setForm({ ...form, slots: e.target.value })}
+                                            value={form.pre_register_fee}
+                                            onChange={(e) => setForm({ ...form, pre_register_fee: e.target.value })}
                                             className={inputClass}
-                                            placeholder="e.g. 20"
+                                            placeholder="e.g. 120"
                                         />
+                                        <p className="text-[11px] text-gray-600 mt-1">Online registration fee</p>
                                     </div>
                                     <div>
-                                        <label className={labelClass}>Entrance Fee</label>
+                                        <label className={labelClass}>Door / Walk-in Price</label>
                                         <input
                                             type="text"
                                             value={form.entry_fee}
@@ -496,7 +548,18 @@ export default function Events({
                                             className={inputClass}
                                             placeholder="e.g. 150"
                                         />
+                                        <p className="text-[11px] text-gray-600 mt-1">On-site or after pre-reg ends</p>
                                     </div>
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Pre-register Price Until (optional)</label>
+                                    <input
+                                        type="date"
+                                        value={form.pre_register_until}
+                                        onChange={(e) => setForm({ ...form, pre_register_until: e.target.value })}
+                                        className={inputClass}
+                                    />
+                                    <p className="text-[11px] text-gray-600 mt-1">Leave blank to keep pre-register price until event day</p>
                                 </div>
 
                                 {/* Prizes */}
@@ -547,6 +610,80 @@ export default function Events({
                                                 </button>
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* Registration Settings */}
+                                <div className="border-t border-zinc-800/60 pt-4 mt-4">
+                                    <h4 className="text-sm font-semibold text-white mb-3">Registration Settings</h4>
+
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setForm({ ...form, allow_double_entry: !form.allow_double_entry })}
+                                                className={`relative w-10 h-5 rounded-full transition-colors ${
+                                                    form.allow_double_entry ? 'bg-red-500' : 'bg-zinc-700'
+                                                }`}
+                                            >
+                                                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                                                    form.allow_double_entry ? 'translate-x-5' : 'translate-x-0'
+                                                }`} />
+                                            </button>
+                                            <span className="text-sm text-gray-400">Allow Double Entry</span>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setForm({ ...form, require_payment: !form.require_payment })}
+                                                className={`relative w-10 h-5 rounded-full transition-colors ${
+                                                    form.require_payment ? 'bg-red-500' : 'bg-zinc-700'
+                                                }`}
+                                            >
+                                                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                                                    form.require_payment ? 'translate-x-5' : 'translate-x-0'
+                                                }`} />
+                                            </button>
+                                            <span className="text-sm text-gray-400">Require Payment Upload</span>
+                                        </div>
+
+                                        {form.require_payment && (
+                                            <>
+                                                <div>
+                                                    <label className={labelClass}>Upload Payment QR Code</label>
+                                                    {editingEvent?.payment_qr && !form.payment_qr && (
+                                                        <div className="mb-2">
+                                                            <img
+                                                                src={route('private.payment-qr', editingEvent.id)}
+                                                                alt="Current QR"
+                                                                className="w-32 h-32 object-contain rounded-xl border border-zinc-700/50"
+                                                            />
+                                                            <p className="text-[11px] text-gray-600 mt-1">Current QR. Upload a new one to replace.</p>
+                                                        </div>
+                                                    )}
+                                                    <input
+                                                        ref={qrInputRef}
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={(e) => setForm({ ...form, payment_qr: e.target.files?.[0] ?? null })}
+                                                        className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-red-500/10 file:text-red-400 hover:file:bg-red-500/20 file:cursor-pointer file:transition-colors"
+                                                    />
+                                                    <p className="text-[11px] text-gray-600 mt-1">Upload your GCash/payment QR code image (max 5MB)</p>
+                                                </div>
+
+                                                <div>
+                                                    <label className={labelClass}>Payment Instructions (optional)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={form.payment_method}
+                                                        onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
+                                                        className={inputClass}
+                                                        placeholder='e.g. "GCash - Juan Dela Cruz"'
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 

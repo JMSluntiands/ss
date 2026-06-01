@@ -201,6 +201,8 @@ class AdminContentController extends Controller
             'format' => 'nullable|string|max:100',
             'slots' => 'nullable|string|max:50',
             'entry_fee' => 'nullable|string|max:100',
+            'pre_register_fee' => 'nullable|string|max:100',
+            'pre_register_until' => 'nullable|date',
             'prizes' => 'nullable|array',
             'prizes.*.place' => 'required|string|max:100',
             'prizes.*.prize' => 'required|string|max:255',
