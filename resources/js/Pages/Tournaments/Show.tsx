@@ -1562,7 +1562,7 @@ function StandingsTablePanel({
             <div className="px-4 py-2 border-b border-slate-800/60 bg-slate-800/20">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[min(28rem,55vh)] overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600">
                 <table className="w-full text-sm">
                     <StandingsTableHead tournament={tournament} />
                     <StandingsTableBody
@@ -1660,7 +1660,7 @@ function StandingsTable({
                     ))}
                 </div>
             ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-[min(32rem,65vh)] overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600">
                     <table className="w-full text-sm">
                         <StandingsTableHead tournament={tournament} />
                         <StandingsTableBody
@@ -1734,7 +1734,7 @@ function PlayerStatsTable({ participants, matches, standings }: {
                 <h2 className="text-lg font-semibold text-white">Player Stats</h2>
                 <p className="text-xs text-slate-500 mt-1">Finish type breakdown per player across all matches</p>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[min(32rem,65vh)] overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-slate-700/60 bg-slate-800/40">
@@ -2441,7 +2441,7 @@ function SwissView({
                         })}
                     </div>
 
-                    <div className="p-4 space-y-3">
+                    <div className="p-4 space-y-3 max-h-[min(36rem,70vh)] overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600">
                         {roundMatches.length === 0 ? (
                             <p className="text-sm text-slate-500 text-center py-8">No matches generated yet.</p>
                         ) : isTwoStage ? (
@@ -3675,9 +3675,9 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
 
                     {/* Row 2: Participants & Quick Actions */}
                     {!readOnly && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border-t border-slate-800/80 divide-y sm:divide-y-0 sm:divide-x divide-slate-800/80 items-stretch">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border-t border-slate-800/80 divide-y sm:divide-y-0 sm:divide-x divide-slate-800/80 lg:items-start">
                         {/* Participants */}
-                        <div className="p-5 flex flex-col min-h-0 min-w-0 self-stretch overflow-hidden">
+                        <div className="p-5 flex flex-col min-w-0">
                             <div className="flex items-center justify-between mb-3 shrink-0">
                                 <div className="flex items-center gap-2">
                                     <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -3685,7 +3685,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                 </div>
                                 <span className="text-xs text-slate-500">{participantCount} / {maxLabel}</span>
                             </div>
-                            <div className="flex flex-col flex-1 min-h-0">
+                            <div className="flex flex-col">
                                 {liveTournament.status === 'pending' && (
                                     <div className="shrink-0 mb-3">
                                         <SingleAddForm tournamentId={tournament.id} />
@@ -3698,7 +3698,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                 {participants.length === 0 ? (
                                     <p className="text-slate-500 text-xs text-center py-4">No participants yet</p>
                                 ) : (
-                                    <div className="flex-1 min-h-[10rem] max-h-52 min-w-0 overflow-y-auto overflow-x-hidden pr-2 space-y-1 [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600">
+                                    <div className="max-h-96 min-h-[8rem] min-w-0 overflow-y-auto overflow-x-hidden pr-2 space-y-1 [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600">
                                         {participants.map((p) => (
                                             <ParticipantRow
                                                 key={p.id}
