@@ -3,6 +3,9 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 
+const inputClass =
+    'guest-tx-input block w-full rounded-xl border border-zinc-800 bg-zinc-900/70 py-3 text-white placeholder-gray-600 transition-all focus:bg-zinc-900 focus:outline-none';
+
 export default function Login({
     status,
     canResetPassword,
@@ -31,10 +34,12 @@ export default function Login({
 
             <div>
                 <h2 className="text-3xl font-bold text-white mb-2">Welcome back</h2>
-                <p className="text-gray-500 mb-8">Sign in to your <span className="text-red-500 font-semibold">Challonge</span> account</p>
+                <p className="text-gray-500 mb-8">
+                    Sign in to your <span className="guest-tx-accent-text font-semibold">Tournament X</span> account
+                </p>
 
                 {status && (
-                    <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                    <div className="mb-6 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-4 py-3 text-sm text-cyan-300">
                         {status}
                     </div>
                 )}
@@ -59,7 +64,7 @@ export default function Login({
                                 autoFocus
                                 placeholder="you@example.com"
                                 onChange={(e) => setData('email', e.target.value)}
-                                className="block w-full rounded-xl border border-zinc-800 bg-zinc-900/70 py-3 pl-12 pr-4 text-white placeholder-gray-600 transition-all focus:border-red-500/50 focus:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                                className={`${inputClass} pl-12 pr-4`}
                             />
                         </div>
                         <InputError message={errors.email} className="mt-2" />
@@ -83,12 +88,12 @@ export default function Login({
                                 autoComplete="current-password"
                                 placeholder="Enter your password"
                                 onChange={(e) => setData('password', e.target.value)}
-                                className="block w-full rounded-xl border border-zinc-800 bg-zinc-900/70 py-3 pl-12 pr-12 text-white placeholder-gray-600 transition-all focus:border-red-500/50 focus:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                                className={`${inputClass} pl-12 pr-12`}
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-600 hover:text-gray-300 transition-colors"
+                                className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-600 hover:text-cyan-300 transition-colors"
                             >
                                 {showPassword ? (
                                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
@@ -107,7 +112,7 @@ export default function Login({
                                 name="remember"
                                 checked={data.remember}
                                 onChange={(e) => setData('remember', (e.target.checked || false) as false)}
-                                className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-red-500 focus:ring-red-500/20 focus:ring-offset-0 transition-colors"
+                                className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-fuchsia-500 focus:ring-cyan-400/20 focus:ring-offset-0 transition-colors"
                             />
                             <span className="text-sm text-gray-500 group-hover:text-gray-300 transition-colors">
                                 Remember me
@@ -115,10 +120,7 @@ export default function Login({
                         </label>
 
                         {canResetPassword && (
-                            <Link
-                                href={route('password.request')}
-                                className="text-sm text-red-400 hover:text-red-300 transition-colors"
-                            >
+                            <Link href={route('password.request')} className="text-sm guest-tx-link">
                                 Forgot password?
                             </Link>
                         )}
@@ -127,7 +129,7 @@ export default function Login({
                     <button
                         type="submit"
                         disabled={processing}
-                        className="relative w-full rounded-xl bg-gradient-to-r from-red-700 to-red-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-red-500/25 transition-all hover:shadow-red-500/40 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-red-500/50 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="guest-tx-btn relative w-full rounded-xl px-6 py-3.5 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {processing ? (
                             <span className="flex items-center justify-center gap-2">
@@ -142,7 +144,6 @@ export default function Login({
                         )}
                     </button>
                 </form>
-
             </div>
         </GuestLayout>
     );

@@ -231,14 +231,14 @@ export default function MyEvents({ events, tournaments, userName }: { events: Pa
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-white">Your Events</h1>
-                        <div className="mt-2 w-16 h-1 rounded-full bg-gradient-to-r from-red-600 to-red-400" />
+                        <div className="mt-2 w-16 h-1 rounded-full tx-underline" />
                         <p className="text-sm text-gray-500 mt-3">
                             {events.total} total event{events.total !== 1 ? 's' : ''}
                         </p>
                     </div>
                     <button
                         onClick={openCreate}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-red-700 to-red-500 shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:brightness-110 transition-all"
+                        className="tx-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -714,7 +714,7 @@ export default function MyEvents({ events, tournaments, userName }: { events: Pa
                                     <button
                                         type="submit"
                                         disabled={processing}
-                                        className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-red-700 to-red-500 shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:brightness-110 transition-all disabled:opacity-50"
+                                        className="tx-btn flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-50"
                                     >
                                         {processing ? 'Saving...' : editingEvent ? 'Update Event' : 'Create Event'}
                                     </button>

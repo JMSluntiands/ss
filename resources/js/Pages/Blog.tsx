@@ -1,7 +1,7 @@
 import OptimizedImage from '@/Components/OptimizedImage';
 import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
-import { blogImageSrc, normalizeImages } from '@/utils/blogImages';
+import { blogCoverSrc, normalizeImages } from '@/utils/blogImages';
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -9,7 +9,6 @@ interface BlogPostData {
     id: number;
     title: string;
     excerpt: string;
-    content: string;
     images: string[] | null;
     category: string;
     author: string;
@@ -79,6 +78,7 @@ export default function Blog({ posts = [] }: { posts?: BlogPostData[] }) {
                                     {filtered.map((post) => {
                                         const imgs = normalizeImages(post.images);
                                         const cover = imgs[0];
+                                        const coverUrls = cover ? blogCoverSrc(cover) : null;
 
                                         return (
                                             <Link
@@ -87,10 +87,12 @@ export default function Blog({ posts = [] }: { posts?: BlogPostData[] }) {
                                                 className="group flex flex-col bg-zinc-900/60 border border-zinc-800/60 rounded-2xl overflow-hidden hover:border-red-500/30 transition-all"
                                             >
                                                 <div className="relative aspect-[4/3] overflow-hidden bg-zinc-800">
-                                                    {cover ? (
+                                                    {coverUrls ? (
                                                         <OptimizedImage
-                                                            src={blogImageSrc(cover)}
+                                                            src={coverUrls.src}
+                                                            fallbackSrc={coverUrls.fallbackSrc}
                                                             alt={post.title}
+                                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                         />
                                                     ) : (

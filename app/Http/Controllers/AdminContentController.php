@@ -109,8 +109,8 @@ class AdminContentController extends Controller
             return;
         }
         foreach ($paths as $path) {
-            if ($path && !str_starts_with($path, 'http')) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+            if ($path) {
+                ImageOptimizer::deleteStored($path);
             }
         }
     }
@@ -287,7 +287,7 @@ class AdminContentController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $data['image_url'] = ImageOptimizer::storeOptimized($request->file('image'), 'member-images', 800);
+            $data['image_url'] = ImageOptimizer::storeOptimized($request->file('image'), 'member-images', 800, 82, 400);
         }
         unset($data['image']);
 
@@ -310,10 +310,10 @@ class AdminContentController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            if ($member->image_url && !str_starts_with($member->image_url, 'http')) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($member->image_url);
+            if ($member->image_url) {
+                ImageOptimizer::deleteStored($member->image_url);
             }
-            $data['image_url'] = ImageOptimizer::storeOptimized($request->file('image'), 'member-images', 800);
+            $data['image_url'] = ImageOptimizer::storeOptimized($request->file('image'), 'member-images', 800, 82, 400);
         }
         unset($data['image']);
 

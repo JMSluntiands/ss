@@ -3425,7 +3425,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                 {liveTournament.status.charAt(0).toUpperCase() + liveTournament.status.slice(1)}
                             </span>
                         </div>
-                        <div className="mt-2 w-16 h-1 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400" />
+                        <div className="mt-2 w-16 h-1 rounded-full tx-underline" />
                     </div>
                     {!readOnly && liveTournament.status === 'pending' && (
                         <div className="flex items-center gap-3 shrink-0">
@@ -3457,7 +3457,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                     navigator.clipboard.writeText(shareUrl);
                                     setToast('Live matches link copied!');
                                 }}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600/90 to-cyan-600/90 border border-purple-500/30 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 hover:brightness-110 transition-all active:scale-[0.98]"
+                                className="tx-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                                 Share Live Matches

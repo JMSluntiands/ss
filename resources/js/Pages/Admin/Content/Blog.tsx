@@ -34,7 +34,7 @@ async function prepareBlogImageFile(file: File): Promise<File> {
         prepared = new File([blob], `${baseName}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
     }
 
-    return resizeImageFile(prepared, 1600, 0.82);
+    return resizeImageFile(prepared, 1200, 0.82);
 }
 
 interface BlogPost {

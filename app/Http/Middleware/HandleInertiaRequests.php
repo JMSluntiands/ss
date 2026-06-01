@@ -41,6 +41,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'site_visit_count' => $visitCount,
             'site_logo_url' => SiteAssets::logoUrl(),
+            'tournament_x_logo_url' => SiteAssets::tournamentXLogoUrl(),
             'auth' => [
                 'user' => $user,
             ],

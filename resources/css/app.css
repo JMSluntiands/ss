@@ -27,4 +27,52 @@
             transform: translateX(-50%);
         }
     }
+
+    /* Tournament X — pink / cyan / violet on dark (guest + app) */
+    .tx-accent-text,
+    .guest-tx-accent-text {
+        @apply bg-gradient-to-r from-pink-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent;
+    }
+
+    .tx-btn,
+    .guest-tx-btn {
+        @apply bg-gradient-to-r from-fuchsia-600 via-violet-600 to-cyan-500 shadow-lg shadow-fuchsia-500/20 transition-all hover:shadow-cyan-500/30 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 active:scale-[0.98];
+    }
+
+    .guest-tx-input:focus {
+        @apply border-cyan-400/40 ring-2 ring-cyan-400/15;
+    }
+
+    .tx-link,
+    .guest-tx-link {
+        @apply text-cyan-400 transition-colors hover:text-pink-300;
+    }
+
+    .tx-nav-active {
+        @apply bg-fuchsia-500/10 text-cyan-300 border border-fuchsia-500/25;
+    }
+
+    .tx-nav-active-icon {
+        @apply text-pink-400;
+    }
+
+    .tx-nav-admin {
+        @apply text-violet-300 bg-violet-500/10 border border-violet-500/25 hover:bg-violet-500/20;
+    }
+
+    .tx-avatar {
+        @apply bg-gradient-to-tr from-fuchsia-600 via-violet-600 to-cyan-500;
+    }
+
+    .tx-underline {
+        @apply bg-gradient-to-r from-pink-500 via-violet-500 to-cyan-400;
+    }
+
+    .tx-card-icon {
+        @apply bg-gradient-to-tr from-fuchsia-500/20 to-cyan-500/10 border border-fuchsia-500/20;
+    }
+
+    .tx-card-icon-svg {
+        @apply text-pink-400;
+    }
 }

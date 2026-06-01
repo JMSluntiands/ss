@@ -15,8 +15,32 @@ class ImageOptimizer
         return extension_loaded('gd');
     }
 
-    public static function storeOptimized(UploadedFile $file, string $directory, int $maxWidth = 1200, int $quality = 82): ?string
+    public static function thumbPathFor(string $relativePath): string
     {
+        $dir = pathinfo($relativePath, PATHINFO_DIRNAME);
+        $name = pathinfo($relativePath, PATHINFO_FILENAME);
+
+        return ($dir !== '.' ? $dir.'/' : '').$name.'_thumb.jpg';
+    }
+
+    public static function deleteStored(string $relativePath): void
+    {
+        if ($relativePath === '' || str_starts_with($relativePath, 'http://') || str_starts_with($relativePath, 'https://')) {
+            return;
+        }
+
+        $disk = Storage::disk('public');
+        $disk->delete($relativePath);
+        $disk->delete(self::thumbPathFor($relativePath));
+    }
+
+    public static function storeOptimized(
+        UploadedFile $file,
+        string $directory,
+        int $maxWidth = 1200,
+        int $quality = 82,
+        ?int $thumbMaxWidth = null,
+    ): ?string {
         if (! $file->isValid()) {
             return null;
         }
@@ -39,11 +63,18 @@ class ImageOptimizer
             return $file->store($directory, 'public');
         }
 
-        return self::saveJpeg($image, $directory, $maxWidth, $quality);
+        $thumbMaxWidth ??= self::defaultThumbWidth($maxWidth);
+
+        return self::saveJpeg($image, $directory, $maxWidth, $quality, $thumbMaxWidth);
     }
 
-    public static function optimizeBinary(string $binary, string $directory, int $maxWidth = 1200, int $quality = 82): ?string
-    {
+    public static function optimizeBinary(
+        string $binary,
+        string $directory,
+        int $maxWidth = 1200,
+        int $quality = 82,
+        ?int $thumbMaxWidth = null,
+    ): ?string {
         if ($binary === '' || ! self::isAvailable()) {
             return null;
         }
@@ -53,16 +84,22 @@ class ImageOptimizer
             return null;
         }
 
-        return self::saveJpeg($image, $directory, $maxWidth, $quality);
+        $thumbMaxWidth ??= self::defaultThumbWidth($maxWidth);
+
+        return self::saveJpeg($image, $directory, $maxWidth, $quality, $thumbMaxWidth);
     }
 
-    public static function optimizeStoredFile(string $relativePath, int $maxWidth = 1200, int $quality = 82): bool
+    public static function optimizeStoredFile(string $relativePath, int $maxWidth = 1200, int $quality = 82, ?int $thumbMaxWidth = null): bool
     {
         if (! self::isAvailable()) {
             return false;
         }
 
         if (str_starts_with($relativePath, 'http://') || str_starts_with($relativePath, 'https://')) {
+            return false;
+        }
+
+        if (str_ends_with(strtolower($relativePath), '_thumb.jpg')) {
             return false;
         }
 
@@ -81,15 +118,59 @@ class ImageOptimizer
             return false;
         }
 
+        $thumbMaxWidth ??= self::defaultThumbWidth($maxWidth);
+
         $before = $disk->size($relativePath);
         $saved = self::saveJpegToPath($image, $absolute, $maxWidth, $quality);
         if (! $saved) {
             return false;
         }
 
+        self::ensureThumb($relativePath, $thumbMaxWidth);
+
         $after = $disk->size($relativePath);
 
         return $after < $before || ! str_ends_with(strtolower($relativePath), '.jpg');
+    }
+
+    public static function ensureThumb(string $relativePath, ?int $thumbMaxWidth = null): bool
+    {
+        if (! self::isAvailable()) {
+            return false;
+        }
+
+        if (str_starts_with($relativePath, 'http://') || str_starts_with($relativePath, 'https://')) {
+            return false;
+        }
+
+        if (str_ends_with(strtolower($relativePath), '_thumb.jpg')) {
+            return false;
+        }
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($relativePath)) {
+            return false;
+        }
+
+        $thumbPath = self::thumbPathFor($relativePath);
+        if ($disk->exists($thumbPath)) {
+            return true;
+        }
+
+        $absolute = $disk->path($relativePath);
+        $image = self::loadImageFromPath($absolute, (string) mime_content_type($absolute), pathinfo($absolute, PATHINFO_EXTENSION));
+        if (! $image) {
+            return false;
+        }
+
+        $thumbMaxWidth ??= self::defaultThumbWidth(imagesx($image));
+
+        return self::writeThumb($image, $thumbPath, $thumbMaxWidth);
+    }
+
+    private static function defaultThumbWidth(int $maxWidth): int
+    {
+        return (int) min(640, max(320, round($maxWidth * 0.5)));
     }
 
     private static function isSvg(UploadedFile $file): bool
@@ -126,23 +207,53 @@ class ImageOptimizer
         }
     }
 
-    private static function saveJpeg(GdImage $image, string $directory, int $maxWidth, int $quality): ?string
+    private static function saveJpeg(GdImage $image, string $directory, int $maxWidth, int $quality, int $thumbMaxWidth): ?string
     {
         $resized = self::resizeIfNeeded($image, $maxWidth);
         $binary = self::encodeJpeg($resized, $quality);
-        if ($resized !== $image) {
-            imagedestroy($resized);
-        }
-        imagedestroy($image);
 
         if ($binary === null) {
+            if ($resized !== $image) {
+                imagedestroy($resized);
+            }
+            imagedestroy($image);
+
             return null;
         }
 
         $filename = trim($directory, '/').'/'.Str::uuid().'.jpg';
         Storage::disk('public')->put($filename, $binary);
+        self::writeThumb($resized, $filename, $thumbMaxWidth);
+
+        if ($resized !== $image) {
+            imagedestroy($resized);
+        }
+        imagedestroy($image);
 
         return $filename;
+    }
+
+    private static function writeThumb(GdImage $source, string $mainRelativePath, int $thumbMaxWidth): bool
+    {
+        $thumbPath = self::thumbPathFor($mainRelativePath);
+        $absolute = Storage::disk('public')->path($thumbPath);
+        $dir = dirname($absolute);
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+        $targetWidth = min($width, $thumbMaxWidth);
+        $targetHeight = (int) round($height * ($targetWidth / $width));
+
+        $thumb = imagecreatetruecolor($targetWidth, $targetHeight);
+        imagecopyresampled($thumb, $source, 0, 0, 0, 0, $targetWidth, $targetHeight, $width, $height);
+
+        $ok = imagejpeg($thumb, $absolute, 80);
+        imagedestroy($thumb);
+
+        return $ok;
     }
 
     private static function saveJpegToPath(GdImage $image, string $absolutePath, int $maxWidth, int $quality): bool

@@ -41,14 +41,14 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-white">Your Tournaments</h1>
-                        <div className="mt-2 w-16 h-1 rounded-full bg-gradient-to-r from-red-600 to-red-400" />
+                        <div className="mt-2 w-16 h-1 rounded-full tx-underline" />
                     </div>
 
                     {canCreate && (
                     <div className="relative">
                         <button
                             onClick={() => setShowCreateDropdown(!showCreateDropdown)}
-                            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-500 text-sm font-semibold text-white shadow-lg shadow-red-500/25 transition-all hover:shadow-red-500/40 hover:brightness-110 active:scale-[0.98]"
+                            className="tx-btn inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -67,7 +67,7 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                                         href={route('tournaments.create')}
                                         className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-zinc-700/50 transition-colors"
                                     >
-                                        <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
                                         </svg>
                                         Tournament
@@ -76,7 +76,7 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                                         href={route('tournaments.create')}
                                         className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-zinc-700/50 transition-colors"
                                     >
-                                        <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         Race
@@ -125,8 +125,8 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                             >
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-red-500/20 to-red-400/10 border border-red-500/20 flex items-center justify-center shrink-0">
-                                            <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div className="w-12 h-12 rounded-xl tx-card-icon flex items-center justify-center shrink-0">
+                                            <svg className="w-6 h-6 tx-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 4v12l-4-2-4 2V4M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
                                         </div>

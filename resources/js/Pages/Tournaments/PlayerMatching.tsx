@@ -1,5 +1,6 @@
 import ParticipantAvatar from '@/Components/ParticipantAvatar';
 import SiteLogo from '@/Components/SiteLogo';
+import TournamentXBrand from '@/Components/TournamentXBrand';
 import { Head } from '@inertiajs/react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -72,14 +73,14 @@ function MatchBoardCard({ match }: { match: LiveMatch }) {
         p1Leading ? match.player1?.name : p2Leading ? match.player2?.name : null;
 
     return (
-        <article className="rounded-2xl border border-emerald-500/30 bg-slate-900/60 overflow-hidden shadow-lg shadow-emerald-500/5 flex flex-col h-full">
-            <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-emerald-500/20 bg-emerald-500/5">
+        <article className="rounded-2xl border border-fuchsia-500/25 bg-slate-900/60 overflow-hidden shadow-lg shadow-fuchsia-500/10 flex flex-col h-full">
+            <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-fuchsia-500/20 bg-gradient-to-r from-fuchsia-500/10 via-violet-500/5 to-cyan-500/10">
                 <div className="flex items-center gap-2 min-w-0">
                     <span className="relative flex h-2 w-2 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
                     </span>
-                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Playing</span>
+                    <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wider">Playing</span>
                     <span className="text-[10px] text-slate-500 font-medium">
                         R{match.round} · M{match.match_number}
                     </span>
@@ -152,11 +153,11 @@ function MatchBoardCard({ match }: { match: LiveMatch }) {
                 </div>
 
                 {leader && (
-                    <div className="mt-3 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                        <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <div className="mt-3 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+                        <svg className="w-4 h-4 text-cyan-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
-                        <span className="text-xs text-emerald-400 font-semibold truncate">Leading: {leader}</span>
+                        <span className="text-xs text-cyan-300 font-semibold truncate">Leading: {leader}</span>
                     </div>
                 )}
             </div>
@@ -204,24 +205,27 @@ export default function PlayerMatching({
     return (
         <>
             <Head title={`Live Matches — ${tournament.name}`} />
-            <div className="min-h-screen bg-zinc-950 flex flex-col">
-                <header className="flex items-center justify-between h-16 px-6 border-b border-zinc-800/80 bg-zinc-900/60 backdrop-blur-sm">
-                    <span className="text-xl font-black text-white tracking-tight">
-                        SHADOW <span className="text-red-500">SYNDICATE</span>
-                    </span>
-                    <SiteLogo className="h-10 w-auto" />
+            <div className="tx-app-theme min-h-screen bg-zinc-950 flex flex-col relative overflow-hidden">
+                <div className="pointer-events-none absolute inset-0 opacity-20">
+                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-fuchsia-600 rounded-full blur-[120px]" />
+                    <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-cyan-600 rounded-full blur-[100px]" />
+                </div>
+
+                <header className="relative z-10 flex items-center justify-between h-16 px-4 sm:px-6 border-b border-zinc-800/80 bg-zinc-900/60 backdrop-blur-sm">
+                    <TournamentXBrand href={route('home')} logoClassName="h-9 sm:h-10 w-auto" />
                 </header>
 
-                <main className="flex-1 w-full max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+                <main className="relative z-10 flex-1 w-full max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                     <div className="text-center mb-8">
                         <h1 className="text-2xl sm:text-4xl font-bold text-white uppercase tracking-tight truncate px-2" title={tournament.name}>
                             {tournament.name}
                         </h1>
-                        <div className="flex flex-wrap items-center justify-center gap-3 mt-3">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400">
+                        <div className="mx-auto mt-3 w-20 h-1 rounded-full tx-underline" />
+                        <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-xs font-bold text-cyan-300">
                                 <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
                                 </span>
                                 LIVE
                             </span>
@@ -262,8 +266,16 @@ export default function PlayerMatching({
                     )}
                 </main>
 
-                <footer className="border-t border-zinc-800/80 py-4 text-center">
-                    <p className="text-xs text-zinc-600">Powered by SHADOW <span className="text-red-500">SYNDICATE</span></p>
+                <footer className="relative z-10 border-t border-zinc-800/80 py-6 flex flex-col items-center gap-3">
+                    <p className="text-xs text-zinc-500">
+                        Powered by <span className="tx-accent-text font-semibold">Tournament X</span>
+                    </p>
+                    <div className="flex flex-col items-center gap-2">
+                        <SiteLogo className="h-10 w-auto opacity-90" loading="lazy" />
+                        <p className="text-[11px] text-zinc-600">
+                            Created by <span className="text-red-500/70 font-semibold">Shadow Syndicate</span>
+                        </p>
+                    </div>
                 </footer>
             </div>
         </>

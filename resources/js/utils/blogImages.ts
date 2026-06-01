@@ -1,3 +1,5 @@
+import { ImageSize, publicStorageUrl, storageThumbPath } from '@/utils/publicStorage';
+
 export function normalizeImages(images: unknown): string[] {
     if (!images) return [];
     if (typeof images === 'string') {
@@ -12,8 +14,22 @@ export function normalizeImages(images: unknown): string[] {
     return images.filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
 }
 
-import { publicStorageUrl } from '@/utils/publicStorage';
+export function blogImageSrc(path: string, size: ImageSize = 'full'): string {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+    }
 
-export function blogImageSrc(path: string): string {
+    if (size === 'thumb') {
+        return publicStorageUrl(storageThumbPath(path.replace(/^\/+/, '')));
+    }
+
     return publicStorageUrl(path);
+}
+
+/** List/grid cards — smaller file when thumb exists (falls back via OptimizedImage). */
+export function blogCoverSrc(path: string): { src: string; fallbackSrc: string } {
+    return {
+        src: blogImageSrc(path, 'thumb'),
+        fallbackSrc: blogImageSrc(path, 'full'),
+    };
 }

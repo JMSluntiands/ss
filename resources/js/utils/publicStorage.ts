@@ -8,10 +8,37 @@ export function publicStorageUrl(path: string): string {
     return `/storage/${relative}`;
 }
 
-export function memberImageSrc(url: string | null): string | null {
+export type ImageSize = 'thumb' | 'full';
+
+function storageRelativePath(url: string): string {
+    if (url.startsWith('/storage/')) {
+        return url.slice('/storage/'.length);
+    }
+
+    return url.replace(/^\/+/, '');
+}
+
+export function storageThumbPath(relativePath: string): string {
+    if (relativePath.endsWith('_thumb.jpg')) {
+        return relativePath;
+    }
+
+    const lastDot = relativePath.lastIndexOf('.');
+    if (lastDot === -1) {
+        return `${relativePath}_thumb.jpg`;
+    }
+
+    return `${relativePath.slice(0, lastDot)}_thumb.jpg`;
+}
+
+export function memberImageSrc(url: string | null, size: ImageSize = 'full'): string | null {
     if (!url) return null;
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    return publicStorageUrl(url);
+
+    const relative = storageRelativePath(url);
+    const path = size === 'thumb' ? storageThumbPath(relative) : relative;
+
+    return publicStorageUrl(path);
 }
 
 /** Participant avatars from API (path or /storage/... or full URL). */

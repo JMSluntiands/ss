@@ -13,14 +13,28 @@ class SitePageController extends Controller
     public function home()
     {
         return Inertia::render('Welcome', [
-            'members' => SiteMember::orderBy('sort_order')->get(),
+            'members' => SiteMember::query()
+                ->orderBy('sort_order')
+                ->get(['id', 'name', 'role', 'rank', 'wins', 'losses', 'bey', 'image_url']),
         ]);
     }
 
     public function blog()
     {
         return Inertia::render('Blog', [
-            'posts' => BlogPost::where('published', true)->latest()->get(),
+            'posts' => BlogPost::query()
+                ->where('published', true)
+                ->latest()
+                ->get([
+                    'id',
+                    'title',
+                    'excerpt',
+                    'images',
+                    'category',
+                    'author',
+                    'read_time',
+                    'created_at',
+                ]),
         ]);
     }
 
@@ -76,7 +90,9 @@ class SitePageController extends Controller
     public function members()
     {
         return Inertia::render('Members', [
-            'members' => SiteMember::orderBy('sort_order')->get(),
+            'members' => SiteMember::query()
+                ->orderBy('sort_order')
+                ->get(['id', 'name', 'role', 'rank', 'wins', 'losses', 'bey', 'joined', 'image_url']),
         ]);
     }
 

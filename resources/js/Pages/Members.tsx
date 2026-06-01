@@ -146,8 +146,10 @@ export default function Members({ members = [] }: { members?: MemberData[] }) {
                                             <div className="relative aspect-[4/3] overflow-hidden">
                                                 {memberImageSrc(member.image_url) ? (
                                                     <OptimizedImage
-                                                        src={memberImageSrc(member.image_url)!}
+                                                        src={memberImageSrc(member.image_url, 'thumb')!}
+                                                        fallbackSrc={memberImageSrc(member.image_url, 'full')!}
                                                         alt={member.name}
+                                                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                                                         className="w-full h-full object-cover object-[center_18%] group-hover:scale-105 transition-transform duration-500"
                                                     />
                                                 ) : (

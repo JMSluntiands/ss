@@ -75,9 +75,10 @@ export default function BlogShow({ post }: { post: BlogPostData }) {
                                         }`}
                                     >
                                         <OptimizedImage
-                                            src={blogImageSrc(path)}
+                                            src={blogImageSrc(path, 'full')}
                                             alt={`${post.title} ${i + 1}`}
                                             priority={i === 0}
+                                            loading={i === 0 ? undefined : 'lazy'}
                                             className={`w-full object-cover object-center ${
                                                 imgs.length === 1 ? 'h-full max-h-72 sm:max-h-80' : 'h-full'
                                             }`}
