@@ -28,6 +28,7 @@ interface EventData {
     map_lat: number | null;
     map_lng: number | null;
     format: string | null;
+    rules: string | null;
     slots: string | null;
     entry_fee: string | null;
     pre_register_fee: string | null;
@@ -185,6 +186,15 @@ export default function EventShow({
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2">
                                 {event.description && <p className="text-gray-300 mb-6">{event.description}</p>}
+
+                                {event.rules && (
+                                    <div className="mb-6">
+                                        <h2 className="text-sm font-bold uppercase tracking-wide text-white mb-2">Rules</h2>
+                                        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4">
+                                            <p className="text-sm text-gray-300 whitespace-pre-wrap">{event.rules}</p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
                                     <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-sm"><span className="text-gray-500">Date & Time:</span> <span className="text-white">{formatEventDateTime(event.date, event.time)}</span></div>

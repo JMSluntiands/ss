@@ -16,6 +16,7 @@ interface SiteEvent {
     map_lat: number | null;
     map_lng: number | null;
     format: string | null;
+    rules: string | null;
     slots: string | null;
     entry_fee: string | null;
     pre_register_fee: string | null;
@@ -52,6 +53,7 @@ interface EventForm {
     location: string;
     map_address: string;
     format: string;
+    rules: string;
     slots: string;
     entry_fee: string;
     pre_register_fee: string;
@@ -78,6 +80,7 @@ const emptyEvent: EventForm = {
     location: '',
     map_address: '',
     format: '',
+    rules: '',
     slots: '',
     entry_fee: '',
     pre_register_fee: '',
@@ -140,6 +143,7 @@ export default function MyEvents({ events, tournaments, userName }: { events: Pa
             location: event.location,
             map_address: event.map_address ?? '',
             format: event.format ?? '',
+            rules: event.rules ?? '',
             slots: event.slots ?? '',
             entry_fee: event.entry_fee ?? '',
             pre_register_fee: event.pre_register_fee ?? '',
@@ -185,6 +189,7 @@ export default function MyEvents({ events, tournaments, userName }: { events: Pa
         formData.append('location', form.location);
         if (form.map_address) formData.append('map_address', form.map_address);
         if (form.format) formData.append('format', form.format);
+        if (form.rules) formData.append('rules', form.rules);
         if (form.slots) formData.append('slots', form.slots);
         if (form.entry_fee) formData.append('entry_fee', form.entry_fee);
         if (form.pre_register_fee) formData.append('pre_register_fee', form.pre_register_fee);
@@ -497,6 +502,19 @@ export default function MyEvents({ events, tournaments, userName }: { events: Pa
                                         className={inputClass}
                                         placeholder='e.g. "Standard 3G"'
                                     />
+                                </div>
+
+                                {/* Rules */}
+                                <div>
+                                    <label className={labelClass}>Rules</label>
+                                    <textarea
+                                        value={form.rules}
+                                        onChange={(e) => setForm({ ...form, rules: e.target.value })}
+                                        rows={5}
+                                        className={`${inputClass} resize-y min-h-[120px]`}
+                                        placeholder="Event rules (one per line or paragraphs)"
+                                    />
+                                    <p className="text-[11px] text-gray-600 mt-1">Shown on the public event page for players.</p>
                                 </div>
 
                                 {/* Players */}

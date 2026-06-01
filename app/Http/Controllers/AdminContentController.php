@@ -199,6 +199,7 @@ class AdminContentController extends Controller
             'map_lat' => 'nullable|numeric|between:-90,90',
             'map_lng' => 'nullable|numeric|between:-180,180',
             'format' => 'nullable|string|max:100',
+            'rules' => 'nullable|string',
             'slots' => 'nullable|string|max:50',
             'entry_fee' => 'nullable|string|max:100',
             'pre_register_fee' => 'nullable|string|max:100',
