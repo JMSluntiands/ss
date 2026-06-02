@@ -20,6 +20,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'blader_name',
         'email',
         'password',
         'role',
@@ -43,6 +44,16 @@ class User extends Authenticatable
     public function tournaments()
     {
         return $this->hasMany(\App\Models\Tournament::class);
+    }
+
+    public function siteMember()
+    {
+        return $this->hasOne(SiteMember::class);
+    }
+
+    public function eventRegistrations()
+    {
+        return $this->hasMany(EventRegistration::class);
     }
 
     /**

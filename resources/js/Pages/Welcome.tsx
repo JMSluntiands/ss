@@ -1,4 +1,6 @@
 import { MemberSlideData, MembersSliderSection } from '@/Components/MembersMarquee';
+// import TournamentRosterSection, { TournamentRosterData } from '@/Components/TournamentRosterSection';
+import TournamentXFeaturesSection from '@/Components/TournamentXFeaturesSection';
 import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
 import SiteVisitsStrip from '@/Components/SiteVisitsStrip';
@@ -8,7 +10,11 @@ import { tournamentxDashboardUrl, tournamentxLoginUrl } from '@/utils/tournament
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
-export default function Welcome({ auth, members = [] }: PageProps & { members?: MemberSlideData[] }) {
+export default function Welcome({
+    auth,
+    members = [],
+    // tournamentRosters = [],
+}: PageProps & { members?: MemberSlideData[] /* ; tournamentRosters?: TournamentRosterData[] */ }) {
     const page = usePage<PageProps>();
     const txLogin = tournamentxLoginUrl(page.props);
     const txDashboard = tournamentxDashboardUrl(page.props);
@@ -127,33 +133,73 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                                     battle head-to-head, and climb the rankings. Let it rip!
                                 </p>
 
-                                <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4">
-                                    {auth.user ? (
+                                <div className="w-full max-w-md mx-auto lg:mx-0">
+                                    <div className="rounded-2xl border border-zinc-800/70 bg-zinc-900/50 backdrop-blur-sm shadow-xl shadow-black/30 overflow-hidden">
+                                        {auth.user ? (
+                                            <a
+                                                href={txDashboard}
+                                                className="group flex items-center gap-4 p-4 sm:p-5 border-l-4 border-l-red-500 hover:bg-red-500/5 transition-colors"
+                                            >
+                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/15 border border-red-500/25 text-red-400 group-hover:bg-red-500/25 transition-colors">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="flex-1 min-w-0 text-left">
+                                                    <p className="font-bold text-white group-hover:text-red-300 transition-colors">Go to Dashboard</p>
+                                                    <p className="text-sm text-gray-500">Profile, stats & member tools</p>
+                                                </div>
+                                                <svg className="w-5 h-5 shrink-0 text-zinc-600 group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </a>
+                                        ) : (
+                                            <Link
+                                                href={route('register')}
+                                                className="group flex items-center gap-4 p-4 sm:p-5 border-l-4 border-l-red-500 hover:bg-red-500/5 transition-colors"
+                                            >
+                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/15 border border-red-500/25 text-red-400 group-hover:bg-red-500/25 transition-colors">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="flex-1 min-w-0 text-left">
+                                                    <p className="font-bold text-white group-hover:text-red-300 transition-colors">Join Now</p>
+                                                    <p className="text-sm text-gray-500">Create your blader account</p>
+                                                </div>
+                                                <svg className="w-5 h-5 shrink-0 text-zinc-600 group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </Link>
+                                        )}
+                                        <div className="h-px bg-zinc-800/80" />
                                         <a
-                                            href={txDashboard}
-                                            className="group relative px-8 py-4 text-lg font-bold bg-red-600 hover:bg-red-500 rounded-xl transition-all shadow-lg shadow-red-600/20 hover:shadow-red-500/30"
+                                            href={manageTournamentHref}
+                                            className="group flex items-center gap-4 p-4 sm:p-5 border-l-4 border-l-cyan-500/80 hover:bg-cyan-500/5 transition-colors"
                                         >
-                                            Go to Dashboard
-                                            <span className="absolute inset-0 rounded-xl border border-red-400/20 group-hover:border-red-400/40 transition-colors" />
+                                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-400 group-hover:bg-cyan-500/20 transition-colors">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                </svg>
+                                            </div>
+                                            <div className="flex-1 min-w-0 text-left">
+                                                <p className="font-bold text-white group-hover:text-cyan-300 transition-colors">Manage Tournament</p>
+                                                <p className="text-sm text-gray-500">Brackets, judging & live scores</p>
+                                            </div>
+                                            <svg className="w-5 h-5 shrink-0 text-zinc-600 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                            </svg>
                                         </a>
-                                    ) : (
-                                        <Link
-                                            href={route('register')}
-                                            className="group relative px-8 py-4 text-lg font-bold bg-red-600 hover:bg-red-500 rounded-xl transition-all shadow-lg shadow-red-600/20 hover:shadow-red-500/30"
-                                        >
-                                            Join Now!
-                                            <span className="absolute inset-0 rounded-xl border border-red-400/20 group-hover:border-red-400/40 transition-colors" />
+                                    </div>
+                                    <div className="mt-4 flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-2 text-sm">
+                                        <Link href={route('events')} className="text-gray-500 hover:text-red-400 transition-colors font-medium">
+                                            View Events
                                         </Link>
-                                    )}
-                                    <a
-                                        href={manageTournamentHref}
-                                        className="group px-8 py-4 text-lg font-bold border border-zinc-700 hover:border-red-500/50 rounded-xl transition-all hover:bg-zinc-900/80 flex items-center gap-3"
-                                    >
-                                        <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                        </svg>
-                                        Manage Tournament
-                                    </a>
+                                        <span className="text-zinc-700 hidden sm:inline" aria-hidden>·</span>
+                                        <Link href={route('members')} className="text-gray-500 hover:text-red-400 transition-colors font-medium">
+                                            Meet Members
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
 
@@ -254,82 +300,11 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                     </div>
                 </section>
 
-                {/* ── Features Section ── */}
-                <section id="features" className="relative py-24 sm:py-32">
-                    <div className="absolute inset-0 bg-zinc-900/30" />
-                    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="text-center mb-16">
-                            <span className="inline-block px-4 py-1.5 text-xs font-bold tracking-widest text-red-400 bg-red-500/10 border border-red-500/20 rounded-full mb-6 uppercase">
-                                Features
-                            </span>
-                            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-4">
-                                Everything You Need to{' '}
-                                <span className="text-red-500">Battle</span>
-                            </h2>
-                            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-                                From tournament management to live rankings, we have all the
-                                tools your community needs.
-                            </p>
-                        </div>
+                <TournamentXFeaturesSection manageHref={manageTournamentHref} />
 
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <FeatureCard
-                                icon={
-                                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 4v12l-4-2-4 2V4M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                }
-                                title="Tournament System"
-                                description="Create and manage tournaments with brackets, Swiss format, and round-robin. Real-time updates for all participants."
-                            />
-                            <FeatureCard
-                                icon={
-                                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
-                                }
-                                title="Live Battles"
-                                description="Real-time match reporting and live updates. Follow every battle from the stadium all the way to the finals."
-                            />
-                            <FeatureCard
-                                icon={
-                                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                    </svg>
-                                }
-                                title="Rankings & Stats"
-                                description="Track your wins, losses, and overall ranking. See who's the strongest in the community."
-                            />
-                            <FeatureCard
-                                icon={
-                                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                }
-                                title="Community Hub"
-                                description="Connect with fellow bladers, join communities, and discuss the latest Beyblade releases."
-                            />
-                            <FeatureCard
-                                icon={
-                                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                                    </svg>
-                                }
-                                title="Judge System"
-                                description="Built-in judge panel for fair and organized matches. Secure judge codes and real-time match reporting."
-                            />
-                            <FeatureCard
-                                icon={
-                                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
-                                }
-                                title="Challonge Integration"
-                                description="Use Challonge for additional tournament management and global Beyblade tournament access."
-                            />
-                        </div>
-                    </div>
-                </section>
+                {/* Tournament history — hidden for now
+                <TournamentRosterSection tournaments={tournamentRosters} />
+                */}
 
                 <MembersSliderSection members={members} />
 
@@ -382,8 +357,8 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
 
                                 <div className="space-y-4 mb-6">
                                     <div className="bg-zinc-800/60 border border-zinc-700/50 rounded-xl p-4">
-                                        <h3 className="text-sm font-bold text-red-400 mb-1">Step 1: Join our Discord</h3>
-                                        <p className="text-sm text-gray-400">Join our Discord server and introduce yourself in the #introductions channel. Share your blader name and your favorite Beyblade.</p>
+                                        <h3 className="text-sm font-bold text-red-400 mb-1">Step 1: Follow our Facebook Page</h3>
+                                        <p className="text-sm text-gray-400">Follow our Facebook page and send us a message to introduce yourself. Share your blader name and your favorite Beyblade.</p>
                                     </div>
                                     <div className="bg-zinc-800/60 border border-zinc-700/50 rounded-xl p-4">
                                         <h3 className="text-sm font-bold text-red-400 mb-1">Step 2: Attend an Event</h3>
@@ -391,18 +366,18 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                                     </div>
                                     <div className="bg-zinc-800/60 border border-zinc-700/50 rounded-xl p-4">
                                         <h3 className="text-sm font-bold text-red-400 mb-1">Step 3: Get Verified</h3>
-                                        <p className="text-sm text-gray-400">After attending an event, an officer will verify your membership and you'll get your official Shadow Syndicate role on Discord.</p>
+                                        <p className="text-sm text-gray-400">After attending an event, an officer will verify your membership and you&apos;ll be added as part of the Shadow Syndicate community.</p>
                                     </div>
                                 </div>
 
                                 <div className="flex flex-col sm:flex-row gap-3">
                                     <a
-                                        href="https://discord.gg/"
+                                        href="https://www.facebook.com/profile.php?id=61590319061777"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex-1 text-center px-6 py-3 text-sm font-bold bg-red-600 hover:bg-red-500 rounded-xl transition-colors"
                                     >
-                                        Join Discord Server
+                                        Visit Facebook Page
                                     </a>
                                     <Link
                                         href={route('events')}
@@ -417,25 +392,5 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                 )}
             </div>
         </>
-    );
-}
-
-function FeatureCard({
-    icon,
-    title,
-    description,
-}: {
-    icon: React.ReactNode;
-    title: string;
-    description: string;
-}) {
-    return (
-        <div className="group bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-6 sm:p-8 hover:border-red-500/30 transition-all hover:bg-zinc-900/80">
-            <div className="w-14 h-14 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-5 group-hover:bg-red-500/15 transition-colors">
-                {icon}
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">{description}</p>
-        </div>
     );
 }

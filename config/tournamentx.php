@@ -30,4 +30,14 @@ return [
 
     'main_url' => env('MAIN_SITE_URL', env('APP_URL')),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Shadow Syndicate member accounts (provisioned from site roster)
+    |--------------------------------------------------------------------------
+    */
+
+    'member_email_domain' => env('MEMBER_EMAIL_DOMAIN', 'shadowsyndicate.com'),
+
+    'member_default_password' => env('MEMBER_DEFAULT_PASSWORD', 'ShadowSyndicate2026!'),
+
 ];

@@ -139,9 +139,10 @@ export default function Members({ members = [] }: { members?: MemberData[] }) {
                                     const winRate = total > 0 ? Math.round((member.wins / total) * 100) : 0;
 
                                     return (
-                                        <div
+                                        <Link
                                             key={member.id}
-                                            className="group relative bg-zinc-900/60 border border-zinc-800/60 rounded-2xl overflow-hidden hover:border-red-500/30 transition-all"
+                                            href={route('members.show', member.id)}
+                                            className="group relative bg-zinc-900/60 border border-zinc-800/60 rounded-2xl overflow-hidden hover:border-red-500/30 hover:shadow-lg hover:shadow-red-500/5 transition-all cursor-pointer"
                                         >
                                             <div className="relative aspect-[4/3] overflow-hidden">
                                                 {memberImageSrc(member.image_url) ? (
@@ -195,7 +196,7 @@ export default function Members({ members = [] }: { members?: MemberData[] }) {
                                                     {member.joined ? `Joined ${member.joined}` : ''}
                                                 </p>
                                             </div>
-                                        </div>
+                                        </Link>
                                     );
                                 })}
                             </div>

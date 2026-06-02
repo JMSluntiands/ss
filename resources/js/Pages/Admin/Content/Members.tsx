@@ -4,6 +4,12 @@ import { resizeImageFile } from '@/utils/resizeImageFile';
 import { Head, router } from '@inertiajs/react';
 import { FormEvent, useRef, useState } from 'react';
 
+interface LinkedUser {
+    id: number;
+    name: string;
+    email: string;
+}
+
 interface SiteMember {
     id: number;
     name: string;
@@ -16,6 +22,8 @@ interface SiteMember {
     image_url: string | null;
     sort_order: number;
     created_at: string;
+    user_id?: number | null;
+    user?: LinkedUser | null;
 }
 
 interface PaginatedData<T> {
@@ -140,6 +148,12 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
         });
     };
 
+    const handleProvisionAccount = (member: SiteMember) => {
+        router.post(route('admin.content.members.provision', member.id), {}, {
+            preserveScroll: true,
+        });
+    };
+
     const setField = <K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) => {
         setForm((prev) => ({ ...prev, [key]: value }));
     };
@@ -181,6 +195,7 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
                                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">W / L</th>
                                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Bey</th>
                                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Joined</th>
+                                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden xl:table-cell">TournamentX</th>
                                     <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
@@ -226,8 +241,25 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
                                                 {member.joined ?? '—'}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-4 hidden xl:table-cell">
+                                            {member.user ? (
+                                                <span className="text-xs text-emerald-400" title={member.user.email}>
+                                                    {member.user.email}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-amber-400/80">No account</span>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
+                                                {!member.user && (
+                                                    <button
+                                                        onClick={() => handleProvisionAccount(member)}
+                                                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all"
+                                                    >
+                                                        Create account
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => openEdit(member)}
                                                     className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 bg-zinc-800 border border-zinc-700/50 hover:text-white hover:bg-zinc-700 transition-all"

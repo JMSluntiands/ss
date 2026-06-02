@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\SiteVisitorStat;
+use App\Services\MemberAccountService;
 use App\Support\SiteAssets;
 use App\Support\TournamentXDomain;
 use Illuminate\Http\Request;
@@ -33,6 +34,17 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $authUser = null;
+
+        if ($user) {
+            $user->loadMissing('siteMember');
+            $authUser = [
+                ...$user->toArray(),
+                'blader_name' => $user->blader_name,
+                'tournament_blader_name' => app(MemberAccountService::class)->tournamentBladerName($user),
+                'site_member_id' => $user->siteMember?->id,
+            ];
+        }
 
         $visitCount = $request->attributes->has('_site_visit_count')
             ? (int) $request->attributes->get('_site_visit_count')
@@ -48,7 +60,7 @@ class HandleInertiaRequests extends Middleware
             'tournamentx_enabled' => TournamentXDomain::isEnabled(),
             'main_site_url' => TournamentXDomain::mainSiteUrl(),
             'auth' => [
-                'user' => $user,
+                'user' => $authUser,
             ],
             'is_admin' => $user?->isAdmin() ?? false,
             'permissions' => [

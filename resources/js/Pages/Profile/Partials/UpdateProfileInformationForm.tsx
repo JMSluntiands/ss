@@ -17,6 +17,7 @@ export default function UpdateProfileInformation({
     const { data, setData, patch, errors, processing, recentlySuccessful } =
         useForm({
             name: user.name,
+            blader_name: user.blader_name ?? '',
             email: user.email,
         });
 
@@ -30,7 +31,7 @@ export default function UpdateProfileInformation({
             <header>
                 <h2 className="text-lg font-semibold text-white">Profile Information</h2>
                 <p className="mt-1 text-sm text-slate-400">
-                    Update your account's profile information and email address.
+                    Update your account details and tournament blader name used for event registration.
                 </p>
             </header>
 
@@ -47,6 +48,22 @@ export default function UpdateProfileInformation({
                         className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 px-4 text-white placeholder-slate-500 transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                     />
                     <InputError className="mt-2" message={errors.name} />
+                </div>
+
+                <div>
+                    <label htmlFor="blader_name" className="block text-sm font-medium text-slate-300 mb-2">Blader Name</label>
+                    <input
+                        id="blader_name"
+                        value={data.blader_name}
+                        onChange={(e) => setData('blader_name', e.target.value)}
+                        autoComplete="nickname"
+                        placeholder={user.tournament_blader_name ?? user.name}
+                        className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 px-4 text-white placeholder-slate-500 transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                    />
+                    <p className="mt-1.5 text-xs text-slate-500">
+                        Shown on tournaments and used when you register for Shadow Syndicate events.
+                    </p>
+                    <InputError className="mt-2" message={errors.blader_name} />
                 </div>
 
                 <div>

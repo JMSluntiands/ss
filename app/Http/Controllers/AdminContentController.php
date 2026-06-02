@@ -8,6 +8,7 @@ use App\Support\ImageOptimizer;
 use App\Models\JerseyItem;
 use App\Models\SiteEvent;
 use App\Models\SiteMember;
+use App\Services\MemberAccountService;
 use App\Models\Tournament;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -308,7 +309,10 @@ class AdminContentController extends Controller
 
     public function membersIndex()
     {
-        $members = SiteMember::orderBy('sort_order')->paginate(30);
+        $members = SiteMember::with('user:id,name,email')
+            ->orderBy('sort_order')
+            ->paginate(30);
+
         return Inertia::render('Admin/Content/Members', ['members' => $members]);
     }
 
@@ -365,6 +369,17 @@ class AdminContentController extends Controller
     {
         $member->delete();
         return back()->with('success', 'Member deleted.');
+    }
+
+    public function memberProvisionAccount(SiteMember $member, MemberAccountService $service)
+    {
+        if ($member->user_id) {
+            return back()->with('error', "{$member->name} already has a linked TournamentX account.");
+        }
+
+        $user = $service->provisionForMember($member);
+
+        return back()->with('success', "TournamentX account created for {$member->name} ({$user->email}).");
     }
 
     // ── Jersey / Merch ──

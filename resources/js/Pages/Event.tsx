@@ -4,6 +4,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import { PageProps } from '@/types';
 import { formatEventFeeDisplay, getRegistrationFee } from '@/utils/eventFees';
+import { getEventRegistrationDefaults, tournamentxLoginUrl } from '@/utils/eventRegistration';
+import { isEventSlotsFull } from '@/utils/eventSlots';
 
 interface UpcomingEvent {
     id: number;
@@ -28,6 +30,7 @@ interface UpcomingEvent {
     require_payment: boolean;
     payment_method: string | null;
     payment_qr: string | null;
+    registration_count?: number;
 }
 
 interface PastEvent {
@@ -96,15 +99,26 @@ function formatEventDateTime(date: string, time?: string | null): string {
 }
 
 export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomingEvents?: UpcomingEvent[]; pastEvents?: PastEvent[] }) {
-    const { flash } = usePage<PageProps>().props;
+    const { flash, auth, tournamentx_url } = usePage<PageProps>().props;
     const [regEvent, setRegEvent] = useState<UpcomingEvent | null>(null);
     const [regForm, setRegForm] = useState<RegForm>(emptyReg);
     const [processing, setProcessing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const openRegister = (event: UpcomingEvent) => {
+        if (isEventSlotsFull(event.slots, event.registration_count ?? 0)) {
+            return;
+        }
+        if (!auth.user) {
+            window.location.href = tournamentxLoginUrl(
+                tournamentx_url,
+                typeof window !== 'undefined' ? window.location.href : undefined,
+            );
+            return;
+        }
+        const defaults = getEventRegistrationDefaults(auth);
         setRegEvent(event);
-        setRegForm({ ...emptyReg });
+        setRegForm({ ...emptyReg, ...defaults });
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -193,6 +207,7 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {upcomingEvents.map((event) => {
                                     const mapUrl = getMapEmbedUrl(event);
+                                    const slotsFull = isEventSlotsFull(event.slots, event.registration_count ?? 0);
 
                                     return (
                                         <div
@@ -357,12 +372,19 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
                                                             e.stopPropagation();
                                                             openRegister(event);
                                                         }}
-                                                        className="w-full py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-red-700 to-red-500 shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                                                        disabled={slotsFull}
+                                                        className={`w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                                                            slotsFull
+                                                                ? 'text-gray-500 bg-zinc-800 border border-zinc-700/50 cursor-not-allowed'
+                                                                : 'text-white bg-gradient-to-r from-red-700 to-red-500 shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:brightness-110'
+                                                        }`}
                                                     >
-                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                                        </svg>
-                                                        Register Now
+                                                        {!slotsFull && (
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                                            </svg>
+                                                        )}
+                                                        {slotsFull ? 'Slots Full' : 'Register Now'}
                                                     </button>
                                                 </div>
                                             </div>
@@ -464,16 +486,20 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
                                     )}
                                 </div>
 
+                                <div className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20">
+                                    <p className="text-xs text-gray-500">Registering as</p>
+                                    <p className="text-sm font-semibold text-white">{auth.user?.name}</p>
+                                    <p className="text-xs text-cyan-400/80 mt-0.5">{auth.user?.email}</p>
+                                </div>
+
                                 {/* Full Name */}
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Full Name *</label>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Full Name</label>
                                     <input
                                         type="text"
                                         value={regForm.full_name}
-                                        onChange={(e) => setRegForm({ ...regForm, full_name: e.target.value })}
-                                        required
-                                        className={inputClass}
-                                        placeholder="Enter your full name"
+                                        readOnly
+                                        className={`${inputClass} opacity-80 cursor-not-allowed`}
                                     />
                                 </div>
 
@@ -520,11 +546,11 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
                                     <input
                                         type="text"
                                         value={regForm.blader_name_1}
-                                        onChange={(e) => setRegForm({ ...regForm, blader_name_1: e.target.value })}
+                                        readOnly
                                         required
-                                        className={inputClass}
-                                        placeholder="Enter blader name"
+                                        className={`${inputClass} opacity-80 cursor-not-allowed`}
                                     />
+                                    <p className="text-[11px] text-gray-600 mt-1">Linked to your TournamentX account. Update under Profile if needed.</p>
                                 </div>
 
                                 {/* Blader Name 2 (for double entry) */}

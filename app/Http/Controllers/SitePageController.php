@@ -6,7 +6,10 @@ use App\Models\BlogPost;
 use App\Models\JerseyItem;
 use App\Models\SiteEvent;
 use App\Models\SiteMember;
+// use App\Models\SiteTournamentRoster;
+use App\Services\MemberDashboardStatsService;
 use App\Support\SiteEventDisplay;
+use App\Support\TournamentXDomain;
 use Inertia\Inertia;
 
 class SitePageController extends Controller
@@ -17,6 +20,9 @@ class SitePageController extends Controller
             'members' => SiteMember::query()
                 ->orderBy('sort_order')
                 ->get(['id', 'name', 'role', 'rank', 'wins', 'losses', 'bey', 'image_url']),
+            // 'tournamentRosters' => SiteTournamentRoster::query()
+            //     ->orderBy('sort_order')
+            //     ->get(['id', 'name', 'event_date', 'location', 'result', 'description', 'image_url', 'roster']),
         ]);
     }
 
@@ -54,7 +60,13 @@ class SitePageController extends Controller
     {
         return Inertia::render('Event', [
             'upcomingEvents' => SiteEventDisplay::loadAndApplyFormat(
-                SiteEvent::where('is_upcoming', true)->latest()->get()
+                SiteEvent::where('is_upcoming', true)
+                    ->withCount([
+                        'registrations as registration_count' => fn ($query) => $query
+                            ->whereIn('status', ['tentative', 'confirmed']),
+                    ])
+                    ->latest()
+                    ->get()
             ),
             'pastEvents' => SiteEventDisplay::loadAndApplyFormat(
                 SiteEvent::where('is_upcoming', false)->latest()->get()
@@ -77,7 +89,6 @@ class SitePageController extends Controller
                 $query
                     ->whereIn('status', ['tentative', 'confirmed'])
                     ->latest()
-                    ->limit(15)
                     ->select([
                         'id',
                         'site_event_id',
@@ -103,6 +114,21 @@ class SitePageController extends Controller
             'members' => SiteMember::query()
                 ->orderBy('sort_order')
                 ->get(['id', 'name', 'role', 'rank', 'wins', 'losses', 'bey', 'joined', 'image_url']),
+        ]);
+    }
+
+    public function memberShow(SiteMember $member, MemberDashboardStatsService $stats)
+    {
+        $member->load('user:id,name,blader_name');
+
+        $activity = $stats->activityCountsForMember($member);
+
+        return Inertia::render('Members/Show', [
+            'member' => $stats->rosterProfile($member),
+            'activity' => $activity,
+            'tournaments' => $stats->participatedTournamentsForMember($member)->all(),
+            'events' => $stats->eventHistoryForMember($member)->all(),
+            'tournamentx_url' => TournamentXDomain::baseUrl(),
         ]);
     }
 

@@ -5,6 +5,7 @@ use App\Http\Controllers\EventRegistrationController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
+use App\Http\Controllers\TournamentHubController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/csrf-cookie', [TournamentController::class, 'csrfCookie'])->name('csrf.cookie');
@@ -25,6 +26,12 @@ if (config('tournamentx.domain')) {
 Route::get('/dashboard', [TournamentController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/communities', [TournamentHubController::class, 'communities'])->name('communities');
+    Route::get('/discover', [TournamentHubController::class, 'discover'])->name('discover');
+    Route::get('/news', [TournamentHubController::class, 'news'])->name('news');
+});
 
 Route::get('/t/{tournament:slug}', [TournamentController::class, 'showPublic'])->name('tournaments.public');
 Route::get('/t/{tournament:slug}/live', [TournamentController::class, 'liveData'])->name('tournaments.liveDataPublic');
@@ -87,8 +94,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/tournaments/{tournament}/live', [TournamentController::class, 'liveData'])->name('tournaments.liveData');
     Route::delete('/tournaments/{tournament}', [TournamentController::class, 'destroy'])->name('tournaments.destroy');
 
+    Route::get('/tournaments/{tournament}/participant-accounts', [ParticipantController::class, 'searchAccounts'])->name('participants.searchAccounts');
+    Route::post('/tournaments/{tournament}/participants/link-accounts', [ParticipantController::class, 'linkAccounts'])->name('participants.linkAccounts');
     Route::post('/tournaments/{tournament}/participants', [ParticipantController::class, 'store'])->name('participants.store');
     Route::post('/tournaments/{tournament}/participants/bulk', [ParticipantController::class, 'bulkStore'])->name('participants.bulk');
+    Route::patch('/tournaments/{tournament}/participants/{participant}/link', [ParticipantController::class, 'linkParticipant'])->name('participants.link');
     Route::post('/tournaments/{tournament}/participants/randomize', [ParticipantController::class, 'randomize'])->name('participants.randomize');
     Route::patch('/tournaments/{tournament}/participants/{participant}/judge', [ParticipantController::class, 'updateJudge'])->name('participants.updateJudge');
     Route::post('/tournaments/{tournament}/participants/{participant}/avatar', [ParticipantController::class, 'updateAvatar'])->name('participants.updateAvatar');

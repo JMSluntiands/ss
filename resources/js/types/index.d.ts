@@ -1,6 +1,9 @@
 export interface User {
     id: number;
     name: string;
+    blader_name?: string | null;
+    tournament_blader_name?: string;
+    site_member_id?: number | null;
     email: string;
     email_verified_at?: string;
     role: 'user' | 'admin';
@@ -15,7 +18,7 @@ export type PageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {
     auth: {
-        user: User;
+        user: User | null;
     };
     is_admin: boolean;
     permissions: {

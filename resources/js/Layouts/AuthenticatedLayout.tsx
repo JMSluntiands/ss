@@ -1,21 +1,12 @@
 import TournamentXBrand from '@/Components/TournamentXBrand';
+import {
+    SidebarSectionLabel,
+    SidebarNavItem,
+    TournamentSidebarNav,
+} from '@/Components/TournamentSidebarNav';
 import { Link, usePage } from '@inertiajs/react';
-import { PropsWithChildren, ReactNode, useState } from 'react';
+import { PropsWithChildren, useState } from 'react';
 import { PageProps } from '@/types';
-
-interface NavItem {
-    name: string;
-    href: string;
-    icon: ReactNode;
-    active?: boolean;
-}
-
-const navLinkClass = (active: boolean, collapsed: boolean) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all border ${
-        active
-            ? 'tx-nav-active'
-            : 'text-gray-500 hover:text-white hover:bg-zinc-800/60 border-transparent'
-    } ${collapsed ? 'justify-center' : ''}`;
 
 export default function Authenticated({
     children,
@@ -33,7 +24,7 @@ export default function Authenticated({
         return `/index.php${href.startsWith('/') ? href : `/${href}`}`;
     };
 
-    const navItems: NavItem[] = [
+    const workspaceNav: SidebarNavItem[] = [
         {
             name: 'Your Tournaments',
             href: withAppBase(route('dashboard', undefined, false)),
@@ -60,12 +51,15 @@ export default function Authenticated({
                           </svg>
                       ),
                       active: currentPage === 'events',
-                  },
+                  } as SidebarNavItem,
               ]
             : []),
+    ];
+
+    const exploreNav: SidebarNavItem[] = [
         {
             name: 'Your Communities',
-            href: '#',
+            href: withAppBase(route('communities', undefined, false)),
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -80,7 +74,7 @@ export default function Authenticated({
         },
         {
             name: 'Discover',
-            href: '#',
+            href: withAppBase(route('discover', undefined, false)),
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -90,7 +84,7 @@ export default function Authenticated({
         },
         {
             name: 'News',
-            href: '#',
+            href: withAppBase(route('news', undefined, false)),
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -107,17 +101,10 @@ export default function Authenticated({
 
     const renderNav = (collapsed: boolean) => (
         <>
-            {navItems.map((item) => (
-                <Link
-                    key={item.name}
-                    href={item.href}
-                    className={navLinkClass(!!item.active, collapsed)}
-                    title={collapsed ? item.name : undefined}
-                >
-                    <span className={item.active ? 'tx-nav-active-icon' : 'text-gray-600'}>{item.icon}</span>
-                    {!collapsed && <span>{item.name}</span>}
-                </Link>
-            ))}
+            <SidebarSectionLabel label="Workspace" collapsed={collapsed} />
+            <TournamentSidebarNav items={workspaceNav} collapsed={collapsed} />
+            <SidebarSectionLabel label="Explore" collapsed={collapsed} />
+            <TournamentSidebarNav items={exploreNav} collapsed={collapsed} variant="subtle" />
             {is_admin && (
                 <div className="pt-3 mt-3 border-t border-zinc-800/60">
                     <Link
@@ -166,7 +153,7 @@ export default function Authenticated({
                     </button>
                 </div>
 
-                <nav className="flex-1 py-4 px-3 space-y-1">{renderNav(sidebarCollapsed)}</nav>
+                <nav className="flex-1 py-2 px-3 space-y-1 overflow-y-auto">{renderNav(sidebarCollapsed)}</nav>
 
                 <div className="border-t border-zinc-800/80 p-3">
                     <div className="relative">
@@ -258,7 +245,7 @@ export default function Authenticated({
                     </button>
                 </div>
 
-                <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">{renderNav(false)}</nav>
+                <nav className="flex-1 py-2 px-3 space-y-1 overflow-y-auto">{renderNav(false)}</nav>
 
                 <div className="border-t border-zinc-800/80 p-3">
                     <div className="flex items-center gap-3 px-3 py-2.5">

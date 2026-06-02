@@ -4,13 +4,37 @@ namespace App\Http\Controllers;
 
 use App\Models\EventRegistration;
 use App\Models\SiteEvent;
+use App\Services\MemberAccountService;
+use App\Support\TournamentXDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class EventRegistrationController extends Controller
 {
-    public function register(Request $request, SiteEvent $event)
+    public function register(Request $request, SiteEvent $event, MemberAccountService $memberAccounts)
     {
+        $user = $request->user();
+        if (! $user) {
+            return redirect()->guest(TournamentXDomain::url('/login'))
+                ->with('error', 'Log in with your TournamentX account to register for this event.');
+        }
+
+        $bladerName = $memberAccounts->tournamentBladerName($user);
+
+        if ($event->registrations()->where('user_id', $user->id)->whereIn('status', ['tentative', 'confirmed'])->exists()) {
+            return back()->with('error', 'You already have a registration for this event.');
+        }
+        $maxSlots = (int) $event->slots;
+        if ($maxSlots > 0) {
+            $registeredCount = $event->registrations()
+                ->whereIn('status', ['tentative', 'confirmed'])
+                ->count();
+
+            if ($registeredCount >= $maxSlots) {
+                return back()->with('error', 'Registration is closed. All slots are filled.');
+            }
+        }
+
         $rules = [
             'full_name' => 'required|string|max:255',
             'entry_type' => 'required|in:single,double',
@@ -39,7 +63,9 @@ class EventRegistrationController extends Controller
         }
 
         $data['site_event_id'] = $event->id;
-        $data['user_id'] = auth()->id();
+        $data['user_id'] = $user->id;
+        $data['full_name'] = $user->name;
+        $data['blader_name_1'] = $bladerName;
         $data['status'] = 'tentative';
 
         EventRegistration::create($data);
@@ -47,7 +73,7 @@ class EventRegistrationController extends Controller
         return back()->with('success', 'Registration submitted! Please wait for confirmation.');
     }
 
-    public function confirm(EventRegistration $registration)
+    public function confirm(EventRegistration $registration, MemberAccountService $memberAccounts)
     {
         $event = $registration->event;
 
@@ -63,13 +89,16 @@ class EventRegistrationController extends Controller
 
             $tournament->participants()->create([
                 'name' => $registration->blader_name_1,
+                'user_id' => $registration->user_id,
                 'seed' => $nextSeed,
             ]);
 
             if ($registration->entry_type === 'double' && $registration->blader_name_2) {
                 $nextSeed = $tournament->participants()->count() + 1;
+                $partner = $memberAccounts->resolveUserByBladerName($registration->blader_name_2);
                 $tournament->participants()->create([
                     'name' => $registration->blader_name_2,
+                    'user_id' => $partner?->id,
                     'seed' => $nextSeed,
                 ]);
             }

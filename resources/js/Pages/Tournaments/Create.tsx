@@ -323,8 +323,9 @@ export default function Create({ tournament }: Props) {
     const usesSingleElimPlacement = finalElimForPlacement === 'single_elimination';
 
     const inputClass =
-        'block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 px-4 text-white placeholder-slate-500 transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20';
-    const labelClass = 'block text-sm font-medium text-slate-300 mb-2';
+        'block w-full rounded-xl border border-slate-600/60 bg-slate-800/90 py-3 px-4 text-white placeholder:text-slate-400 transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20';
+    const labelClass = 'block text-sm font-semibold text-slate-100 mb-2';
+    const hintClass = 'mt-1.5 text-xs text-slate-400 leading-relaxed';
     const selectClass = `${inputClass} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat pr-10`;
     const sectionTitleClass = 'text-xs font-bold tracking-wider text-slate-500 uppercase';
 
@@ -519,9 +520,9 @@ export default function Create({ tournament }: Props) {
                                         <div className="mt-5 pt-5 border-t border-slate-700/30 space-y-4">
                                             <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 px-4 py-3 space-y-3">
                                                 <p className="text-xs font-bold uppercase tracking-wider text-cyan-400/90">Top cut (optional)</p>
-                                                <p className="text-xs text-slate-400 leading-relaxed">
+                                                <p className="text-xs text-slate-300 leading-relaxed">
                                                     After all Round Robin rounds finish, the top players by standings can enter a{' '}
-                                                    <span className="text-slate-300 font-medium">single elimination playoff</span>. Leave blank for
+                                                    <span className="text-white font-medium">single elimination playoff</span>. Leave blank for
                                                     standings-only (no playoff bracket). For two parallel groups into one finals bracket, use Two stage.
                                                 </p>
                                                 <div>
@@ -535,11 +536,13 @@ export default function Create({ tournament }: Props) {
                                                         max={512}
                                                         value={data.swiss_top_cut_players}
                                                         onChange={(e) => setData('swiss_top_cut_players', e.target.value)}
-                                                        placeholder="e.g. 8 — leave blank for no playoff"
+                                                        placeholder="e.g. 8"
                                                         className={`${inputClass} max-w-[200px]`}
+                                                        aria-describedby="rr_top_cut_players_hint"
                                                     />
-                                                    <p className="mt-1 text-xs text-slate-500">
-                                                        Must be at least 2 if set. Bracket is seeded from Round Robin standings (1st vs lowest, etc.).
+                                                    <p id="rr_top_cut_players_hint" className={hintClass}>
+                                                        Leave blank for no playoff. Must be at least 2 if set. Bracket is seeded from Round Robin
+                                                        standings (1st vs lowest, etc.).
                                                     </p>
                                                     <InputError message={errors.swiss_top_cut_players} className="mt-2" />
                                                 </div>
@@ -603,9 +606,9 @@ export default function Create({ tournament }: Props) {
                                         <div className="mt-5 pt-5 border-t border-slate-700/30 space-y-4">
                                             <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 px-4 py-3 space-y-3">
                                                 <p className="text-xs font-bold uppercase tracking-wider text-cyan-400/90">Top cut (optional)</p>
-                                                <p className="text-xs text-slate-400 leading-relaxed">
+                                                <p className="text-xs text-slate-300 leading-relaxed">
                                                     After all Swiss rounds finish, the top players by standings can enter a{' '}
-                                                    <span className="text-slate-300 font-medium">single elimination playoff</span>. Leave the field blank for
+                                                    <span className="text-white font-medium">single elimination playoff</span>. Leave the field blank for
                                                     Swiss-only (standings decide final order). For two parallel Swiss groups into one finals bracket, use
                                                     Two stage instead.
                                                 </p>
@@ -620,11 +623,13 @@ export default function Create({ tournament }: Props) {
                                                         max={512}
                                                         value={data.swiss_top_cut_players}
                                                         onChange={(e) => setData('swiss_top_cut_players', e.target.value)}
-                                                        placeholder="e.g. 8 — leave blank for no playoff"
+                                                        placeholder="e.g. 8"
                                                         className={`${inputClass} max-w-[200px]`}
+                                                        aria-describedby="swiss_top_cut_players_hint"
                                                     />
-                                                    <p className="mt-1 text-xs text-slate-500">
-                                                        Must be at least 2 if set. The bracket is built from Swiss standings order (1st seed vs lowest, etc.).
+                                                    <p id="swiss_top_cut_players_hint" className={hintClass}>
+                                                        Leave blank for Swiss-only (no playoff). Must be at least 2 if set. The bracket is built from
+                                                        Swiss standings order (1st seed vs lowest, etc.).
                                                     </p>
                                                     <InputError message={errors.swiss_top_cut_players} className="mt-2" />
                                                 </div>
@@ -755,11 +760,12 @@ export default function Create({ tournament }: Props) {
                                                         max={512}
                                                         value={data.swiss_top_cut_players}
                                                         onChange={(e) => setData('swiss_top_cut_players', e.target.value)}
-                                                        placeholder="Example: 16"
+                                                        placeholder="e.g. 16"
                                                         className={`${inputClass} max-w-[200px]`}
+                                                        aria-describedby="swiss_top_cut_two_stage_hint"
                                                     />
-                                                    <p className="mt-1 text-xs text-slate-500">
-                                                        Leave blank to auto-calculate: (qualifiers per group) x (number of groups).
+                                                    <p id="swiss_top_cut_two_stage_hint" className={hintClass}>
+                                                        Leave blank to auto-calculate: (qualifiers per group) × (number of groups).
                                                     </p>
                                                     <InputError message={errors.swiss_top_cut_players} className="mt-2" />
                                                 </div>

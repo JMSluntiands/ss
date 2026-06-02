@@ -152,8 +152,18 @@ class TournamentController extends Controller
                 return $tournament;
             });
 
+        $user = auth()->user();
+        $user->loadMissing('siteMember');
+        $statsService = app(\App\Services\MemberDashboardStatsService::class);
+        $memberStats = $statsService->forUser($user);
+
+        $participated = $statsService->participatedTournaments($user);
+
         return Inertia::render('Dashboard', [
             'tournaments' => $tournaments,
+            'memberStats' => $memberStats,
+            'participatedTournaments' => $participated->all(),
+            'isShadowMember' => $memberStats !== null,
         ]);
     }
 

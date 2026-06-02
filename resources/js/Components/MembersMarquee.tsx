@@ -35,7 +35,10 @@ function MemberCard({ member }: { member: MemberSlideData }) {
     const img = memberImageSrc(member.image_url);
 
     return (
-        <div className="w-[260px] sm:w-[280px] shrink-0 flex flex-col bg-zinc-900/80 border border-zinc-800/60 rounded-2xl overflow-hidden">
+        <Link
+            href={route('members.show', member.id)}
+            className="w-[260px] sm:w-[280px] shrink-0 flex flex-col bg-zinc-900/80 border border-zinc-800/60 rounded-2xl overflow-hidden hover:border-red-500/30 transition-all pointer-events-auto"
+        >
             <div className="relative aspect-[4/3] overflow-hidden">
                 {img ? (
                     <OptimizedImage
@@ -90,7 +93,7 @@ function MemberCard({ member }: { member: MemberSlideData }) {
                     </div>
                 </div>
             </div>
-        </div>
+        </Link>
     );
 }
 

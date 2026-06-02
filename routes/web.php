@@ -14,13 +14,16 @@ $registerMainSite = function (): void {
     Route::get('/', [\App\Http\Controllers\SitePageController::class, 'home'])->name('home');
 
     Route::get('/members', [\App\Http\Controllers\SitePageController::class, 'members'])->name('members');
+    Route::get('/members/{member}', [\App\Http\Controllers\SitePageController::class, 'memberShow'])->name('members.show');
     Route::get('/events', [\App\Http\Controllers\SitePageController::class, 'events'])->name('events');
     Route::get('/events/{event}', [\App\Http\Controllers\SitePageController::class, 'eventShow'])->name('events.show');
     Route::get('/blog', [\App\Http\Controllers\SitePageController::class, 'blog'])->name('blog');
     Route::get('/blog/{post}', [\App\Http\Controllers\SitePageController::class, 'blogShow'])->name('blog.show');
     Route::get('/jersey', [\App\Http\Controllers\SitePageController::class, 'jersey'])->name('jersey');
 
-    Route::post('/events/{event}/register', [EventRegistrationController::class, 'register'])->name('events.register');
+    Route::post('/events/{event}/register', [EventRegistrationController::class, 'register'])
+        ->middleware(['auth', 'verified'])
+        ->name('events.register');
 
     Route::get('/private-file/payment-qr/{event}', function (\App\Models\SiteEvent $event) {
         if (! $event->payment_qr || ! \Illuminate\Support\Facades\Storage::exists($event->payment_qr)) {
@@ -62,6 +65,7 @@ $registerMainSite = function (): void {
         Route::get('/content/members', [AdminContentController::class, 'membersIndex'])->name('content.members');
         Route::post('/content/members', [AdminContentController::class, 'memberStore'])->name('content.members.store');
         Route::put('/content/members/{member}', [AdminContentController::class, 'memberUpdate'])->name('content.members.update');
+        Route::post('/content/members/{member}/provision-account', [AdminContentController::class, 'memberProvisionAccount'])->name('content.members.provision');
         Route::delete('/content/members/{member}', [AdminContentController::class, 'memberDestroy'])->name('content.members.destroy');
 
         Route::get('/content/jersey', [AdminContentController::class, 'jerseyIndex'])->name('content.jersey');

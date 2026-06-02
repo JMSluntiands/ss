@@ -12,9 +12,17 @@ import { applyCsrfFromPayload, refreshCsrfCookie } from '@/utils/csrf';
 interface Participant {
     id: number;
     name: string;
+    user_id?: number | null;
     avatar_url?: string | null;
     seed: number;
     judge: string | null;
+}
+
+interface LinkableAccount {
+    id: number;
+    label: string;
+    email: string;
+    has_member: boolean;
 }
 
 interface MatchPlayer {
@@ -2822,6 +2830,10 @@ function SingleAddForm({ tournamentId }: { tournamentId: number }) {
     const [processing, setProcessing] = useState(false);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [nameInput, setNameInput] = useState('');
+    const [selectedAccount, setSelectedAccount] = useState<LinkableAccount | null>(null);
+    const [suggestions, setSuggestions] = useState<LinkableAccount[]>([]);
+    const [searching, setSearching] = useState(false);
 
     const clearAvatar = () => {
         if (avatarPreview) URL.revokeObjectURL(avatarPreview);
@@ -2838,14 +2850,42 @@ function SingleAddForm({ tournamentId }: { tournamentId: number }) {
         setAvatarPreview(URL.createObjectURL(file));
     };
 
+    useEffect(() => {
+        const q = nameInput.trim();
+        if (selectedAccount || q.length < 2) {
+            setSuggestions([]);
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            setSearching(true);
+            const url = route('participants.searchAccounts', { tournament: tournamentId }, false) + `?q=${encodeURIComponent(q)}`;
+            fetch(url, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                .then((r) => r.json())
+                .then((data: { accounts?: LinkableAccount[] }) => setSuggestions(data.accounts ?? []))
+                .catch(() => setSuggestions([]))
+                .finally(() => setSearching(false));
+        }, 300);
+
+        return () => window.clearTimeout(timer);
+    }, [nameInput, selectedAccount, tournamentId]);
+
+    const pickAccount = (account: LinkableAccount) => {
+        setSelectedAccount(account);
+        setNameInput(account.label);
+        if (inputRef.current) inputRef.current.value = account.label;
+        setSuggestions([]);
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const name = inputRef.current?.value?.trim();
+        const name = (inputRef.current?.value?.trim() || nameInput.trim());
         if (!name || processing) return;
         setProcessing(true);
 
         const payload = new FormData();
         payload.append('name', name);
+        if (selectedAccount) payload.append('user_id', String(selectedAccount.id));
         if (avatarFile) payload.append('avatar', avatarFile);
 
         router.post(route('participants.store', tournamentId), payload, {
@@ -2854,6 +2894,8 @@ function SingleAddForm({ tournamentId }: { tournamentId: number }) {
             preserveState: true,
             onSuccess: () => {
                 if (inputRef.current) inputRef.current.value = '';
+                setNameInput('');
+                setSelectedAccount(null);
                 clearAvatar();
             },
             onFinish: () => setProcessing(false),
@@ -2862,17 +2904,52 @@ function SingleAddForm({ tournamentId }: { tournamentId: number }) {
 
     return (
         <form onSubmit={handleSubmit} className="mb-4 space-y-2">
-            <div className="flex gap-2">
+            <p className="text-[11px] text-slate-400 leading-snug">
+                Type a blader name — we match Shadow Syndicate / Tournament X accounts so their dashboard shows this event and XF·OF·BF stats.
+            </p>
+            <div className="relative flex gap-2">
                 <input
                     ref={inputRef}
-                    placeholder="Participant name"
+                    value={nameInput}
+                    onChange={(e) => {
+                        setNameInput(e.target.value);
+                        setSelectedAccount(null);
+                    }}
+                    placeholder="Blader name (e.g. roster name)"
                     maxLength={PARTICIPANT_NAME_MAX}
-                    className="flex-1 min-w-0 rounded-xl border border-slate-700/50 bg-slate-800/50 py-2.5 px-4 text-sm text-white placeholder-slate-500 transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                    className="flex-1 min-w-0 rounded-xl border border-slate-700/50 bg-slate-800/50 py-2.5 px-4 text-sm text-white placeholder:text-slate-400 transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                 />
                 <button type="submit" disabled={processing} className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 </button>
+                {suggestions.length > 0 && !selectedAccount && (
+                    <ul className="absolute left-0 right-12 top-full z-20 mt-1 max-h-40 overflow-y-auto rounded-xl border border-slate-700/80 bg-slate-900 shadow-xl">
+                        {suggestions.map((account) => (
+                            <li key={account.id}>
+                                <button
+                                    type="button"
+                                    onClick={() => pickAccount(account)}
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-800 transition-colors"
+                                >
+                                    <span className="text-white font-medium">{account.label}</span>
+                                    <span className="block text-[10px] text-slate-500 truncate">
+                                        {account.email}
+                                        {account.has_member ? ' · Shadow member' : ''}
+                                    </span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
+            {selectedAccount && (
+                <p className="text-[11px] text-emerald-400/90">
+                    Linked to account: {selectedAccount.label}
+                </p>
+            )}
+            {searching && nameInput.trim().length >= 2 && !selectedAccount && (
+                <p className="text-[11px] text-slate-500">Searching accounts…</p>
+            )}
             <div className="flex items-center gap-2">
                 <input
                     ref={avatarInputRef}
@@ -3060,6 +3137,21 @@ function ParticipantRow({
                 <div className={scrollTextClass}>
                     <span className="text-sm text-white whitespace-nowrap block leading-tight">{participant.name}</span>
                 </div>
+                {participant.user_id ? (
+                    <span className="text-[10px] text-emerald-400/90">Account linked</span>
+                ) : isPending ? (
+                    <button
+                        type="button"
+                        onClick={() =>
+                            router.patch(route('participants.link', [tournamentId, participant.id]), {}, { preserveScroll: true, preserveState: true })
+                        }
+                        className="text-[10px] text-left text-amber-400/90 hover:text-amber-300"
+                    >
+                        Link to account
+                    </button>
+                ) : (
+                    <span className="text-[10px] text-slate-600">No account link</span>
+                )}
                 {!readOnly ? (
                     editingJudge ? (
                         <input
@@ -3716,6 +3808,17 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                             Bulk Add
                                         </button>
+                                        {participants.some((p) => !p.user_id) && (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    router.post(route('participants.linkAccounts', { tournament: tournament.id }), {}, { preserveScroll: true, preserveState: true })
+                                                }
+                                                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-300 hover:bg-emerald-500/20 transition-all mt-2"
+                                            >
+                                                Link all names to accounts
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                                 {participants.length === 0 ? (

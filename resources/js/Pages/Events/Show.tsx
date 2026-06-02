@@ -4,6 +4,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { PageProps } from '@/types';
 import { formatEventFeeDisplay, getRegistrationFee } from '@/utils/eventFees';
+import { getEventRegistrationDefaults, tournamentxLoginUrl } from '@/utils/eventRegistration';
+import { isEventSlotsFull } from '@/utils/eventSlots';
 
 interface EventRegistrationItem {
     id: number;
@@ -94,6 +96,8 @@ function formatEventDateTime(date: string, time?: string | null): string {
     return `${dateText} ${timeText}`;
 }
 
+const PLAYERS_PER_PAGE = 7;
+
 export default function EventShow({
     event,
     registrationCounts,
@@ -101,15 +105,34 @@ export default function EventShow({
     event: EventData;
     registrationCounts: { total: number; confirmed: number; tentative: number };
 }) {
-    const { flash } = usePage<PageProps>().props;
+    const { flash, auth, tournamentx_url } = usePage<PageProps>().props;
     const [regOpen, setRegOpen] = useState(false);
     const [regForm, setRegForm] = useState<RegForm>(emptyReg);
     const [processing, setProcessing] = useState(false);
+    const [regPage, setRegPage] = useState(1);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mapUrl = getMapEmbedUrl(event);
+    const slotsFull = isEventSlotsFull(event.slots, registrationCounts.total);
+    const totalRegPages = Math.max(1, Math.ceil(event.registrations.length / PLAYERS_PER_PAGE));
+    const currentRegPage = Math.min(regPage, totalRegPages);
+    const paginatedRegistrations = event.registrations.slice(
+        (currentRegPage - 1) * PLAYERS_PER_PAGE,
+        currentRegPage * PLAYERS_PER_PAGE,
+    );
+    const regRangeStart = event.registrations.length === 0 ? 0 : (currentRegPage - 1) * PLAYERS_PER_PAGE + 1;
+    const regRangeEnd = Math.min(currentRegPage * PLAYERS_PER_PAGE, event.registrations.length);
 
     const openRegister = () => {
-        setRegForm({ ...emptyReg });
+        if (slotsFull) return;
+        if (!auth.user) {
+            window.location.href = tournamentxLoginUrl(
+                tournamentx_url,
+                typeof window !== 'undefined' ? window.location.href : undefined,
+            );
+            return;
+        }
+        const defaults = getEventRegistrationDefaults(auth);
+        setRegForm({ ...emptyReg, ...defaults });
         if (fileInputRef.current) fileInputRef.current.value = '';
         setRegOpen(true);
     };
@@ -154,11 +177,18 @@ export default function EventShow({
                         </div>
                     </div>
                 </nav>
-                {flash?.success && (
-                    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-                        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-400">
-                            {flash.success}
-                        </div>
+                {(flash?.success || flash?.error) && (
+                    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 space-y-2">
+                        {flash?.success && (
+                            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-400">
+                                {flash.success}
+                            </div>
+                        )}
+                        {flash?.error && (
+                            <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                                {flash.error}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -236,9 +266,14 @@ export default function EventShow({
                             <div className="space-y-4">
                                 <button
                                     onClick={openRegister}
-                                    className="w-full py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-red-700 to-red-500 shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                                    disabled={slotsFull}
+                                    className={`w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                                        slotsFull
+                                            ? 'text-gray-500 bg-zinc-800 border border-zinc-700/50 cursor-not-allowed'
+                                            : 'text-white bg-gradient-to-r from-red-700 to-red-500 shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:brightness-110'
+                                    }`}
                                 >
-                                    Register Now
+                                    {slotsFull ? 'Slots Full' : 'Register Now'}
                                 </button>
 
                                 <div className="grid grid-cols-3 gap-3">
@@ -259,28 +294,55 @@ export default function EventShow({
                                 <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
                                     <div className="px-4 py-3 border-b border-zinc-800/60 flex items-center justify-between gap-2">
                                         <h2 className="text-sm font-bold uppercase tracking-wide text-white">Registered Players</h2>
-                                        {registrationCounts.total > 15 && (
-                                            <span className="text-[10px] text-gray-600 shrink-0">Latest 15 shown</span>
+                                        {event.registrations.length > 0 && (
+                                            <span className="text-[10px] text-gray-600 shrink-0">
+                                                {regRangeStart}–{regRangeEnd} of {event.registrations.length}
+                                            </span>
                                         )}
                                     </div>
                                     {event.registrations.length > 0 ? (
-                                        <div className="divide-y divide-zinc-800/60 max-h-[340px] overflow-y-auto">
-                                            {event.registrations.map((reg) => (
-                                                <div key={reg.id} className="px-4 py-3">
-                                                    <p className="text-sm font-semibold text-white">{reg.full_name}</p>
-                                                    <p className="text-xs text-gray-500 mb-1">
-                                                        {reg.blader_name_1}{reg.blader_name_2 ? ` / ${reg.blader_name_2}` : ''} ({reg.entry_type})
-                                                    </p>
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
-                                                        reg.status === 'confirmed'
-                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                                    }`}>
-                                                        {reg.status}
+                                        <>
+                                            <div className="divide-y divide-zinc-800/60">
+                                                {paginatedRegistrations.map((reg) => (
+                                                    <div key={reg.id} className="px-4 py-3">
+                                                        <p className="text-sm font-semibold text-white">{reg.full_name}</p>
+                                                        <p className="text-xs text-gray-500 mb-1">
+                                                            {reg.blader_name_1}{reg.blader_name_2 ? ` / ${reg.blader_name_2}` : ''} ({reg.entry_type})
+                                                        </p>
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                                                            reg.status === 'confirmed'
+                                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                                : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                                        }`}>
+                                                            {reg.status}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {totalRegPages > 1 && (
+                                                <div className="px-4 py-3 border-t border-zinc-800/60 flex items-center justify-between gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setRegPage((page) => Math.max(1, page - 1))}
+                                                        disabled={currentRegPage === 1}
+                                                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-zinc-700/50 hover:text-white hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400 transition-colors"
+                                                    >
+                                                        Prev
+                                                    </button>
+                                                    <span className="text-[11px] text-gray-500">
+                                                        Page {currentRegPage} of {totalRegPages}
                                                     </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setRegPage((page) => Math.min(totalRegPages, page + 1))}
+                                                        disabled={currentRegPage === totalRegPages}
+                                                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-zinc-700/50 hover:text-white hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400 transition-colors"
+                                                    >
+                                                        Next
+                                                    </button>
                                                 </div>
-                                            ))}
-                                        </div>
+                                            )}
+                                        </>
                                     ) : (
                                         <p className="px-4 py-8 text-sm text-gray-500 text-center">No registrations yet.</p>
                                     )}
@@ -308,12 +370,16 @@ export default function EventShow({
                                         <p className="text-[11px] text-gray-600 mt-1">Door price: {event.entry_fee}</p>
                                     )}
                                 </div>
-                                <input type="text" required value={regForm.full_name} onChange={(e) => setRegForm({ ...regForm, full_name: e.target.value })} className={inputClass} placeholder="Full name" />
+                                <div className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20">
+                                    <p className="text-xs text-gray-500">Registering as</p>
+                                    <p className="text-sm font-semibold text-white">{auth.user?.name}</p>
+                                </div>
+                                <input type="text" required value={regForm.full_name} readOnly className={`${inputClass} opacity-80 cursor-not-allowed`} placeholder="Full name" />
                                 <div className="grid grid-cols-2 gap-3">
                                     <button type="button" onClick={() => setRegForm({ ...regForm, entry_type: 'single' })} className={`px-4 py-2.5 rounded-xl text-sm font-medium border ${regForm.entry_type === 'single' ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-zinc-800/50 text-gray-400 border-zinc-700/50'}`}>Single</button>
                                     <button type="button" onClick={() => event.allow_double_entry && setRegForm({ ...regForm, entry_type: 'double' })} disabled={!event.allow_double_entry} className={`px-4 py-2.5 rounded-xl text-sm font-medium border ${regForm.entry_type === 'double' ? 'bg-red-500/10 text-red-400 border-red-500/30' : !event.allow_double_entry ? 'bg-zinc-800/30 text-gray-600 border-zinc-700/30 cursor-not-allowed' : 'bg-zinc-800/50 text-gray-400 border-zinc-700/50'}`}>Double</button>
                                 </div>
-                                <input type="text" required value={regForm.blader_name_1} onChange={(e) => setRegForm({ ...regForm, blader_name_1: e.target.value })} className={inputClass} placeholder="Blader Name 1" />
+                                <input type="text" required value={regForm.blader_name_1} readOnly className={`${inputClass} opacity-80 cursor-not-allowed`} placeholder="Blader Name 1" />
                                 {regForm.entry_type === 'double' && <input type="text" required value={regForm.blader_name_2} onChange={(e) => setRegForm({ ...regForm, blader_name_2: e.target.value })} className={inputClass} placeholder="Blader Name 2" />}
                                 {event.require_payment && (
                                     <div>

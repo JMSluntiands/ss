@@ -11,6 +11,7 @@ class Participant extends Model
 {
     protected $fillable = [
         'tournament_id',
+        'user_id',
         'name',
         'avatar_path',
         'seed',
@@ -24,6 +25,11 @@ class Participant extends Model
     public function tournament(): BelongsTo
     {
         return $this->belongsTo(Tournament::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     protected function avatarUrl(): Attribute
