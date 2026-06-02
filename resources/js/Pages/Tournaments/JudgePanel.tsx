@@ -302,7 +302,7 @@ function JudgeMatchCard({
     onDone?: () => void;
     onScoringChange?: (active: boolean) => void;
 }) {
-    const [showScoreModal, setShowScoreModal] = useState(forceOpen || match.status === 'playing');
+    const [showScoreModal, setShowScoreModal] = useState(forceOpen);
     const [rounds, setRounds] = useState<RoundEntry[]>(match.round_details ?? []);
     const [submitting, setSubmitting] = useState(false);
     const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');

@@ -45,6 +45,12 @@ interface TournamentInfo {
     current_round: number;
 }
 
+interface GroupLeader {
+    group: string;
+    participant_name: string;
+    participant_id: number | null;
+}
+
 const FINISH_BADGE: Record<string, string> = {
     SF: 'bg-slate-700/60 text-slate-300 border-slate-600/50',
     OF: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -168,12 +174,15 @@ function MatchBoardCard({ match }: { match: LiveMatch }) {
 export default function PlayerMatching({
     tournament,
     matches: initialMatches,
+    group_leaders: initialGroupLeaders,
 }: {
     tournament: TournamentInfo;
     matches: LiveMatch[];
+    group_leaders: GroupLeader[];
 }) {
     const [matches, setMatches] = useState<LiveMatch[]>(initialMatches);
     const [currentRound, setCurrentRound] = useState(tournament.current_round);
+    const [groupLeaders, setGroupLeaders] = useState<GroupLeader[]>(initialGroupLeaders ?? []);
     const liveUrl = `/t/${tournament.slug}/matches/live`;
 
     const { isFetching } = useQuery({
@@ -184,6 +193,7 @@ export default function PlayerMatching({
             const data = await res.json();
             setMatches(data.matches ?? []);
             if (data.current_round != null) setCurrentRound(data.current_round);
+            setGroupLeaders(data.group_leaders ?? []);
             return data;
         },
         refetchInterval: 4000,
@@ -236,6 +246,22 @@ export default function PlayerMatching({
                                 {isFetching ? 'Updating…' : 'Auto-refresh every 4s'}
                             </span>
                         </div>
+                        {groupLeaders.length > 0 && (
+                            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                                <span className="text-[11px] font-semibold text-cyan-300/80 uppercase tracking-wider">
+                                    Top 1 per group
+                                </span>
+                                {groupLeaders.map((leader) => (
+                                    <span
+                                        key={`${leader.group}-${leader.participant_id ?? leader.participant_name}`}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[11px] font-semibold text-cyan-300"
+                                    >
+                                        <span className="text-cyan-400/80">{leader.group}:</span>
+                                        <span className="truncate max-w-[10rem]">{leader.participant_name}</span>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {sortedMatches.length === 0 ? (

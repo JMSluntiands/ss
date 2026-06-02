@@ -1,90 +1,90 @@
 {
-  "_AdminLayout-DG2fok2h.js": {
-    "file": "assets/AdminLayout-DG2fok2h.js",
+  "_AdminLayout-DYZK-DNr.js": {
+    "file": "assets/AdminLayout-DYZK-DNr.js",
     "name": "AdminLayout",
     "imports": [
       "resources/js/app.tsx",
       "_tournamentxUrl-D0g3N9kJ.js"
     ]
   },
-  "_AuthenticatedLayout-B2Ph9x6o.js": {
-    "file": "assets/AuthenticatedLayout-B2Ph9x6o.js",
+  "_AuthenticatedLayout-B6NhT2CO.js": {
+    "file": "assets/AuthenticatedLayout-B6NhT2CO.js",
     "name": "AuthenticatedLayout",
     "imports": [
       "resources/js/app.tsx",
-      "_TournamentXBrand-CqHTYyp-.js"
+      "_TournamentXBrand-bzHVN0gu.js"
     ]
   },
-  "_GuestLayout-ButN0j-v.js": {
-    "file": "assets/GuestLayout-ButN0j-v.js",
+  "_GuestLayout-CTMWs-Y4.js": {
+    "file": "assets/GuestLayout-CTMWs-Y4.js",
     "name": "GuestLayout",
     "imports": [
       "resources/js/app.tsx",
-      "_SiteLogo-B0JPsbXS.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_SiteLogo-a8ibcC9u.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
-  "_InputError-uoX4rSOS.js": {
-    "file": "assets/InputError-uoX4rSOS.js",
+  "_InputError-Gvvgeavv.js": {
+    "file": "assets/InputError-Gvvgeavv.js",
     "name": "InputError",
     "imports": [
       "resources/js/app.tsx"
     ]
   },
-  "_OptimizedImage-BoaFowgr.js": {
-    "file": "assets/OptimizedImage-BoaFowgr.js",
+  "_OptimizedImage-ER9KFmha.js": {
+    "file": "assets/OptimizedImage-ER9KFmha.js",
     "name": "OptimizedImage",
     "imports": [
       "resources/js/app.tsx"
     ]
   },
-  "_ParticipantAvatar-BLakm9ws.js": {
-    "file": "assets/ParticipantAvatar-BLakm9ws.js",
+  "_ParticipantAvatar-p406t6SC.js": {
+    "file": "assets/ParticipantAvatar-p406t6SC.js",
     "name": "ParticipantAvatar",
     "imports": [
       "resources/js/app.tsx",
       "_publicStorage-BuiFROyK.js"
     ]
   },
-  "_PrimaryButton-BV9PYrE6.js": {
-    "file": "assets/PrimaryButton-BV9PYrE6.js",
+  "_PrimaryButton-QzQbPYzH.js": {
+    "file": "assets/PrimaryButton-QzQbPYzH.js",
     "name": "PrimaryButton",
     "imports": [
       "resources/js/app.tsx"
     ]
   },
-  "_SiteFooter-ClZLWsjK.js": {
-    "file": "assets/SiteFooter-ClZLWsjK.js",
+  "_SiteFooter-B2DxO3Iu.js": {
+    "file": "assets/SiteFooter-B2DxO3Iu.js",
     "name": "SiteFooter",
     "imports": [
       "resources/js/app.tsx",
-      "_SiteLogo-B0JPsbXS.js"
+      "_SiteLogo-a8ibcC9u.js"
     ]
   },
-  "_SiteLogo-B0JPsbXS.js": {
-    "file": "assets/SiteLogo-B0JPsbXS.js",
+  "_SiteLogo-a8ibcC9u.js": {
+    "file": "assets/SiteLogo-a8ibcC9u.js",
     "name": "SiteLogo",
     "imports": [
       "resources/js/app.tsx"
     ]
   },
-  "_TextInput-BswWRdbk.js": {
-    "file": "assets/TextInput-BswWRdbk.js",
+  "_TextInput-CzB5pvAf.js": {
+    "file": "assets/TextInput-CzB5pvAf.js",
     "name": "TextInput",
     "imports": [
       "resources/js/app.tsx"
     ]
   },
-  "_TournamentXBrand-CqHTYyp-.js": {
-    "file": "assets/TournamentXBrand-CqHTYyp-.js",
+  "_TournamentXBrand-bzHVN0gu.js": {
+    "file": "assets/TournamentXBrand-bzHVN0gu.js",
     "name": "TournamentXBrand",
     "imports": [
       "resources/js/app.tsx",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
-  "_TournamentXLogo-CxlkHgd1.js": {
-    "file": "assets/TournamentXLogo-CxlkHgd1.js",
+  "_TournamentXLogo-CJaW1g57.js": {
+    "file": "assets/TournamentXLogo-CJaW1g57.js",
     "name": "TournamentXLogo",
     "imports": [
       "resources/js/app.tsx"
@@ -105,16 +105,16 @@
     "file": "assets/eventTournament-UUcF1JFW.js",
     "name": "eventTournament"
   },
-  "_heic2any-FSplcqE5.js": {
-    "file": "assets/heic2any-FSplcqE5.js",
+  "_heic2any-CwNJPzDZ.js": {
+    "file": "assets/heic2any-CwNJPzDZ.js",
     "name": "heic2any",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx"
     ]
   },
-  "_liveScoreSync-BXoGzNZJ.js": {
-    "file": "assets/liveScoreSync-BXoGzNZJ.js",
+  "_liveScoreSync-Dvub2HXv.js": {
+    "file": "assets/liveScoreSync-Dvub2HXv.js",
     "name": "liveScoreSync",
     "imports": [
       "resources/js/app.tsx"
@@ -132,374 +132,374 @@
     "file": "assets/tournamentxUrl-D0g3N9kJ.js",
     "name": "tournamentxUrl"
   },
-  "_transition-CdescaL3.js": {
-    "file": "assets/transition-CdescaL3.js",
+  "_transition-DX5v0-Qp.js": {
+    "file": "assets/transition-DX5v0-Qp.js",
     "name": "transition",
     "imports": [
       "resources/js/app.tsx"
     ]
   },
   "resources/js/Pages/Admin/Content/Blog.tsx": {
-    "file": "assets/Blog-DlifaEdZ.js",
+    "file": "assets/Blog-CfEOMzIa.js",
     "name": "Blog",
     "src": "resources/js/Pages/Admin/Content/Blog.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AdminLayout-DG2fok2h.js",
+      "_AdminLayout-DYZK-DNr.js",
       "_blogImages-5u_8_nzA.js",
       "_resizeImageFile-6SQgkH0j.js",
       "_tournamentxUrl-D0g3N9kJ.js",
       "_publicStorage-BuiFROyK.js"
     ],
     "dynamicImports": [
-      "_heic2any-FSplcqE5.js"
+      "_heic2any-CwNJPzDZ.js"
     ]
   },
   "resources/js/Pages/Admin/Content/Events.tsx": {
-    "file": "assets/Events-mv4On9Vx.js",
+    "file": "assets/Events-CxKh1Q9m.js",
     "name": "Events",
     "src": "resources/js/Pages/Admin/Content/Events.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AdminLayout-DG2fok2h.js",
+      "_AdminLayout-DYZK-DNr.js",
       "_eventFees-DFWuBwsA.js",
       "_eventTournament-UUcF1JFW.js",
       "_tournamentxUrl-D0g3N9kJ.js"
     ]
   },
   "resources/js/Pages/Admin/Content/Jersey.tsx": {
-    "file": "assets/Jersey-CUxZT1nX.js",
+    "file": "assets/Jersey-92aVR6o8.js",
     "name": "Jersey",
     "src": "resources/js/Pages/Admin/Content/Jersey.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AdminLayout-DG2fok2h.js",
+      "_AdminLayout-DYZK-DNr.js",
       "_publicStorage-BuiFROyK.js",
       "_resizeImageFile-6SQgkH0j.js",
       "_tournamentxUrl-D0g3N9kJ.js"
     ]
   },
   "resources/js/Pages/Admin/Content/Members.tsx": {
-    "file": "assets/Members-DI33SAco.js",
+    "file": "assets/Members-C9XkVQID.js",
     "name": "Members",
     "src": "resources/js/Pages/Admin/Content/Members.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AdminLayout-DG2fok2h.js",
+      "_AdminLayout-DYZK-DNr.js",
       "_publicStorage-BuiFROyK.js",
       "_resizeImageFile-6SQgkH0j.js",
       "_tournamentxUrl-D0g3N9kJ.js"
     ]
   },
   "resources/js/Pages/Admin/Dashboard.tsx": {
-    "file": "assets/Dashboard-DQsuE64T.js",
+    "file": "assets/Dashboard-CyMYr8Qx.js",
     "name": "Dashboard",
     "src": "resources/js/Pages/Admin/Dashboard.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AdminLayout-DG2fok2h.js",
+      "_AdminLayout-DYZK-DNr.js",
       "_tournamentxUrl-D0g3N9kJ.js"
     ]
   },
   "resources/js/Pages/Admin/Login.tsx": {
-    "file": "assets/Login-oGREHXnC.js",
+    "file": "assets/Login-CZj2ovHx.js",
     "name": "Login",
     "src": "resources/js/Pages/Admin/Login.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_InputError-uoX4rSOS.js"
+      "_InputError-Gvvgeavv.js"
     ]
   },
   "resources/js/Pages/Admin/Tournaments.tsx": {
-    "file": "assets/Tournaments-Bo2RsTdS.js",
+    "file": "assets/Tournaments-SJZgdRG9.js",
     "name": "Tournaments",
     "src": "resources/js/Pages/Admin/Tournaments.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AdminLayout-DG2fok2h.js",
+      "_AdminLayout-DYZK-DNr.js",
       "_tournamentxUrl-D0g3N9kJ.js"
     ]
   },
   "resources/js/Pages/Admin/Users.tsx": {
-    "file": "assets/Users-BRDC5B9i.js",
+    "file": "assets/Users-hHiAYJqz.js",
     "name": "Users",
     "src": "resources/js/Pages/Admin/Users.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AdminLayout-DG2fok2h.js",
+      "_AdminLayout-DYZK-DNr.js",
       "_tournamentxUrl-D0g3N9kJ.js"
     ]
   },
   "resources/js/Pages/Auth/ConfirmPassword.tsx": {
-    "file": "assets/ConfirmPassword-jNa0XKBT.js",
+    "file": "assets/ConfirmPassword-UjjNdVOX.js",
     "name": "ConfirmPassword",
     "src": "resources/js/Pages/Auth/ConfirmPassword.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_InputError-uoX4rSOS.js",
-      "_TextInput-BswWRdbk.js",
-      "_PrimaryButton-BV9PYrE6.js",
-      "_GuestLayout-ButN0j-v.js",
-      "_SiteLogo-B0JPsbXS.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_InputError-Gvvgeavv.js",
+      "_TextInput-CzB5pvAf.js",
+      "_PrimaryButton-QzQbPYzH.js",
+      "_GuestLayout-CTMWs-Y4.js",
+      "_SiteLogo-a8ibcC9u.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Auth/ForgotPassword.tsx": {
-    "file": "assets/ForgotPassword-C-USKPj7.js",
+    "file": "assets/ForgotPassword-NbVHs7mp.js",
     "name": "ForgotPassword",
     "src": "resources/js/Pages/Auth/ForgotPassword.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_InputError-uoX4rSOS.js",
-      "_GuestLayout-ButN0j-v.js",
-      "_SiteLogo-B0JPsbXS.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_InputError-Gvvgeavv.js",
+      "_GuestLayout-CTMWs-Y4.js",
+      "_SiteLogo-a8ibcC9u.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Auth/Login.tsx": {
-    "file": "assets/Login-1vZksooW.js",
+    "file": "assets/Login-DxX1_6Bs.js",
     "name": "Login",
     "src": "resources/js/Pages/Auth/Login.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_InputError-uoX4rSOS.js",
-      "_GuestLayout-ButN0j-v.js",
-      "_SiteLogo-B0JPsbXS.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_InputError-Gvvgeavv.js",
+      "_GuestLayout-CTMWs-Y4.js",
+      "_SiteLogo-a8ibcC9u.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Auth/Register.tsx": {
-    "file": "assets/Register-D1BnvVZt.js",
+    "file": "assets/Register-FRMruvyE.js",
     "name": "Register",
     "src": "resources/js/Pages/Auth/Register.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_InputError-uoX4rSOS.js",
-      "_GuestLayout-ButN0j-v.js",
-      "_SiteLogo-B0JPsbXS.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_InputError-Gvvgeavv.js",
+      "_GuestLayout-CTMWs-Y4.js",
+      "_SiteLogo-a8ibcC9u.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Auth/ResetPassword.tsx": {
-    "file": "assets/ResetPassword-Bth50QRv.js",
+    "file": "assets/ResetPassword-CEjzw8KR.js",
     "name": "ResetPassword",
     "src": "resources/js/Pages/Auth/ResetPassword.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_InputError-uoX4rSOS.js",
-      "_TextInput-BswWRdbk.js",
-      "_PrimaryButton-BV9PYrE6.js",
-      "_GuestLayout-ButN0j-v.js",
-      "_SiteLogo-B0JPsbXS.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_InputError-Gvvgeavv.js",
+      "_TextInput-CzB5pvAf.js",
+      "_PrimaryButton-QzQbPYzH.js",
+      "_GuestLayout-CTMWs-Y4.js",
+      "_SiteLogo-a8ibcC9u.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Auth/VerifyEmail.tsx": {
-    "file": "assets/VerifyEmail-j5QZCA_c.js",
+    "file": "assets/VerifyEmail-CYP770eM.js",
     "name": "VerifyEmail",
     "src": "resources/js/Pages/Auth/VerifyEmail.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_PrimaryButton-BV9PYrE6.js",
-      "_GuestLayout-ButN0j-v.js",
-      "_SiteLogo-B0JPsbXS.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_PrimaryButton-QzQbPYzH.js",
+      "_GuestLayout-CTMWs-Y4.js",
+      "_SiteLogo-a8ibcC9u.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Blog.tsx": {
-    "file": "assets/Blog-Ce110EQD.js",
+    "file": "assets/Blog-BYj4tYrN.js",
     "name": "Blog",
     "src": "resources/js/Pages/Blog.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_OptimizedImage-BoaFowgr.js",
-      "_SiteFooter-ClZLWsjK.js",
-      "_SiteLogo-B0JPsbXS.js",
+      "_OptimizedImage-ER9KFmha.js",
+      "_SiteFooter-B2DxO3Iu.js",
+      "_SiteLogo-a8ibcC9u.js",
       "_blogImages-5u_8_nzA.js",
       "_publicStorage-BuiFROyK.js"
     ]
   },
   "resources/js/Pages/Blog/Show.tsx": {
-    "file": "assets/Show-yPrHfdch.js",
+    "file": "assets/Show-D7GkVNxz.js",
     "name": "Show",
     "src": "resources/js/Pages/Blog/Show.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_OptimizedImage-BoaFowgr.js",
-      "_SiteFooter-ClZLWsjK.js",
-      "_SiteLogo-B0JPsbXS.js",
+      "_OptimizedImage-ER9KFmha.js",
+      "_SiteFooter-B2DxO3Iu.js",
+      "_SiteLogo-a8ibcC9u.js",
       "_blogImages-5u_8_nzA.js",
       "_publicStorage-BuiFROyK.js"
     ]
   },
   "resources/js/Pages/Dashboard.tsx": {
-    "file": "assets/Dashboard-AIf_eDp5.js",
+    "file": "assets/Dashboard-Dq01CHXL.js",
     "name": "Dashboard",
     "src": "resources/js/Pages/Dashboard.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AuthenticatedLayout-B2Ph9x6o.js",
-      "_TournamentXBrand-CqHTYyp-.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_AuthenticatedLayout-B6NhT2CO.js",
+      "_TournamentXBrand-bzHVN0gu.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Event.tsx": {
-    "file": "assets/Event-CiE9l09C.js",
+    "file": "assets/Event-DT3Ibkb7.js",
     "name": "Event",
     "src": "resources/js/Pages/Event.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_SiteFooter-ClZLWsjK.js",
-      "_SiteLogo-B0JPsbXS.js",
+      "_SiteFooter-B2DxO3Iu.js",
+      "_SiteLogo-a8ibcC9u.js",
       "_eventFees-DFWuBwsA.js"
     ]
   },
   "resources/js/Pages/EventRegistrations.tsx": {
-    "file": "assets/EventRegistrations-lkp3q-WN.js",
+    "file": "assets/EventRegistrations-FcUb7R8e.js",
     "name": "EventRegistrations",
     "src": "resources/js/Pages/EventRegistrations.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AuthenticatedLayout-B2Ph9x6o.js",
-      "_TournamentXBrand-CqHTYyp-.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_AuthenticatedLayout-B6NhT2CO.js",
+      "_TournamentXBrand-bzHVN0gu.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Events/Show.tsx": {
-    "file": "assets/Show-DQYAmt0m.js",
+    "file": "assets/Show-BxZwNNU4.js",
     "name": "Show",
     "src": "resources/js/Pages/Events/Show.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_SiteFooter-ClZLWsjK.js",
-      "_SiteLogo-B0JPsbXS.js",
+      "_SiteFooter-B2DxO3Iu.js",
+      "_SiteLogo-a8ibcC9u.js",
       "_eventFees-DFWuBwsA.js"
     ]
   },
   "resources/js/Pages/Jersey.tsx": {
-    "file": "assets/Jersey-CZ83mDqN.js",
+    "file": "assets/Jersey-Cob_tB1u.js",
     "name": "Jersey",
     "src": "resources/js/Pages/Jersey.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_OptimizedImage-BoaFowgr.js",
-      "_SiteFooter-ClZLWsjK.js",
-      "_SiteLogo-B0JPsbXS.js",
+      "_OptimizedImage-ER9KFmha.js",
+      "_SiteFooter-B2DxO3Iu.js",
+      "_SiteLogo-a8ibcC9u.js",
       "_publicStorage-BuiFROyK.js"
     ]
   },
   "resources/js/Pages/Members.tsx": {
-    "file": "assets/Members-CmBCaovv.js",
+    "file": "assets/Members-CxUD4iyC.js",
     "name": "Members",
     "src": "resources/js/Pages/Members.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_OptimizedImage-BoaFowgr.js",
-      "_SiteFooter-ClZLWsjK.js",
-      "_SiteLogo-B0JPsbXS.js",
+      "_OptimizedImage-ER9KFmha.js",
+      "_SiteFooter-B2DxO3Iu.js",
+      "_SiteLogo-a8ibcC9u.js",
       "_publicStorage-BuiFROyK.js"
     ]
   },
   "resources/js/Pages/MyEvents.tsx": {
-    "file": "assets/MyEvents-DgWqKW8Q.js",
+    "file": "assets/MyEvents-DjgciNdg.js",
     "name": "MyEvents",
     "src": "resources/js/Pages/MyEvents.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AuthenticatedLayout-B2Ph9x6o.js",
+      "_AuthenticatedLayout-B6NhT2CO.js",
       "_eventFees-DFWuBwsA.js",
       "_eventTournament-UUcF1JFW.js",
-      "_TournamentXBrand-CqHTYyp-.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_TournamentXBrand-bzHVN0gu.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Profile/Edit.tsx": {
-    "file": "assets/Edit-C93vvOuj.js",
+    "file": "assets/Edit-BDmmJjz1.js",
     "name": "Edit",
     "src": "resources/js/Pages/Profile/Edit.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AuthenticatedLayout-B2Ph9x6o.js",
+      "_AuthenticatedLayout-B6NhT2CO.js",
       "resources/js/Pages/Profile/Partials/DeleteUserForm.tsx",
       "resources/js/Pages/Profile/Partials/UpdatePasswordForm.tsx",
       "resources/js/Pages/Profile/Partials/UpdateProfileInformationForm.tsx",
-      "_TournamentXBrand-CqHTYyp-.js",
-      "_TournamentXLogo-CxlkHgd1.js",
-      "_InputError-uoX4rSOS.js",
-      "_transition-CdescaL3.js"
+      "_TournamentXBrand-bzHVN0gu.js",
+      "_TournamentXLogo-CJaW1g57.js",
+      "_InputError-Gvvgeavv.js",
+      "_transition-DX5v0-Qp.js"
     ]
   },
   "resources/js/Pages/Profile/Partials/DeleteUserForm.tsx": {
-    "file": "assets/DeleteUserForm-CiaB2Ssp.js",
+    "file": "assets/DeleteUserForm-QOJU8RGN.js",
     "name": "DeleteUserForm",
     "src": "resources/js/Pages/Profile/Partials/DeleteUserForm.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_InputError-uoX4rSOS.js"
+      "_InputError-Gvvgeavv.js"
     ]
   },
   "resources/js/Pages/Profile/Partials/UpdatePasswordForm.tsx": {
-    "file": "assets/UpdatePasswordForm-c2L08zH9.js",
+    "file": "assets/UpdatePasswordForm-dXso7sf-.js",
     "name": "UpdatePasswordForm",
     "src": "resources/js/Pages/Profile/Partials/UpdatePasswordForm.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_InputError-uoX4rSOS.js",
-      "_transition-CdescaL3.js"
+      "_InputError-Gvvgeavv.js",
+      "_transition-DX5v0-Qp.js"
     ]
   },
   "resources/js/Pages/Profile/Partials/UpdateProfileInformationForm.tsx": {
-    "file": "assets/UpdateProfileInformationForm-C7daOxYs.js",
+    "file": "assets/UpdateProfileInformationForm-Dp5KcJNM.js",
     "name": "UpdateProfileInformationForm",
     "src": "resources/js/Pages/Profile/Partials/UpdateProfileInformationForm.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_InputError-uoX4rSOS.js",
-      "_transition-CdescaL3.js"
+      "_InputError-Gvvgeavv.js",
+      "_transition-DX5v0-Qp.js"
     ]
   },
   "resources/js/Pages/Tournaments/Create.tsx": {
-    "file": "assets/Create-Be3qxbP_.js",
+    "file": "assets/Create-DpsQ0qu7.js",
     "name": "Create",
     "src": "resources/js/Pages/Tournaments/Create.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_AuthenticatedLayout-B2Ph9x6o.js",
-      "_InputError-uoX4rSOS.js",
-      "_TournamentXBrand-CqHTYyp-.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_AuthenticatedLayout-B6NhT2CO.js",
+      "_InputError-Gvvgeavv.js",
+      "_TournamentXBrand-bzHVN0gu.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Tournaments/JudgeLogin.tsx": {
-    "file": "assets/JudgeLogin-IUHILhWP.js",
+    "file": "assets/JudgeLogin-CJxvUsTM.js",
     "name": "JudgeLogin",
     "src": "resources/js/Pages/Tournaments/JudgeLogin.tsx",
     "isDynamicEntry": true,
@@ -508,61 +508,61 @@
     ]
   },
   "resources/js/Pages/Tournaments/JudgePanel.tsx": {
-    "file": "assets/JudgePanel-DcZMXQNR.js",
+    "file": "assets/JudgePanel-Bhq1m_M4.js",
     "name": "JudgePanel",
     "src": "resources/js/Pages/Tournaments/JudgePanel.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_liveScoreSync-BXoGzNZJ.js"
+      "_liveScoreSync-Dvub2HXv.js"
     ]
   },
   "resources/js/Pages/Tournaments/PlayerMatching.tsx": {
-    "file": "assets/PlayerMatching-Ddcf_klu.js",
+    "file": "assets/PlayerMatching-DJ47-_Mf.js",
     "name": "PlayerMatching",
     "src": "resources/js/Pages/Tournaments/PlayerMatching.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_ParticipantAvatar-BLakm9ws.js",
-      "_SiteLogo-B0JPsbXS.js",
-      "_TournamentXBrand-CqHTYyp-.js",
+      "_ParticipantAvatar-p406t6SC.js",
+      "_SiteLogo-a8ibcC9u.js",
+      "_TournamentXBrand-bzHVN0gu.js",
       "_publicStorage-BuiFROyK.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Tournaments/Show.tsx": {
-    "file": "assets/Show-DbvWnCrd.js",
+    "file": "assets/Show-B4ni0_t3.js",
     "name": "Show",
     "src": "resources/js/Pages/Tournaments/Show.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_ParticipantAvatar-BLakm9ws.js",
-      "_SiteLogo-B0JPsbXS.js",
-      "_AuthenticatedLayout-B2Ph9x6o.js",
-      "_liveScoreSync-BXoGzNZJ.js",
+      "_ParticipantAvatar-p406t6SC.js",
+      "_SiteLogo-a8ibcC9u.js",
+      "_AuthenticatedLayout-B6NhT2CO.js",
+      "_liveScoreSync-Dvub2HXv.js",
       "_publicStorage-BuiFROyK.js",
-      "_TournamentXBrand-CqHTYyp-.js",
-      "_TournamentXLogo-CxlkHgd1.js"
+      "_TournamentXBrand-bzHVN0gu.js",
+      "_TournamentXLogo-CJaW1g57.js"
     ]
   },
   "resources/js/Pages/Welcome.tsx": {
-    "file": "assets/Welcome-BT2RDOcz.js",
+    "file": "assets/Welcome-B-pdqxIg.js",
     "name": "Welcome",
     "src": "resources/js/Pages/Welcome.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.tsx",
-      "_OptimizedImage-BoaFowgr.js",
+      "_OptimizedImage-ER9KFmha.js",
       "_publicStorage-BuiFROyK.js",
-      "_SiteFooter-ClZLWsjK.js",
-      "_SiteLogo-B0JPsbXS.js",
+      "_SiteFooter-B2DxO3Iu.js",
+      "_SiteLogo-a8ibcC9u.js",
       "_tournamentxUrl-D0g3N9kJ.js"
     ]
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-ilkKz56N.js",
+    "file": "assets/app-1PvP-P2s.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -602,7 +602,7 @@
       "resources/js/Pages/Welcome.tsx"
     ],
     "css": [
-      "assets/app-Co8TnYcN.css"
+      "assets/app-AB2lV-Om.css"
     ]
   }
 }

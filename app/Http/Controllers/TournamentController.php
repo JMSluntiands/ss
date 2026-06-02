@@ -1186,6 +1186,7 @@ class TournamentController extends Controller
         return Inertia::render('Tournaments/PlayerMatching', [
             'tournament' => $tournament->only(['id', 'name', 'slug', 'status', 'format', 'current_round']),
             'matches' => $this->playingMatchesForDisplay($tournament),
+            'group_leaders' => $this->playerMatchingGroupLeaders($tournament),
         ]);
     }
 
@@ -1195,6 +1196,7 @@ class TournamentController extends Controller
             'matches' => $this->playingMatchesForDisplay($tournament),
             'status' => $tournament->status,
             'current_round' => $tournament->current_round,
+            'group_leaders' => $this->playerMatchingGroupLeaders($tournament),
         ]);
     }
 
@@ -1212,6 +1214,65 @@ class TournamentController extends Controller
             ->orderBy('stadium')
             ->orderBy('match_number')
             ->get();
+    }
+
+    /**
+     * @return array<int, array{group: string, participant_name: string, participant_id: int|null}>
+     */
+    private function playerMatchingGroupLeaders(Tournament $tournament): array
+    {
+        if ($tournament->tournament_type !== 'two_stage') {
+            return [];
+        }
+
+        if (!in_array($tournament->format, ['swiss', 'round_robin'], true)) {
+            return [];
+        }
+
+        $participants = $tournament->participants()->orderBy('seed')->get(['id', 'name', 'seed']);
+        if ($participants->isEmpty()) {
+            return [];
+        }
+
+        $standings = $tournament->swissStandings()->orderBy('rank')->get([
+            'participant_id',
+            'rank',
+        ]);
+        if ($standings->isEmpty()) {
+            return [];
+        }
+
+        $participantCount = $participants->count();
+        $perGroup = (int) ($tournament->participants_per_group ?? 0);
+        $groupCount = $perGroup > 0 ? max(2, (int) ceil($participantCount / $perGroup)) : 2;
+        $groupSize = (int) ceil($participantCount / $groupCount);
+
+        $leaders = [];
+        for ($g = 0; $g < $groupCount; $g++) {
+            $slice = $participants->slice($g * $groupSize, $groupSize);
+            if ($slice->isEmpty()) {
+                continue;
+            }
+
+            $memberIds = $slice->pluck('id')->all();
+            $leaderStanding = $standings->first(fn ($s) => in_array($s->participant_id, $memberIds, true));
+            if (!$leaderStanding) {
+                continue;
+            }
+
+            $leaderParticipant = $participants->firstWhere('id', $leaderStanding->participant_id);
+            if (!$leaderParticipant) {
+                continue;
+            }
+
+            $leaders[] = [
+                'group' => 'Group '.chr(65 + $g),
+                'participant_name' => $leaderParticipant->name,
+                'participant_id' => $leaderParticipant->id,
+            ];
+        }
+
+        return $leaders;
     }
 
     public function destroy(Tournament $tournament)
