@@ -40,6 +40,7 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            'csrf_token' => csrf_token(),
             'site_visit_count' => $visitCount,
             'site_logo_url' => SiteAssets::logoUrl(),
             'tournament_x_logo_url' => SiteAssets::tournamentXLogoUrl(),

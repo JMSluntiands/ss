@@ -7,6 +7,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/csrf-cookie', [TournamentController::class, 'csrfCookie'])->name('csrf.cookie');
+
 Route::get('/site-assets/logo', fn () => \App\Support\SiteAssets::logoResponse())->name('site.logo');
 Route::get('/site-assets/tournamentx-logo', fn () => \App\Support\SiteAssets::tournamentXLogoResponse())->name('site.tournamentx-logo');
 

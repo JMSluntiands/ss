@@ -6,8 +6,10 @@ use App\Models\Tournament;
 use App\Models\TournamentMatch;
 use App\Services\RoundRobinService;
 use App\Services\SwissService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Cookie;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -24,6 +26,36 @@ class TournamentController extends Controller
         $fullPath = $basePath === '' ? ltrim($path, '/') : $basePath.'/'.ltrim($path, '/');
 
         return '/'.$fullPath;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function jsonWithFreshCsrf(array $data): JsonResponse
+    {
+        $token = csrf_token();
+
+        return response()
+            ->json([
+                ...$data,
+                'csrf_token' => $token,
+            ])
+            ->withCookie($this->xsrfCookie($token));
+    }
+
+    private function xsrfCookie(string $token): Cookie
+    {
+        return Cookie::create(
+            'XSRF-TOKEN',
+            $token,
+            0,
+            config('session.path', '/'),
+            config('session.domain'),
+            (bool) config('session.secure'),
+            true,
+            false,
+            config('session.same_site', 'lax'),
+        );
     }
 
     /**
@@ -1163,6 +1195,11 @@ class TournamentController extends Controller
         return back();
     }
 
+    public function csrfCookie(): JsonResponse
+    {
+        return $this->jsonWithFreshCsrf([]);
+    }
+
     public function liveData(Tournament $tournament)
     {
         $tournament->load(['matches.player1', 'matches.player2', 'matches.winner']);
@@ -1178,7 +1215,7 @@ class TournamentController extends Controller
             $data['swiss_standings'] = $tournament->swissStandings;
         }
 
-        return response()->json($data);
+        return $this->jsonWithFreshCsrf($data);
     }
 
     public function playerMatching(Tournament $tournament)
@@ -1192,7 +1229,7 @@ class TournamentController extends Controller
 
     public function playerMatchingLive(Tournament $tournament)
     {
-        return response()->json([
+        return $this->jsonWithFreshCsrf([
             'matches' => $this->playingMatchesForDisplay($tournament),
             'status' => $tournament->status,
             'current_round' => $tournament->current_round,

@@ -3,6 +3,7 @@ import SiteLogo from '@/Components/SiteLogo';
 import TournamentXBrand from '@/Components/TournamentXBrand';
 import { Head } from '@inertiajs/react';
 import { useQuery } from '@tanstack/react-query';
+import { applyCsrfFromPayload } from '@/utils/csrf';
 import { useMemo, useState } from 'react';
 
 interface MatchPlayer {
@@ -191,6 +192,7 @@ export default function PlayerMatching({
             const res = await fetch(`${liveUrl}?_=${Date.now()}`, { cache: 'no-store' });
             if (!res.ok) throw new Error('Failed to fetch');
             const data = await res.json();
+            applyCsrfFromPayload(data);
             setMatches(data.matches ?? []);
             if (data.current_round != null) setCurrentRound(data.current_round);
             setGroupLeaders(data.group_leaders ?? []);

@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageProps } from '@/types';
 import { persistLiveScoreQueued, type RoundEntry as LiveRoundEntry } from '@/utils/liveScoreSync';
+import { applyCsrfFromPayload, refreshCsrfCookie } from '@/utils/csrf';
 
 interface Participant {
     id: number;
@@ -577,7 +578,8 @@ function MatchCard({
         );
     };
 
-    const startPlaying = (stadium: number | null) => {
+    const startPlaying = async (stadium: number | null) => {
+        await refreshCsrfCookie();
         router.patch(
             route('matches.setStatus', [tournamentId, match.id]),
             { status: 'playing', stadium },
@@ -1190,7 +1192,8 @@ function SwissMatchCard({
     const p1Judge = match.player1_id ? participants.find(p => p.id === match.player1_id)?.judge : null;
     const p2Judge = match.player2_id ? participants.find(p => p.id === match.player2_id)?.judge : null;
 
-    const startPlaying = (stadium: number | null) => {
+    const startPlaying = async (stadium: number | null) => {
+        await refreshCsrfCookie();
         router.patch(
             route('matches.setStatus', [tournamentId, match.id]),
             { status: 'playing', stadium },
@@ -3219,8 +3222,15 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
         swiss_standings?: SwissStanding[];
         status?: string;
         current_round?: number;
+        csrf_token?: string;
     }) => {
-        const dataString = JSON.stringify(data);
+        applyCsrfFromPayload(data);
+        const dataString = JSON.stringify({
+            matches: data.matches,
+            swiss_standings: data.swiss_standings,
+            status: data.status,
+            current_round: data.current_round,
+        });
         if (!forceLiveUpdateRef.current && dataString === prevDataRef.current) {
             return;
         }
