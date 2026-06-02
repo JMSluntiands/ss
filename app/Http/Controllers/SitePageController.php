@@ -14,12 +14,14 @@ use Inertia\Inertia;
 
 class SitePageController extends Controller
 {
-    public function home()
+    public function home(MemberDashboardStatsService $stats)
     {
+        $members = SiteMember::query()
+            ->orderBy('sort_order')
+            ->get();
+
         return Inertia::render('Welcome', [
-            'members' => SiteMember::query()
-                ->orderBy('sort_order')
-                ->get(['id', 'name', 'role', 'rank', 'wins', 'losses', 'bey', 'image_url']),
+            'members' => $stats->rosterProfiles($members),
             // 'tournamentRosters' => SiteTournamentRoster::query()
             //     ->orderBy('sort_order')
             //     ->get(['id', 'name', 'event_date', 'location', 'result', 'description', 'image_url', 'roster']),
@@ -108,12 +110,14 @@ class SitePageController extends Controller
         ]);
     }
 
-    public function members()
+    public function members(MemberDashboardStatsService $stats)
     {
+        $members = SiteMember::query()
+            ->orderBy('sort_order')
+            ->get();
+
         return Inertia::render('Members', [
-            'members' => SiteMember::query()
-                ->orderBy('sort_order')
-                ->get(['id', 'name', 'role', 'rank', 'wins', 'losses', 'bey', 'joined', 'image_url']),
+            'members' => $stats->rosterProfiles($members),
         ]);
     }
 

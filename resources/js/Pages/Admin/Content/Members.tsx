@@ -43,8 +43,6 @@ const emptyForm = {
     name: '',
     role: 'Member',
     rank: 'C',
-    wins: 0,
-    losses: 0,
     bey: '',
     joined: '',
     sort_order: 0,
@@ -87,8 +85,6 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
             name: member.name,
             role: member.role,
             rank: member.rank,
-            wins: member.wins,
-            losses: member.losses,
             bey: member.bey ?? '',
             joined: member.joined ?? '',
             sort_order: member.sort_order,
@@ -116,8 +112,6 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
         formData.append('name', form.name);
         formData.append('role', form.role);
         formData.append('rank', form.rank);
-        formData.append('wins', String(form.wins));
-        formData.append('losses', String(form.losses));
         if (form.bey) formData.append('bey', form.bey);
         if (form.joined) formData.append('joined', form.joined);
         formData.append('sort_order', String(form.sort_order));
@@ -371,29 +365,38 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
                                     </div>
                                 </div>
 
-                                {/* Wins & Losses */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Wins</label>
-                                        <input
-                                            type="number"
-                                            value={form.wins}
-                                            onChange={(e) => setField('wins', parseInt(e.target.value) || 0)}
-                                            min={0}
-                                            className="w-full px-4 py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 transition-colors"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Losses</label>
-                                        <input
-                                            type="number"
-                                            value={form.losses}
-                                            onChange={(e) => setField('losses', parseInt(e.target.value) || 0)}
-                                            min={0}
-                                            className="w-full px-4 py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 transition-colors"
-                                        />
-                                    </div>
-                                </div>
+                                {/* TournamentX record (auto-synced) */}
+                                {modalMode === 'edit' && editingId && (() => {
+                                    const member = members.data.find((m) => m.id === editingId);
+                                    if (!member) return null;
+                                    const total = member.wins + member.losses;
+                                    const winRate = total > 0 ? Math.round((member.wins / total) * 100) : 0;
+
+                                    return (
+                                        <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
+                                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                                                TournamentX Record
+                                            </p>
+                                            <div className="grid grid-cols-3 gap-3 text-center">
+                                                <div>
+                                                    <p className="text-lg font-bold text-emerald-400">{member.wins}</p>
+                                                    <p className="text-[10px] text-gray-600 uppercase">Wins</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-lg font-bold text-red-400">{member.losses}</p>
+                                                    <p className="text-[10px] text-gray-600 uppercase">Losses</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-lg font-bold text-white">{winRate}%</p>
+                                                    <p className="text-[10px] text-gray-600 uppercase">Win Rate</p>
+                                                </div>
+                                            </div>
+                                            <p className="mt-2 text-[11px] text-gray-600">
+                                                Auto-synced from completed TournamentX matches.
+                                            </p>
+                                        </div>
+                                    );
+                                })()}
 
                                 {/* Bey */}
                                 <div>

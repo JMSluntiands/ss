@@ -9,6 +9,7 @@ use App\Models\JerseyItem;
 use App\Models\SiteEvent;
 use App\Models\SiteMember;
 use App\Services\MemberAccountService;
+use App\Services\MemberMatchRecordService;
 use App\Models\Tournament;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -307,11 +308,21 @@ class AdminContentController extends Controller
 
     // ── Members ──
 
-    public function membersIndex()
+    public function membersIndex(MemberMatchRecordService $matchRecords)
     {
         $members = SiteMember::with('user:id,name,email')
             ->orderBy('sort_order')
             ->paginate(30);
+
+        $records = $matchRecords->forMembers(collect($members->items()));
+
+        $members->through(function (SiteMember $member) use ($records) {
+            $record = $records[$member->id] ?? ['wins' => 0, 'losses' => 0];
+            $member->wins = $record['wins'];
+            $member->losses = $record['losses'];
+
+            return $member;
+        });
 
         return Inertia::render('Admin/Content/Members', ['members' => $members]);
     }
@@ -322,8 +333,6 @@ class AdminContentController extends Controller
             'name' => 'required|string|max:100',
             'role' => 'required|string|max:50',
             'rank' => 'required|string|max:10',
-            'wins' => 'integer|min:0',
-            'losses' => 'integer|min:0',
             'bey' => 'nullable|string|max:100',
             'joined' => 'nullable|string|max:50',
             'image' => 'nullable|image|max:5120',
@@ -335,6 +344,9 @@ class AdminContentController extends Controller
         }
         unset($data['image']);
 
+        $data['wins'] = 0;
+        $data['losses'] = 0;
+
         SiteMember::create($data);
         return back()->with('success', 'Member added.');
     }
@@ -345,8 +357,6 @@ class AdminContentController extends Controller
             'name' => 'required|string|max:100',
             'role' => 'required|string|max:50',
             'rank' => 'required|string|max:10',
-            'wins' => 'integer|min:0',
-            'losses' => 'integer|min:0',
             'bey' => 'nullable|string|max:100',
             'joined' => 'nullable|string|max:50',
             'image' => 'nullable|image|max:5120',
@@ -371,13 +381,14 @@ class AdminContentController extends Controller
         return back()->with('success', 'Member deleted.');
     }
 
-    public function memberProvisionAccount(SiteMember $member, MemberAccountService $service)
+    public function memberProvisionAccount(SiteMember $member, MemberAccountService $service, MemberMatchRecordService $matchRecords)
     {
         if ($member->user_id) {
             return back()->with('error', "{$member->name} already has a linked TournamentX account.");
         }
 
         $user = $service->provisionForMember($member);
+        $matchRecords->syncMember($member->fresh());
 
         return back()->with('success', "TournamentX account created for {$member->name} ({$user->email}).");
     }

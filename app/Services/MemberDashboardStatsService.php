@@ -16,19 +16,43 @@ class MemberDashboardStatsService
     public function __construct(
         private ParticipantFinishStatsService $finishStats,
         private MemberAccountService $accounts,
+        private MemberMatchRecordService $matchRecords,
     ) {}
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, SiteMember>  $members
+     * @return array<int, array<string, mixed>>
+     */
+    public function rosterProfiles($members): array
+    {
+        $records = $this->matchRecords->forMembers($members);
+
+        return $members->map(function (SiteMember $member) use ($records) {
+            $record = $records[$member->id] ?? ['wins' => 0, 'losses' => 0];
+
+            return $this->formatRosterProfile($member, $record['wins'], $record['losses']);
+        })->all();
+    }
+
     public function rosterProfile(SiteMember $member): array
     {
-        $totalGames = $member->wins + $member->losses;
+        $record = $this->matchRecords->forMember($member);
+
+        return $this->formatRosterProfile($member, $record['wins'], $record['losses']);
+    }
+
+    private function formatRosterProfile(SiteMember $member, int $wins, int $losses): array
+    {
+        $totalGames = $wins + $losses;
 
         return [
             'id' => $member->id,
             'name' => $member->name,
             'role' => $member->role,
             'rank' => $member->rank,
-            'wins' => $member->wins,
-            'losses' => $member->losses,
-            'win_rate' => $totalGames > 0 ? round(($member->wins / $totalGames) * 100) : 0,
+            'wins' => $wins,
+            'losses' => $losses,
+            'win_rate' => $totalGames > 0 ? round(($wins / $totalGames) * 100) : 0,
             'bey' => $member->bey,
             'joined' => $member->joined,
             'image_url' => $member->image_url,
@@ -290,7 +314,7 @@ class MemberDashboardStatsService
         $names = array_filter([$member->name, $member->user?->blader_name]);
         $query->where(function ($q) use ($names) {
             foreach ($names as $name) {
-                $q->orWhere('name', $name);
+                $q->orWhereRaw('LOWER(name) = ?', [mb_strtolower($name)]);
             }
         });
     }
