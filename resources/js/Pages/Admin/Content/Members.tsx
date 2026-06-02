@@ -68,6 +68,9 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
     const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<SiteMember | null>(null);
+    const [passwordModal, setPasswordModal] = useState<{ mode: 'provision' | 'change'; member: SiteMember } | null>(null);
+    const [passwordForm, setPasswordForm] = useState({ password: '', password_confirmation: '' });
+    const [passwordProcessing, setPasswordProcessing] = useState(false);
     const imageInputRef = useRef<HTMLInputElement>(null);
 
     const openCreate = () => {
@@ -143,8 +146,45 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
     };
 
     const handleProvisionAccount = (member: SiteMember) => {
-        router.post(route('admin.content.members.provision', member.id), {}, {
+        setPasswordForm({ password: '', password_confirmation: '' });
+        setPasswordModal({ mode: 'provision', member });
+    };
+
+    const handleChangePassword = (member: SiteMember) => {
+        setPasswordForm({ password: '', password_confirmation: '' });
+        setPasswordModal({ mode: 'change', member });
+    };
+
+    const closePasswordModal = () => {
+        setPasswordModal(null);
+        setPasswordForm({ password: '', password_confirmation: '' });
+    };
+
+    const submitPasswordModal = (e: FormEvent) => {
+        e.preventDefault();
+        if (!passwordModal) return;
+
+        setPasswordProcessing(true);
+
+        const payload = {
+            password: passwordForm.password || undefined,
+            password_confirmation: passwordForm.password_confirmation || undefined,
+        };
+
+        if (passwordModal.mode === 'provision') {
+            router.post(route('admin.content.members.provision', passwordModal.member.id), payload, {
+                preserveScroll: true,
+                onFinish: () => setPasswordProcessing(false),
+                onSuccess: () => closePasswordModal(),
+            });
+
+            return;
+        }
+
+        router.put(route('admin.content.members.password', passwordModal.member.id), payload, {
             preserveScroll: true,
+            onFinish: () => setPasswordProcessing(false),
+            onSuccess: () => closePasswordModal(),
         });
     };
 
@@ -252,6 +292,14 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
                                                         className="px-3 py-1.5 rounded-lg text-xs font-medium text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all"
                                                     >
                                                         Create account
+                                                    </button>
+                                                )}
+                                                {member.user && (
+                                                    <button
+                                                        onClick={() => handleChangePassword(member)}
+                                                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all"
+                                                    >
+                                                        Change password
                                                     </button>
                                                 )}
                                                 <button
@@ -478,6 +526,89 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
                                         className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-red-700 to-red-500 shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {processing ? 'Saving...' : modalMode === 'create' ? 'Add Member' : 'Save Changes'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Password Modal (create account / change password) */}
+            {passwordModal && (
+                <>
+                    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={closePasswordModal} />
+                    <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
+                        <div className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-800 shadow-2xl shadow-black/50 p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-white">
+                                        {passwordModal.mode === 'provision' ? 'Create TournamentX Account' : 'Change Password'}
+                                    </h3>
+                                    <p className="text-xs text-gray-500">{passwordModal.member.name}</p>
+                                </div>
+                            </div>
+
+                            <form onSubmit={submitPasswordModal} className="space-y-4">
+                                {passwordModal.mode === 'provision' && (
+                                    <p className="text-sm text-gray-400">
+                                        Leave password blank to use the default site password, or set a custom one now.
+                                    </p>
+                                )}
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                                        {passwordModal.mode === 'provision' ? 'Password (optional)' : 'New Password'}
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={passwordForm.password}
+                                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, password: e.target.value }))}
+                                        required={passwordModal.mode === 'change'}
+                                        autoComplete="new-password"
+                                        className="w-full px-4 py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 transition-colors"
+                                        placeholder={passwordModal.mode === 'provision' ? 'Default password if empty' : 'Enter new password'}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                                        Confirm Password
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={passwordForm.password_confirmation}
+                                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, password_confirmation: e.target.value }))}
+                                        required={passwordModal.mode === 'change' || passwordForm.password.length > 0}
+                                        autoComplete="new-password"
+                                        className="w-full px-4 py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 transition-colors"
+                                        placeholder="Confirm password"
+                                    />
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={closePasswordModal}
+                                        className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-400 bg-zinc-800 border border-zinc-700/50 hover:text-white hover:bg-zinc-700 transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={passwordProcessing}
+                                        className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-blue-700 to-cyan-500 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:brightness-110 transition-all disabled:opacity-50"
+                                    >
+                                        {passwordProcessing
+                                            ? 'Saving...'
+                                            : passwordModal.mode === 'provision'
+                                              ? 'Create account'
+                                              : 'Update password'}
                                     </button>
                                 </div>
                             </form>

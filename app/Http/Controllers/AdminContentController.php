@@ -12,7 +12,9 @@ use App\Services\MemberAccountService;
 use App\Services\MemberMatchRecordService;
 use App\Models\Tournament;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 
 class AdminContentController extends Controller
@@ -381,16 +383,48 @@ class AdminContentController extends Controller
         return back()->with('success', 'Member deleted.');
     }
 
-    public function memberProvisionAccount(SiteMember $member, MemberAccountService $service, MemberMatchRecordService $matchRecords)
+    public function memberProvisionAccount(Request $request, SiteMember $member, MemberAccountService $service, MemberMatchRecordService $matchRecords)
     {
         if ($member->user_id) {
             return back()->with('error', "{$member->name} already has a linked TournamentX account.");
         }
 
-        $user = $service->provisionForMember($member);
+        $validated = $request->validate([
+            'password' => ['nullable', 'confirmed', Password::defaults()],
+        ]);
+
+        $user = $service->provisionForMember(
+            $member,
+            password: $validated['password'] ?? null,
+        );
         $matchRecords->syncMember($member->fresh());
 
-        return back()->with('success', "TournamentX account created for {$member->name} ({$user->email}).");
+        $message = "TournamentX account created for {$member->name} ({$user->email}).";
+
+        if (! ($validated['password'] ?? null)) {
+            $message .= ' Default password: '.config('tournamentx.member_default_password').'.';
+        }
+
+        return back()->with('success', $message);
+    }
+
+    public function memberUpdatePassword(Request $request, SiteMember $member)
+    {
+        $member->loadMissing('user');
+
+        if (! $member->user) {
+            return back()->with('error', "{$member->name} does not have a TournamentX account yet.");
+        }
+
+        $validated = $request->validate([
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $member->user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return back()->with('success', "Password updated for {$member->name}.");
     }
 
     // ── Jersey / Merch ──

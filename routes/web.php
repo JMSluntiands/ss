@@ -66,6 +66,7 @@ $registerMainSite = function (): void {
         Route::post('/content/members', [AdminContentController::class, 'memberStore'])->name('content.members.store');
         Route::put('/content/members/{member}', [AdminContentController::class, 'memberUpdate'])->name('content.members.update');
         Route::post('/content/members/{member}/provision-account', [AdminContentController::class, 'memberProvisionAccount'])->name('content.members.provision');
+        Route::put('/content/members/{member}/password', [AdminContentController::class, 'memberUpdatePassword'])->name('content.members.password');
         Route::delete('/content/members/{member}', [AdminContentController::class, 'memberDestroy'])->name('content.members.destroy');
 
         Route::get('/content/jersey', [AdminContentController::class, 'jerseyIndex'])->name('content.jersey');

@@ -48,9 +48,9 @@ export default function UpdatePasswordForm({
     return (
         <section className={className}>
             <header>
-                <h2 className="text-lg font-semibold text-white">Update Password</h2>
+                <h2 className="text-lg font-semibold text-white">Change Password</h2>
                 <p className="mt-1 text-sm text-slate-400">
-                    Ensure your account is using a long, random password to stay secure.
+                    Update your TournamentX login password. Use a strong password you do not share with others.
                 </p>
             </header>
 
@@ -102,7 +102,7 @@ export default function UpdatePasswordForm({
                         disabled={processing}
                         className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 transition-all hover:shadow-cyan-500/40 hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
                     >
-                        Save
+                        Change password
                     </button>
                     <Transition
                         show={recentlySuccessful}
@@ -111,7 +111,7 @@ export default function UpdatePasswordForm({
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <p className="text-sm text-emerald-400">Saved.</p>
+                        <p className="text-sm text-emerald-400">Password updated.</p>
                     </Transition>
                 </div>
             </form>
