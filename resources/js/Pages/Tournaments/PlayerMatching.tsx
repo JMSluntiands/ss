@@ -226,42 +226,48 @@ export default function PlayerMatching({
                 </header>
 
                 <main className="relative z-10 flex-1 w-full max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-                    <div className="text-center mb-8">
-                        <h1 className="text-2xl sm:text-4xl font-bold text-white uppercase tracking-tight truncate px-2" title={tournament.name}>
-                            {tournament.name}
-                        </h1>
-                        <div className="mx-auto mt-3 w-20 h-1 rounded-full tx-underline" />
-                        <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-xs font-bold text-cyan-300">
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75" />
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
-                                </span>
-                                LIVE
-                            </span>
-                            {currentRound > 0 && (
-                                <span className="text-xs text-slate-500">Round {currentRound}</span>
-                            )}
-                            <span className="text-xs text-slate-600">
-                                {isFetching ? 'Updating…' : 'Auto-refresh every 4s'}
-                            </span>
-                        </div>
-                        {groupLeaders.length > 0 && (
-                            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                                <span className="text-[11px] font-semibold text-cyan-300/80 uppercase tracking-wider">
-                                    Top 1 per group
-                                </span>
-                                {groupLeaders.map((leader) => (
-                                    <span
-                                        key={`${leader.group}-${leader.participant_id ?? leader.participant_name}`}
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[11px] font-semibold text-cyan-300"
-                                    >
-                                        <span className="text-cyan-400/80">{leader.group}:</span>
-                                        <span className="truncate max-w-[10rem]">{leader.participant_name}</span>
+                    <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                        <div className="md:max-w-[55%]">
+                            <h1 className="text-2xl sm:text-4xl font-bold text-white uppercase tracking-tight truncate" title={tournament.name}>
+                                {tournament.name}
+                            </h1>
+                            <div className="mt-3 w-20 h-1 rounded-full tx-underline" />
+                            <div className="flex flex-wrap items-center gap-3 mt-4">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-xs font-bold text-cyan-300">
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75" />
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
                                     </span>
-                                ))}
+                                    LIVE
+                                </span>
+                                {currentRound > 0 && (
+                                    <span className="text-xs text-slate-500">Round {currentRound}</span>
+                                )}
+                                <span className="text-xs text-slate-600">
+                                    {isFetching ? 'Updating…' : 'Auto-refresh every 4s'}
+                                </span>
                             </div>
-                        )}
+                        </div>
+                        <div className="md:max-w-[45%] md:text-right">
+                            {groupLeaders.length > 0 && (
+                                <>
+                                    <p className="text-[11px] font-semibold text-cyan-300/80 uppercase tracking-wider mb-2">
+                                        Eto ang top per group (pwede maglaban sa Swiss King)
+                                    </p>
+                                    <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                                        {groupLeaders.map((leader) => (
+                                            <span
+                                                key={`${leader.group}-${leader.participant_id ?? leader.participant_name}`}
+                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[11px] font-semibold text-cyan-300"
+                                            >
+                                                <span className="text-cyan-400/80">{leader.group}:</span>
+                                                <span className="truncate max-w-[10rem]">{leader.participant_name}</span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
 
                     {sortedMatches.length === 0 ? (
