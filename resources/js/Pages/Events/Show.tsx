@@ -179,7 +179,9 @@ export default function EventShow({
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2">
-                                {event.description && <p className="text-gray-300 mb-6">{event.description}</p>}
+                                {event.description && (
+                                    <p className="text-gray-300 mb-6 whitespace-pre-wrap leading-relaxed">{event.description}</p>
+                                )}
 
                                 {event.rules && (
                                     <div className="mb-6">

@@ -1,1 +1,0 @@
-import{r as i,j as u}from"./app-B9vxNS4P.js";function c({priority:o=!1,loading:n,decoding:a,fetchPriority:d,fallbackSrc:e,src:t,onError:g,...m}){const[s,r]=i.useState(t);return i.useEffect(()=>{r(t)},[t]),u.jsx("img",{...m,src:s,loading:n??(o?"eager":"lazy"),decoding:a??"async",fetchPriority:d??(o?"high":"low"),onError:f=>{e&&s!==e&&r(e),g?.(f)}})}export{c as O};

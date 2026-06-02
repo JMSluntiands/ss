@@ -225,7 +225,7 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
                                                 )}
 
                                                 {event.description && (
-                                                    <p className="text-gray-400 text-sm leading-relaxed max-w-3xl mb-6">{event.description}</p>
+                                                    <p className="text-gray-400 text-sm leading-relaxed max-w-3xl mb-6 whitespace-pre-wrap">{event.description}</p>
                                                 )}
 
                                                 {/* Info Grid */}
