@@ -6,6 +6,7 @@ use App\Models\Participant;
 use App\Models\SwissStanding;
 use App\Models\Tournament;
 use App\Models\TournamentMatch;
+use App\Support\TwoStageGroups;
 
 class RoundRobinService
 {
@@ -16,10 +17,16 @@ class RoundRobinService
     public function startTournament(Tournament $tournament): void
     {
         $participants = $tournament->participants()->orderBy('seed')->get();
-        $count = $participants->count();
 
-        // Full round robin: everyone plays everyone once (n−1 rounds even, n rounds odd with byes).
-        $maxRounds = $count % 2 === 0 ? $count - 1 : $count;
+        if (TwoStageGroups::usesGroupStage($tournament)) {
+            $groups = TwoStageGroups::split($participants, $tournament);
+            $largestGroup = max(2, $groups->max(fn ($g) => $g->count()) ?? 2);
+            $maxRounds = $largestGroup % 2 === 0 ? $largestGroup - 1 : $largestGroup;
+        } else {
+            $count = $participants->count();
+            $maxRounds = $count % 2 === 0 ? $count - 1 : $count;
+        }
+
         $totalRounds = $tournament->swiss_rounds ?: $maxRounds;
         $totalRounds = max(1, min($totalRounds, $maxRounds));
 
@@ -40,11 +47,54 @@ class RoundRobinService
             ]);
         }
 
-        $schedule = $this->buildCircleSchedule($participants, $totalRounds);
+        if (TwoStageGroups::usesGroupStage($tournament)) {
+            $this->createTwoStageRoundRobinSchedule($tournament, TwoStageGroups::split($participants, $tournament), $totalRounds);
+        } else {
+            $schedule = $this->buildCircleSchedule($participants, $totalRounds);
+            $this->persistSchedule($tournament, $schedule);
+        }
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, \Illuminate\Support\Collection<int, Participant>>  $groups
+     */
+    private function createTwoStageRoundRobinSchedule(Tournament $tournament, $groups, int $totalRounds): void
+    {
+        $groupSchedules = $groups->map(function ($group) use ($totalRounds) {
+            $size = $group->count();
+            $groupMaxRounds = $size % 2 === 0 ? $size - 1 : $size;
+            $rounds = min($totalRounds, max(1, $groupMaxRounds));
+
+            return $this->buildCircleSchedule($group, $rounds);
+        });
+
+        $merged = [];
+        for ($r = 1; $r <= $totalRounds; $r++) {
+            $merged[$r] = ['pairings' => [], 'byes' => []];
+        }
+
+        foreach ($groupSchedules as $schedule) {
+            foreach ($schedule as $round => $roundData) {
+                foreach ($roundData['pairings'] as $pairing) {
+                    $merged[$round]['pairings'][] = $pairing;
+                }
+                if ($roundData['bye']) {
+                    $merged[$round]['byes'][] = $roundData['bye'];
+                }
+            }
+        }
+
+        $this->persistSchedule($tournament, $merged);
+    }
+
+    /**
+     * @param  array<int, array{pairings: array<int, array{0: Participant, 1: Participant}>, bye?: Participant|null, byes?: array<int, Participant>}>  $schedule
+     */
+    private function persistSchedule(Tournament $tournament, array $schedule): void
+    {
+        $matchNumber = 1;
 
         foreach ($schedule as $round => $roundData) {
-            $matchNumber = 1;
-
             foreach ($roundData['pairings'] as [$p1, $p2]) {
                 TournamentMatch::create([
                     'tournament_id' => $tournament->id,
@@ -56,8 +106,10 @@ class RoundRobinService
                 ]);
             }
 
-            if ($roundData['bye']) {
-                $this->assignBye($tournament, $round, $roundData['bye'], $matchNumber);
+            $byes = $roundData['byes'] ?? ($roundData['bye'] ? [$roundData['bye']] : []);
+            foreach ($byes as $byePlayer) {
+                $this->assignBye($tournament, $round, $byePlayer, $matchNumber);
+                $matchNumber++;
             }
         }
     }

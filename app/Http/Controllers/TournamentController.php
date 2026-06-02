@@ -6,6 +6,7 @@ use App\Models\Tournament;
 use App\Models\TournamentMatch;
 use App\Services\RoundRobinService;
 use App\Services\SwissService;
+use App\Support\TwoStageGroups;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -1329,18 +1330,10 @@ class TournamentController extends Controller
         }
 
         $ptsDiff = $this->standingsPointsDiff($tournament);
-        $participantCount = $participants->count();
-        $perGroup = (int) ($tournament->participants_per_group ?? 0);
-        $groupCount = $perGroup > 0 ? max(2, (int) ceil($participantCount / $perGroup)) : 2;
-        $groupSize = (int) ceil($participantCount / $groupCount);
-
         $leaders = [];
-        for ($g = 0; $g < $groupCount; $g++) {
-            $memberIds = $participants->slice($g * $groupSize, $groupSize)->pluck('id')->all();
-            if ($memberIds === []) {
-                continue;
-            }
 
+        foreach (TwoStageGroups::split($participants, $tournament)->values() as $g => $groupParticipants) {
+            $memberIds = $groupParticipants->pluck('id')->all();
             $groupStandings = $standings->whereIn('participant_id', $memberIds);
             $leaderStanding = $this->sortStandingsLikeUi($groupStandings, $ptsDiff)->first();
             if (!$leaderStanding) {
@@ -1353,7 +1346,7 @@ class TournamentController extends Controller
             }
 
             $leaders[] = [
-                'group' => 'Group '.($g + 1),
+                'group' => TwoStageGroups::labelForIndex($g),
                 'participant_name' => $leaderParticipant->name,
                 'participant_id' => $leaderParticipant->id,
             ];

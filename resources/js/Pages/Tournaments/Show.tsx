@@ -2453,9 +2453,8 @@ function SwissView({
                             <p className="text-sm text-slate-500 text-center py-8">No matches generated yet.</p>
                         ) : isTwoStage ? (
                             (() => {
-                                const half = Math.ceil(roundMatches.length / 2);
-                                const topMatches = roundMatches.slice(0, half);
-                                const bottomMatches = roundMatches.slice(half);
+                                const groupCount = getTwoStageGroupCount(tournament, participantCount);
+                                const allParticipants = tournament.participants || [];
 
                                 const renderGroup = (label: string, list: TournamentMatch[]) => (
                                     <div className="rounded-2xl border border-slate-800/70 bg-slate-900/30 overflow-hidden">
@@ -2477,7 +2476,7 @@ function SwissView({
                                                     isStadiumPickerOpen={stadiumPickerMatchId === match.id}
                                                     onOpenStadiumPicker={() => onOpenStadiumPicker(match.id)}
                                                     onCloseStadiumPicker={onCloseStadiumPicker}
-                                                    participants={tournament.participants || []}
+                                                    participants={allParticipants}
                                                     stadiumCount={tournament.stadiums || 0}
                                                     occupiedStadiums={occupiedStadiums}
                                                 />
@@ -2486,10 +2485,21 @@ function SwissView({
                                     </div>
                                 );
 
+                                const groups = Array.from({ length: groupCount }, (_, g) => {
+                                    const memberIds = getGroupMemberIds(g, allParticipants, tournament, participantCount);
+                                    const list = roundMatches.filter((m) => {
+                                        const p1In = m.player1_id != null && memberIds.has(m.player1_id);
+                                        const p2In = m.player2_id != null && memberIds.has(m.player2_id);
+                                        return p1In || p2In;
+                                    });
+                                    return { label: `Group ${g + 1}`, list };
+                                }).filter((g) => g.list.length > 0);
+
                                 return (
                                     <div className="space-y-3">
-                                        {renderGroup('Group A', topMatches)}
-                                        {bottomMatches.length > 0 && renderGroup('Group B', bottomMatches)}
+                                        {groups.map((g) => (
+                                            <div key={g.label}>{renderGroup(g.label, g.list)}</div>
+                                        ))}
                                     </div>
                                 );
                             })()

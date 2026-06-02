@@ -6,6 +6,7 @@ use App\Models\Participant;
 use App\Models\SwissStanding;
 use App\Models\Tournament;
 use App\Models\TournamentMatch;
+use App\Support\TwoStageGroups;
 use Illuminate\Support\Collection;
 
 class SwissService
@@ -17,7 +18,12 @@ class SwissService
     public function startTournament(Tournament $tournament): void
     {
         $participants = $tournament->participants()->orderBy('seed')->get();
-        $count = $participants->count();
+        if (TwoStageGroups::usesGroupStage($tournament)) {
+            $groups = TwoStageGroups::split($participants, $tournament);
+            $count = max(2, $groups->max(fn ($g) => $g->count()) ?? 2);
+        } else {
+            $count = $participants->count();
+        }
 
         $totalRounds = $tournament->swiss_rounds ?: (int) ceil(log($count, 2));
         if ($totalRounds < 1) {
@@ -50,6 +56,12 @@ class SwissService
      */
     public function generateRoundPairings(Tournament $tournament, int $round): void
     {
+        if (TwoStageGroups::usesGroupStage($tournament)) {
+            $this->generateTwoStageRoundPairings($tournament, $round);
+
+            return;
+        }
+
         $participants = $tournament->participants()->get();
 
         if ($round === 1) {
@@ -67,6 +79,46 @@ class SwissService
             $playedPairs = $this->getPlayedPairs($tournament);
 
             $this->createSwissPairings($tournament, $round, $sortedParticipants, $playedPairs);
+        }
+    }
+
+    /**
+     * Two-stage group stage: pair only within each group (no cross-group Swiss matches).
+     */
+    private function generateTwoStageRoundPairings(Tournament $tournament, int $round): void
+    {
+        $participants = $tournament->participants()->orderBy('seed')->get();
+        $groups = TwoStageGroups::split($participants, $tournament);
+        $playedPairs = $this->getPlayedPairs($tournament);
+        $matchNumber = (int) ($tournament->matches()->max('match_number') ?? 0) + 1;
+
+        foreach ($groups as $groupParticipants) {
+            if ($round === 1) {
+                $matchNumber = $this->createPairingsFromList(
+                    $tournament,
+                    $round,
+                    $groupParticipants->shuffle(),
+                    $matchNumber,
+                );
+            } else {
+                $memberIds = $groupParticipants->pluck('id')->all();
+                $standings = $tournament->swissStandings()
+                    ->with('participant')
+                    ->whereIn('participant_id', $memberIds)
+                    ->orderByDesc('tournament_points')
+                    ->orderByDesc('battle_points')
+                    ->orderByDesc('opponent_strength')
+                    ->get();
+
+                $sortedParticipants = $standings->map(fn ($s) => $s->participant);
+                $matchNumber = $this->createSwissPairings(
+                    $tournament,
+                    $round,
+                    $sortedParticipants,
+                    $playedPairs,
+                    $matchNumber,
+                );
+            }
         }
     }
 
@@ -262,8 +314,12 @@ class SwissService
     /**
      * Round 1: create pairings from a shuffled list, handling odd player count with BYE.
      */
-    private function createPairingsFromList(Tournament $tournament, int $round, Collection $participants): void
-    {
+    private function createPairingsFromList(
+        Tournament $tournament,
+        int $round,
+        Collection $participants,
+        int $matchNumber = 1,
+    ): int {
         $list = $participants->values();
         $byePlayer = null;
 
@@ -271,7 +327,6 @@ class SwissService
             $byePlayer = $list->pop();
         }
 
-        $matchNumber = 1;
         for ($i = 0; $i < $list->count(); $i += 2) {
             TournamentMatch::create([
                 'tournament_id' => $tournament->id,
@@ -285,7 +340,10 @@ class SwissService
 
         if ($byePlayer) {
             $this->assignBye($tournament, $round, $byePlayer, $matchNumber);
+            $matchNumber++;
         }
+
+        return $matchNumber;
     }
 
     /**
@@ -296,8 +354,9 @@ class SwissService
         Tournament $tournament,
         int $round,
         Collection $sortedParticipants,
-        Collection $playedPairs
-    ): void {
+        Collection $playedPairs,
+        int $matchNumber = 1,
+    ): int {
         $unpaired = $sortedParticipants->values()->all();
         $paired = [];
         $matches = [];
@@ -346,7 +405,6 @@ class SwissService
             }
         }
 
-        $matchNumber = 1;
         foreach ($paired as [$p1, $p2]) {
             TournamentMatch::create([
                 'tournament_id' => $tournament->id,
@@ -360,7 +418,10 @@ class SwissService
 
         if ($byePlayer) {
             $this->assignBye($tournament, $round, $byePlayer, $matchNumber);
+            $matchNumber++;
         }
+
+        return $matchNumber;
     }
 
     /**
