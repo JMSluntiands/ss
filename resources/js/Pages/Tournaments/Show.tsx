@@ -109,8 +109,11 @@ function getSwissPlayoffCutSize(
     participantCount: number,
 ): number | null {
     const configuredTop = tournament.swiss_top_cut_players ?? 0;
+    if (tournament.tournament_type === 'two_stage' && tournament.advance_per_group) {
+        return tournament.advance_per_group;
+    }
     if (['swiss', 'round_robin'].includes(tournament.format) && configuredTop >= 2) {
-        return Math.min(configuredTop, standingCount);
+        return configuredTop;
     }
     if (tournament.tournament_type === 'two_stage' && tournament.advance_per_group) {
         const perGroup = tournament.participants_per_group ?? 0;
@@ -2282,6 +2285,7 @@ function SwissView({
     }
 
     const roundMatches = groupMatches.filter(m => m.round === selectedRound);
+
     const currentRoundMatches = groupMatches.filter(m => m.round === currentRound);
     const allCurrentComplete = currentRoundMatches.length > 0 && currentRoundMatches.every(m => m.status === 'completed');
     const isLastRound = currentRound >= totalRounds;
@@ -2441,7 +2445,7 @@ function SwissView({
                         })}
                     </div>
 
-                    <div className="p-4 space-y-3 max-h-[min(36rem,70vh)] overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600">
+                    <div className="p-4 space-y-3">
                         {roundMatches.length === 0 ? (
                             <p className="text-sm text-slate-500 text-center py-8">No matches generated yet.</p>
                         ) : isTwoStage ? (
@@ -3185,7 +3189,7 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
     const [openSwissScoreMatchId, setOpenSwissScoreMatchId] = useState<number | null>(null);
     const [openSwissDetailsMatchId, setOpenSwissDetailsMatchId] = useState<number | null>(null);
     const [toast, setToast] = useState<string | null>(null);
-    const [, setLiveTick] = useState(0);
+    const [liveTick, setLiveTick] = useState(0);
 
     const liveDataRef = useRef<{
         matches: TournamentMatch[] | null;
@@ -3534,10 +3538,9 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-slate-500">Playoff cut</span>
                                         <span className="text-sm font-medium text-cyan-400">
-                                            Top {playoffCutSize}
-                                            {hasSwissTopCut && tournament.swiss_top_cut_players
-                                                ? ` (configured: ${tournament.swiss_top_cut_players})`
-                                                : ''}
+                                            {isTwoStage
+                                                ? `Top ${tournament.advance_per_group || 2} per group`
+                                                : `Top ${playoffCutSize}`}
                                         </span>
                                     </div>
                                 )}

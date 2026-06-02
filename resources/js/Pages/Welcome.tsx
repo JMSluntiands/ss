@@ -12,6 +12,7 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
     const page = usePage<PageProps>();
     const txLogin = tournamentxLoginUrl(page.props);
     const txDashboard = tournamentxDashboardUrl(page.props);
+    const manageTournamentHref = auth.user ? txDashboard : txLogin;
     const [scrollY, setScrollY] = useState(0);
     const [menuOpen, setMenuOpen] = useState(false);
     const [joinModalOpen, setJoinModalOpen] = useState(false);
@@ -145,7 +146,7 @@ export default function Welcome({ auth, members = [] }: PageProps & { members?: 
                                         </Link>
                                     )}
                                     <a
-                                        href={txLogin}
+                                        href={manageTournamentHref}
                                         className="group px-8 py-4 text-lg font-bold border border-zinc-700 hover:border-red-500/50 rounded-xl transition-all hover:bg-zinc-900/80 flex items-center gap-3"
                                     >
                                         <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

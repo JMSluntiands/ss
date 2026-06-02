@@ -1,7 +1,7 @@
 import SiteLogo from '@/Components/SiteLogo';
 import TournamentXLogo from '@/Components/TournamentXLogo';
 import { PageProps } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
 
 const featureItems = [
@@ -58,10 +58,6 @@ export default function Guest({ children }: PropsWithChildren) {
                                 fetchPriority="high"
                             />
                         </div>
-                        <h1 className="text-5xl font-black text-white tracking-tight mb-4">
-                            TOURNAMENT{' '}
-                            <span className="guest-tx-accent-text">X</span>
-                        </h1>
                         <p className="text-gray-400 text-center text-lg max-w-sm leading-relaxed">
                             Unleash your power. Track battles, build your collection, and rise to the top.
                         </p>
@@ -116,9 +112,6 @@ export default function Guest({ children }: PropsWithChildren) {
                             loading="eager"
                             fetchPriority="high"
                         />
-                        <Link href="/" className="text-2xl font-black text-white tracking-tight">
-                            TOURNAMENT <span className="guest-tx-accent-text">X</span>
-                        </Link>
                     </div>
 
                     <div className="relative z-10 w-full max-w-md">{children}</div>

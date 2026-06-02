@@ -26,11 +26,17 @@ export default function Authenticated({
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+    const withAppBase = (href: string): string => {
+        if (typeof window === 'undefined' || href.startsWith('http')) return href;
+        const needsIndexPhp = window.location.pathname.startsWith('/index.php');
+        if (!needsIndexPhp || href.startsWith('/index.php')) return href;
+        return `/index.php${href.startsWith('/') ? href : `/${href}`}`;
+    };
 
     const navItems: NavItem[] = [
         {
             name: 'Your Tournaments',
-            href: route('dashboard'),
+            href: withAppBase(route('dashboard', undefined, false)),
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 4v12l-4-2-4 2V4M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -42,7 +48,7 @@ export default function Authenticated({
             ? [
                   {
                       name: 'Your Events',
-                      href: route('my-events'),
+                      href: withAppBase(route('my-events', undefined, false)),
                       icon: (
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path
@@ -115,7 +121,7 @@ export default function Authenticated({
             {is_admin && (
                 <div className="pt-3 mt-3 border-t border-zinc-800/60">
                     <Link
-                        href={route('admin.dashboard')}
+                        href={withAppBase(route('admin.dashboard', undefined, false))}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium tx-nav-admin transition-all ${
                             collapsed ? 'justify-center' : ''
                         }`}
@@ -195,7 +201,7 @@ export default function Authenticated({
                                     }`}
                                 >
                                     <Link
-                                        href={route('profile.edit')}
+                                        href={withAppBase(route('profile.edit', undefined, false))}
                                         className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-700/50 transition-colors"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,7 +215,7 @@ export default function Authenticated({
                                         Profile
                                     </Link>
                                     <Link
-                                        href={route('logout')}
+                                        href={withAppBase(route('logout', undefined, false))}
                                         method="post"
                                         as="button"
                                         className="flex items-center gap-2 w-full px-4 py-2.5 text-sm tx-link hover:bg-zinc-700/50 transition-colors"
@@ -265,13 +271,13 @@ export default function Authenticated({
                         </div>
                     </div>
                     <Link
-                        href={route('profile.edit')}
+                        href={withAppBase(route('profile.edit', undefined, false))}
                         className="flex items-center gap-2 px-3 py-2 mt-1 rounded-lg text-sm text-gray-500 hover:text-white hover:bg-zinc-800/60 transition-colors"
                     >
                         Profile
                     </Link>
                     <Link
-                        href={route('logout')}
+                        href={withAppBase(route('logout', undefined, false))}
                         method="post"
                         as="button"
                         className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm tx-link hover:bg-zinc-800/60 transition-colors"

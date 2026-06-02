@@ -282,6 +282,12 @@ export default function Create({ tournament }: Props) {
         third_place_match: tournament?.third_place_match ?? false,
         placement_matches_fifth_seventh: tournament?.placement_matches_fifth_seventh ?? false,
     });
+    const withAppBase = (href: string): string => {
+        if (typeof window === 'undefined' || href.startsWith('http')) return href;
+        const needsIndexPhp = window.location.pathname.startsWith('/index.php');
+        if (!needsIndexPhp || href.startsWith('/index.php')) return href;
+        return `/index.php${href.startsWith('/') ? href : `/${href}`}`;
+    };
 
     const generateSlug = (name: string) => {
         return name
@@ -301,9 +307,9 @@ export default function Create({ tournament }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing) {
-            put(route('tournaments.update', tournament.id));
+            put(withAppBase(route('tournaments.update', tournament.id, false)));
         } else {
-            post(route('tournaments.store'));
+            post(withAppBase(route('tournaments.store', undefined, false)));
         }
     };
 
@@ -713,7 +719,10 @@ export default function Create({ tournament }: Props) {
                                         </select>
 
                                         <div className="mt-5 pt-5 border-t border-slate-700/30 space-y-4">
-                                            <p className="text-xs font-bold uppercase tracking-wider text-cyan-500/80">Top cut into finals</p>
+                                            <p className="text-xs font-bold uppercase tracking-wider text-cyan-500/80">Finals qualification setup</p>
+                                            <p className="text-xs text-slate-500">
+                                                Set how many players are in each group, then how many move to finals.
+                                            </p>
                                             <div className="flex items-center gap-4">
                                                 <input
                                                     type="number"
@@ -722,9 +731,7 @@ export default function Create({ tournament }: Props) {
                                                     min="2"
                                                     className="w-24 rounded-xl border border-slate-700/50 bg-slate-800/50 py-2.5 px-4 text-white text-sm text-center transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                                                 />
-                                                <span className="text-sm text-slate-400">
-                                                    participants <em className="text-slate-500">compete</em> in each group
-                                                </span>
+                                                <span className="text-sm text-slate-400">Players per group</span>
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <input
@@ -734,14 +741,12 @@ export default function Create({ tournament }: Props) {
                                                     min="1"
                                                     className="w-24 rounded-xl border border-slate-700/50 bg-slate-800/50 py-2.5 px-4 text-white text-sm text-center transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                                                 />
-                                                <span className="text-sm text-slate-400">
-                                                    participants <em className="text-slate-500">advance</em> from each group
-                                                </span>
+                                                <span className="text-sm text-slate-400">Players who qualify from each group</span>
                                             </div>
                                             {(data.group_stage_format === 'swiss' || data.group_stage_format === 'round_robin') && (
                                                 <div className="pt-2">
                                                     <label htmlFor="swiss_top_cut_two_stage" className={labelClass}>
-                                                        Total in playoff bracket (optional)
+                                                        Total players in finals bracket (optional)
                                                     </label>
                                                     <input
                                                         id="swiss_top_cut_two_stage"
@@ -750,11 +755,11 @@ export default function Create({ tournament }: Props) {
                                                         max={512}
                                                         value={data.swiss_top_cut_players}
                                                         onChange={(e) => setData('swiss_top_cut_players', e.target.value)}
-                                                        placeholder="e.g. 16 — overrides per-group math"
+                                                        placeholder="Example: 16"
                                                         className={`${inputClass} max-w-[200px]`}
                                                     />
                                                     <p className="mt-1 text-xs text-slate-500">
-                                                        If set, standings use this total instead of advance × number of groups.
+                                                        Leave blank to auto-calculate: (qualifiers per group) x (number of groups).
                                                     </p>
                                                     <InputError message={errors.swiss_top_cut_players} className="mt-2" />
                                                 </div>
@@ -939,7 +944,7 @@ export default function Create({ tournament }: Props) {
                     {/* ============ SUBMIT ============ */}
                     <div className="flex items-center justify-end gap-4 pt-4 border-t border-slate-800/80">
                         <a
-                            href={route('dashboard')}
+                            href={withAppBase(route('dashboard', undefined, false))}
                             className="px-6 py-3 rounded-xl bg-slate-800 border border-slate-700/50 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all"
                         >
                             Cancel

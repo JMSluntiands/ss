@@ -18,6 +18,14 @@ class TournamentController extends Controller
         private RoundRobinService $roundRobinService
     ) {}
 
+    private function redirectPath(Request $request, string $path): string
+    {
+        $basePath = trim($request->getBaseUrl(), '/');
+        $fullPath = $basePath === '' ? ltrim($path, '/') : $basePath.'/'.ltrim($path, '/');
+
+        return '/'.$fullPath;
+    }
+
     /**
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
@@ -169,7 +177,7 @@ class TournamentController extends Controller
             'user_id' => auth()->id(),
         ]);
 
-        return redirect()->route('tournaments.show', $tournament);
+        return redirect()->to($this->redirectPath($request, 'tournaments/'.$tournament->id));
     }
 
     public function show(Tournament $tournament)
@@ -252,7 +260,7 @@ class TournamentController extends Controller
 
         $tournament->update($validated);
 
-        return redirect()->route('tournaments.show', $tournament);
+        return redirect()->to($this->redirectPath($request, 'tournaments/'.$tournament->id));
     }
 
     public function start(Tournament $tournament)

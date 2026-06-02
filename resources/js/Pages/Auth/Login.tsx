@@ -23,7 +23,7 @@ export default function Login({
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('login'), {
+        post('/login', {
             onFinish: () => reset('password'),
         });
     };
@@ -34,9 +34,7 @@ export default function Login({
 
             <div>
                 <h2 className="text-3xl font-bold text-white mb-2">Welcome back</h2>
-                <p className="text-gray-500 mb-8">
-                    Sign in to your <span className="guest-tx-accent-text font-semibold">Tournament X</span> account
-                </p>
+                <p className="text-gray-500 mb-8">Sign in to your account</p>
 
                 {status && (
                     <div className="mb-6 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-4 py-3 text-sm text-cyan-300">

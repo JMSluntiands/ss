@@ -6,7 +6,7 @@ export function tournamentxLoginUrl(props: Pick<PageProps, 'tournamentx_enabled'
         return `${props.tournamentx_url.replace(/\/$/, '')}/login`;
     }
 
-    return route('login');
+    return route('login', undefined, false);
 }
 
 /** Dashboard URL for Tournament X (subdomain when configured). */
@@ -15,5 +15,5 @@ export function tournamentxDashboardUrl(props: Pick<PageProps, 'tournamentx_enab
         return `${props.tournamentx_url.replace(/\/$/, '')}/dashboard`;
     }
 
-    return route('dashboard');
+    return route('dashboard', undefined, false);
 }

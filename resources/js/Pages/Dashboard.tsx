@@ -32,6 +32,12 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
     const [showCreateDropdown, setShowCreateDropdown] = useState(false);
     const { permissions } = usePage<PageProps>().props;
     const canCreate = permissions.can_create_tournaments;
+    const withAppBase = (href: string): string => {
+        if (typeof window === 'undefined' || href.startsWith('http')) return href;
+        const needsIndexPhp = window.location.pathname.startsWith('/index.php');
+        if (!needsIndexPhp || href.startsWith('/index.php')) return href;
+        return `/index.php${href.startsWith('/') ? href : `/${href}`}`;
+    };
 
     return (
         <AuthenticatedLayout currentPage="tournaments">
@@ -64,7 +70,7 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                                 <div className="fixed inset-0 z-40" onClick={() => setShowCreateDropdown(false)} />
                                 <div className="absolute right-0 z-50 mt-2 w-52 rounded-xl bg-zinc-800 border border-zinc-700/50 shadow-xl shadow-black/30 py-1">
                                     <Link
-                                        href={route('tournaments.create')}
+                                        href={withAppBase(route('tournaments.create', undefined, false))}
                                         className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-zinc-700/50 transition-colors"
                                     >
                                         <svg className="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,7 +79,7 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                                         Tournament
                                     </Link>
                                     <Link
-                                        href={route('tournaments.create')}
+                                        href={withAppBase(route('tournaments.create', undefined, false))}
                                         className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-zinc-700/50 transition-colors"
                                     >
                                         <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,7 +110,7 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                             </p>
                             {canCreate && (
                             <Link
-                                href={route('tournaments.create')}
+                                href={withAppBase(route('tournaments.create', undefined, false))}
                                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700/50 text-sm font-medium text-gray-300 hover:text-white hover:bg-zinc-700/50 hover:border-zinc-600/50 transition-all"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,7 +126,7 @@ export default function Dashboard({ tournaments = [] }: { tournaments?: Tourname
                         {tournaments.map((tournament) => (
                             <Link
                                 key={tournament.id}
-                                href={route('tournaments.show', tournament.id)}
+                                href={withAppBase(route('tournaments.show', tournament.id, false))}
                                 className="block rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5 hover:bg-zinc-900/70 hover:border-red-900/40 transition-all group"
                             >
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
