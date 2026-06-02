@@ -1254,6 +1254,58 @@ class TournamentController extends Controller
     }
 
     /**
+     * @return array<int, int>
+     */
+    private function standingsPointsDiff(Tournament $tournament): array
+    {
+        $ptsDiff = [];
+        $matches = $tournament->matches()
+            ->where('status', 'completed')
+            ->where('is_bye', false)
+            ->get(['player1_id', 'player2_id', 'player1_battle_points', 'player2_battle_points']);
+
+        foreach ($matches as $match) {
+            if ($match->player1_id) {
+                $ptsDiff[$match->player1_id] = ($ptsDiff[$match->player1_id] ?? 0)
+                    + $match->player1_battle_points - $match->player2_battle_points;
+            }
+            if ($match->player2_id) {
+                $ptsDiff[$match->player2_id] = ($ptsDiff[$match->player2_id] ?? 0)
+                    + $match->player2_battle_points - $match->player1_battle_points;
+            }
+        }
+
+        return $ptsDiff;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, \App\Models\SwissStanding>  $standings
+     * @param  array<int, int>  $ptsDiff
+     */
+    private function sortStandingsLikeUi($standings, array $ptsDiff)
+    {
+        return $standings->sort(function ($a, $b) use ($ptsDiff) {
+            $cmp = (float) $b->tournament_points <=> (float) $a->tournament_points;
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            $cmp = $b->battle_points <=> $a->battle_points;
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            $cmp = (float) $b->opponent_strength <=> (float) $a->opponent_strength;
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+
+            $pdA = $ptsDiff[$a->participant_id] ?? 0;
+            $pdB = $ptsDiff[$b->participant_id] ?? 0;
+
+            return $pdB <=> $pdA;
+        })->values();
+    }
+
+    /**
      * @return array<int, array{group: string, participant_name: string, participant_id: int|null}>
      */
     private function playerMatchingGroupLeaders(Tournament $tournament): array
@@ -1271,14 +1323,12 @@ class TournamentController extends Controller
             return [];
         }
 
-        $standings = $tournament->swissStandings()->orderBy('rank')->get([
-            'participant_id',
-            'rank',
-        ]);
+        $standings = $tournament->swissStandings()->get();
         if ($standings->isEmpty()) {
             return [];
         }
 
+        $ptsDiff = $this->standingsPointsDiff($tournament);
         $participantCount = $participants->count();
         $perGroup = (int) ($tournament->participants_per_group ?? 0);
         $groupCount = $perGroup > 0 ? max(2, (int) ceil($participantCount / $perGroup)) : 2;
@@ -1286,13 +1336,13 @@ class TournamentController extends Controller
 
         $leaders = [];
         for ($g = 0; $g < $groupCount; $g++) {
-            $slice = $participants->slice($g * $groupSize, $groupSize);
-            if ($slice->isEmpty()) {
+            $memberIds = $participants->slice($g * $groupSize, $groupSize)->pluck('id')->all();
+            if ($memberIds === []) {
                 continue;
             }
 
-            $memberIds = $slice->pluck('id')->all();
-            $leaderStanding = $standings->first(fn ($s) => in_array($s->participant_id, $memberIds, true));
+            $groupStandings = $standings->whereIn('participant_id', $memberIds);
+            $leaderStanding = $this->sortStandingsLikeUi($groupStandings, $ptsDiff)->first();
             if (!$leaderStanding) {
                 continue;
             }
@@ -1303,7 +1353,7 @@ class TournamentController extends Controller
             }
 
             $leaders[] = [
-                'group' => 'Group '.chr(65 + $g),
+                'group' => 'Group '.($g + 1),
                 'participant_name' => $leaderParticipant->name,
                 'participant_id' => $leaderParticipant->id,
             ];
