@@ -250,22 +250,22 @@ export default function PlayerMatching({
                         </div>
                         <div className="md:max-w-[45%] md:text-right">
                             {groupLeaders.length > 0 && (
-                                <>
-                                    <p className="text-[11px] font-semibold text-cyan-300/80 uppercase tracking-wider mb-2">
-                                        Eto ang top per group (pwede maglaban sa Swiss King)
+                                <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/5 px-4 py-3">
+                                    <p className="text-sm font-semibold text-cyan-200 uppercase tracking-wider mb-2">
+                                        Top Players Per Group (Swiss King contenders)
                                     </p>
                                     <div className="flex flex-wrap items-center gap-2 md:justify-end">
                                         {groupLeaders.map((leader) => (
                                             <span
                                                 key={`${leader.group}-${leader.participant_id ?? leader.participant_name}`}
-                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[11px] font-semibold text-cyan-300"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-sm font-semibold text-cyan-200"
                                             >
-                                                <span className="text-cyan-400/80">{leader.group}:</span>
+                                                <span className="text-cyan-300">{leader.group}:</span>
                                                 <span className="truncate max-w-[10rem]">{leader.participant_name}</span>
                                             </span>
                                         ))}
                                     </div>
-                                </>
+                                </div>
                             )}
                         </div>
                     </div>
