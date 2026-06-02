@@ -129,6 +129,10 @@ export default function Authenticated({
         </>
     );
 
+    if (!user) {
+        return null;
+    }
+
     return (
         <div className="tx-app-theme min-h-screen bg-zinc-950 flex">
             <aside

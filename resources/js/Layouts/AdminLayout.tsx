@@ -99,6 +99,10 @@ export default function AdminLayout({
         },
     ];
 
+    if (!user) {
+        return null;
+    }
+
     return (
         <div className="min-h-screen bg-zinc-950 flex">
             {/* Sidebar - Desktop */}

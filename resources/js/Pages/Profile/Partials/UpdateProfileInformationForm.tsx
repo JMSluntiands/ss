@@ -16,10 +16,14 @@ export default function UpdateProfileInformation({
 
     const { data, setData, patch, errors, processing, recentlySuccessful } =
         useForm({
-            name: user.name,
-            blader_name: user.blader_name ?? '',
-            email: user.email,
+            name: user?.name ?? '',
+            blader_name: user?.blader_name ?? '',
+            email: user?.email ?? '',
         });
+
+    if (!user) {
+        return null;
+    }
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();

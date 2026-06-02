@@ -68,6 +68,7 @@ export default function News({
                                 {filtered.map((post) => {
                                     const imgs = normalizeImages(post.images);
                                     const cover = imgs[0];
+                                    const coverUrls = cover ? blogCoverSrc(cover) : null;
                                     const href = mainSiteBlogPostUrl(siteBase, post.id);
 
                                     return (
@@ -78,10 +79,11 @@ export default function News({
                                             rel="noopener noreferrer"
                                             className="group flex gap-4 sm:gap-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 p-4 sm:p-5 hover:border-fuchsia-500/25 transition-colors"
                                         >
-                                            {cover && (
+                                            {coverUrls && (
                                                 <div className="w-24 h-24 sm:w-28 sm:h-28 shrink-0 rounded-xl overflow-hidden bg-zinc-800">
                                                     <OptimizedImage
-                                                        src={blogCoverSrc(cover)}
+                                                        src={coverUrls.src}
+                                                        fallbackSrc={coverUrls.fallbackSrc}
                                                         alt=""
                                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                                     />
