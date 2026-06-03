@@ -137,8 +137,59 @@ export default function Authenticated({
     );
 
     if (!user) {
-        return null;
+        return (
+            <div className="tx-app-theme min-h-screen bg-zinc-950 flex flex-col">
+                <header className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-10 border-b border-zinc-800/80 bg-zinc-900/40 shrink-0">
+                    <TournamentXBrand logoClassName="h-9 w-auto" />
+                    <Link
+                        href={withAppBase(route('login', undefined, false))}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white tx-btn transition-all"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                            />
+                        </svg>
+                        Log In
+                    </Link>
+                </header>
+                <main className="flex-1">{children}</main>
+            </div>
+        );
     }
+
+    const authHeaderActions = (
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <Link
+                href={withAppBase(route('profile.edit', undefined, false))}
+                className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-zinc-800/60 transition-all"
+            >
+                <div className="w-7 h-7 rounded-full tx-avatar flex items-center justify-center text-white text-[10px] font-bold">
+                    {user.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="max-w-[8rem] truncate font-medium">{user.name}</span>
+            </Link>
+            <Link
+                href={withAppBase(route('logout', undefined, false))}
+                method="post"
+                as="button"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white tx-btn transition-all"
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                </svg>
+                Log Out
+            </Link>
+        </div>
+    );
 
     return (
         <div className="tx-app-theme min-h-screen bg-zinc-950 flex">
@@ -286,16 +337,20 @@ export default function Authenticated({
             </aside>
 
             <div className="flex-1 flex flex-col min-h-screen min-w-0">
-                <header className="md:hidden flex items-center h-16 px-4 border-b border-zinc-800/80 bg-zinc-900/60 gap-3">
-                    <button
-                        onClick={() => setMobileMenuOpen(true)}
-                        className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-zinc-800 transition-colors shrink-0"
-                    >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                    <TournamentXBrand logoClassName="h-8 w-auto" className="min-w-0" />
+                <header className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-10 border-b border-zinc-800/80 bg-zinc-900/40 shrink-0 gap-3">
+                    <div className="flex items-center gap-3 min-w-0 md:hidden">
+                        <button
+                            onClick={() => setMobileMenuOpen(true)}
+                            className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-zinc-800 transition-colors shrink-0"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <TournamentXBrand logoClassName="h-8 w-auto" className="min-w-0" />
+                    </div>
+                    <div className="hidden md:block" />
+                    {authHeaderActions}
                 </header>
 
                 <main className="flex-1">{children}</main>
