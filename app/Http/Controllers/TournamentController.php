@@ -178,7 +178,7 @@ class TournamentController extends Controller
 
     public function create()
     {
-        if (!auth()->user()->isAdmin() && !auth()->user()->can_create_tournaments) {
+        if (! auth()->user()->canCreateTournaments()) {
             abort(403, 'You do not have permission to create tournaments.');
         }
 
@@ -187,7 +187,7 @@ class TournamentController extends Controller
 
     public function store(Request $request)
     {
-        if (!auth()->user()->isAdmin() && !auth()->user()->can_create_tournaments) {
+        if (! auth()->user()->canCreateTournaments()) {
             abort(403, 'You do not have permission to create tournaments.');
         }
 

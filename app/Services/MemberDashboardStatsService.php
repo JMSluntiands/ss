@@ -162,11 +162,11 @@ class MemberDashboardStatsService
             return false;
         }
 
-        if ($user->can_create_tournaments || $user->can_manage_tournaments || $user->can_manage_events) {
+        if ($user->canCreateTournaments() || $user->canManageTournaments() || $user->canManageEvents()) {
             return false;
         }
 
-        return $user->siteMember !== null;
+        return $user->isSiteMember();
     }
 
     /**

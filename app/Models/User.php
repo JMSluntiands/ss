@@ -36,9 +36,76 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    public function isSiteMember(): bool
+    {
+        $this->loadMissing('siteMember');
+
+        return $this->siteMember !== null;
+    }
+
+    public function canCreateTournaments(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if ($this->isSiteMember()) {
+            return false;
+        }
+
+        return (bool) $this->can_create_tournaments;
+    }
+
+    public function canManageEvents(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if ($this->isSiteMember()) {
+            return false;
+        }
+
+        return (bool) $this->can_manage_events;
+    }
+
     public function canManageTournaments(): bool
     {
-        return $this->isAdmin() || $this->can_manage_tournaments;
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if ($this->isSiteMember()) {
+            return false;
+        }
+
+        return (bool) $this->can_manage_tournaments;
+    }
+
+    public function canUseJudge(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if ($this->isSiteMember()) {
+            return false;
+        }
+
+        return (bool) $this->can_use_judge;
+    }
+
+    public function canScoreMatches(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if ($this->isSiteMember()) {
+            return false;
+        }
+
+        return (bool) $this->can_score_matches;
     }
 
     public function tournaments()

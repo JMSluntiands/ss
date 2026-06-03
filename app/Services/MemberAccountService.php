@@ -105,11 +105,31 @@ class MemberAccountService
             'email' => $email,
             'password' => bcrypt($password),
             'role' => 'user',
+            'can_create_tournaments' => false,
+            'can_manage_tournaments' => false,
+            'can_manage_events' => false,
+            'can_use_judge' => false,
+            'can_score_matches' => false,
         ]);
 
         $this->linkMemberToUser($member, $user);
 
         return $user;
+    }
+
+    public function enforceMemberRestrictions(User $user): void
+    {
+        if ($user->isAdmin()) {
+            return;
+        }
+
+        $user->update([
+            'can_create_tournaments' => false,
+            'can_manage_tournaments' => false,
+            'can_manage_events' => false,
+            'can_use_judge' => false,
+            'can_score_matches' => false,
+        ]);
     }
 
     public function linkMemberToUser(SiteMember $member, User $user): void
@@ -124,6 +144,8 @@ class MemberAccountService
         if (! $user->blader_name) {
             $user->update(['blader_name' => $member->name]);
         }
+
+        $this->enforceMemberRestrictions($user->fresh());
     }
 
     public function defaultEmailForMember(SiteMember $member): string
