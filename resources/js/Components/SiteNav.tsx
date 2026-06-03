@@ -25,7 +25,7 @@ const navLinks: { key: SiteNavPage; label: string; href: () => string }[] = [
 ];
 
 function linkClass(active: boolean): string {
-    return `px-4 py-2 text-sm font-medium transition-colors ${
+    return `px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
         active ? 'text-red-400' : 'text-gray-300 hover:text-white'
     }`;
 }
@@ -59,14 +59,14 @@ export default function SiteNav({
     const authAction = auth.user ? (
         <a
             href={dashboardUrl}
-            className="px-4 py-2 text-sm font-semibold text-gray-200 hover:text-white border border-zinc-700 hover:border-zinc-600 rounded-lg transition-colors"
+            className="shrink-0 px-4 py-2 text-sm font-semibold text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 rounded-lg transition-colors"
         >
             Dashboard
         </a>
     ) : (
         <a
             href={loginUrl}
-            className="px-4 py-2 text-sm font-semibold text-gray-200 hover:text-white border border-zinc-700 hover:border-zinc-600 rounded-lg transition-colors"
+            className="shrink-0 px-4 py-2 text-sm font-semibold text-white bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-500 rounded-lg transition-colors"
         >
             Login
         </a>
@@ -75,19 +75,19 @@ export default function SiteNav({
     return (
         <nav className={navClass}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between h-16 sm:h-20">
-                    <Link href={logoHref} className="flex items-center gap-3">
-                        <SiteLogo className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
-                        <span className="text-lg sm:text-xl font-black tracking-tight">
+                <div className="flex items-center justify-between gap-3 h-16 sm:h-20 min-w-0">
+                    <Link href={logoHref} className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+                        <SiteLogo className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
+                        <span className="text-base sm:text-lg md:text-xl font-black tracking-tight truncate">
                             SHADOW <span className="text-red-500">SYNDICATE</span>
                         </span>
                     </Link>
 
                     {trailing ? (
-                        <div className="flex items-center gap-3">{trailing}</div>
+                        <div className="flex items-center gap-3 shrink-0">{trailing}</div>
                     ) : (
-                        <>
-                            <div className="hidden md:flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
+                            <div className="hidden md:flex items-center gap-0.5 min-w-0">
                                 {navLinks.map((item) =>
                                     item.key === 'home' && homeHref?.startsWith('#') ? (
                                         <a
@@ -107,18 +107,19 @@ export default function SiteNav({
                                         </Link>
                                     ),
                                 )}
-                                <div className="w-px h-6 bg-zinc-700 mx-2" />
-                                {authAction}
-                                {showJoinUs && onJoinUsClick && (
-                                    <button
-                                        type="button"
-                                        onClick={onJoinUsClick}
-                                        className="px-5 py-2 text-sm font-semibold bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
-                                    >
-                                        Join Us
-                                    </button>
-                                )}
                             </div>
+
+                            {authAction}
+
+                            {showJoinUs && onJoinUsClick && (
+                                <button
+                                    type="button"
+                                    onClick={onJoinUsClick}
+                                    className="hidden sm:inline-flex shrink-0 px-4 sm:px-5 py-2 text-sm font-semibold bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
+                                >
+                                    Join Us
+                                </button>
+                            )}
 
                             <button
                                 type="button"
@@ -136,7 +137,7 @@ export default function SiteNav({
                                     </svg>
                                 )}
                             </button>
-                        </>
+                        </div>
                     )}
                 </div>
 
@@ -167,35 +168,20 @@ export default function SiteNav({
                                 </Link>
                             ),
                         )}
-                        <div className="border-t border-zinc-800/60 my-2" />
-                        {auth.user ? (
-                            <a
-                                href={dashboardUrl}
-                                className="block px-4 py-2.5 text-sm font-semibold text-gray-200 hover:bg-zinc-800/60 rounded-lg"
-                                onClick={() => setMenuOpen(false)}
-                            >
-                                Dashboard
-                            </a>
-                        ) : (
-                            <a
-                                href={loginUrl}
-                                className="block px-4 py-2.5 text-sm font-semibold text-gray-200 hover:bg-zinc-800/60 rounded-lg"
-                                onClick={() => setMenuOpen(false)}
-                            >
-                                Login
-                            </a>
-                        )}
                         {showJoinUs && onJoinUsClick && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    onJoinUsClick();
-                                }}
-                                className="block w-full text-left px-4 py-2.5 text-sm font-semibold text-red-400 hover:bg-zinc-800/60 rounded-lg"
-                            >
-                                Join Us
-                            </button>
+                            <>
+                                <div className="border-t border-zinc-800/60 my-2" />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setMenuOpen(false);
+                                        onJoinUsClick();
+                                    }}
+                                    className="block w-full text-left px-4 py-2.5 text-sm font-semibold text-red-400 hover:bg-zinc-800/60 rounded-lg"
+                                >
+                                    Join Us
+                                </button>
+                            </>
                         )}
                     </div>
                 )}

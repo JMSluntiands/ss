@@ -37,7 +37,7 @@ export default function Welcome({
         <>
             <Head title="Shadow Syndicate - Beyblade Community" />
 
-            <div className="min-h-screen bg-zinc-950 text-white overflow-x-hidden">
+            <div className="min-h-screen bg-zinc-950 text-white">
                 <SiteNav
                     activePage="home"
                     position="fixed"
@@ -101,23 +101,43 @@ export default function Welcome({
                                                 </svg>
                                             </a>
                                         ) : (
-                                            <Link
-                                                href={route('register')}
-                                                className="group flex items-center gap-4 p-4 sm:p-5 border-l-4 border-l-red-500 hover:bg-red-500/5 transition-colors"
-                                            >
-                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/15 border border-red-500/25 text-red-400 group-hover:bg-red-500/25 transition-colors">
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                            <>
+                                                <a
+                                                    href={txLogin}
+                                                    className="group flex items-center gap-4 p-4 sm:p-5 border-l-4 border-l-red-500 hover:bg-red-500/5 transition-colors"
+                                                >
+                                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/15 border border-red-500/25 text-red-400 group-hover:bg-red-500/25 transition-colors">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 text-left">
+                                                        <p className="font-bold text-white group-hover:text-red-300 transition-colors">Login</p>
+                                                        <p className="text-sm text-gray-500">Sign in to your blader account</p>
+                                                    </div>
+                                                    <svg className="w-5 h-5 shrink-0 text-zinc-600 group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                                     </svg>
-                                                </div>
-                                                <div className="flex-1 min-w-0 text-left">
-                                                    <p className="font-bold text-white group-hover:text-red-300 transition-colors">Join Now</p>
-                                                    <p className="text-sm text-gray-500">Create your blader account</p>
-                                                </div>
-                                                <svg className="w-5 h-5 shrink-0 text-zinc-600 group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                </svg>
-                                            </Link>
+                                                </a>
+                                                <div className="h-px bg-zinc-800/80" />
+                                                <Link
+                                                    href={route('register')}
+                                                    className="group flex items-center gap-4 p-4 sm:p-5 border-l-4 border-l-zinc-600 hover:bg-zinc-800/30 transition-colors"
+                                                >
+                                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-700/40 border border-zinc-600/50 text-gray-300 group-hover:bg-zinc-700/60 transition-colors">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 text-left">
+                                                        <p className="font-bold text-white group-hover:text-gray-200 transition-colors">Join Now</p>
+                                                        <p className="text-sm text-gray-500">Create your blader account</p>
+                                                    </div>
+                                                    <svg className="w-5 h-5 shrink-0 text-zinc-600 group-hover:text-gray-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </Link>
+                                            </>
                                         )}
                                         <div className="h-px bg-zinc-800/80" />
                                         <a
