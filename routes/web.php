@@ -32,12 +32,6 @@ $registerMainSite = function (): void {
         return \Illuminate\Support\Facades\Storage::response($event->payment_qr);
     })->name('private.payment-qr');
 
-    Route::middleware(['auth', 'verified'])->group(function () {
-        Route::post('/registrations/{registration}/confirm', [EventRegistrationController::class, 'confirm'])->name('registrations.confirm');
-        Route::post('/registrations/{registration}/reject', [EventRegistrationController::class, 'reject'])->name('registrations.reject');
-        Route::delete('/registrations/{registration}', [EventRegistrationController::class, 'destroy'])->name('registrations.destroy');
-    });
-
     Route::get('/admin/login', [AdminLoginController::class, 'create'])->name('admin.login');
     Route::post('/admin/login', [AdminLoginController::class, 'store'])->name('admin.login.store');
 

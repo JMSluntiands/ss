@@ -1,6 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { appRoute } from '@/utils/appBaseUrl';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { FormEvent, useState } from 'react';
+import { PageProps } from '@/types';
 
 interface Registration {
     id: number;
@@ -59,13 +61,14 @@ export default function EventRegistrations({
     statusCounts: StatusCounts;
     filters: { search?: string };
 }) {
+    const { flash } = usePage<PageProps>().props;
     const [processing, setProcessing] = useState<number | null>(null);
     const [viewPayment, setViewPayment] = useState<PaymentPreview | null>(null);
     const [search, setSearch] = useState(filters.search ?? '');
 
     const openReceipt = (reg: Registration) => {
         setViewPayment({
-            url: route('private.payment-proof', reg.id),
+            url: appRoute('private.payment-proof', reg.id),
             playerName: reg.full_name,
         });
     };
@@ -73,31 +76,29 @@ export default function EventRegistrations({
     const handleSearch = (e: FormEvent) => {
         e.preventDefault();
         router.get(
-            route('my-events.registrations', event.id),
+            appRoute('my-events.registrations', event.id),
             { search: search || undefined },
-            { preserveState: true, replace: true },
+            { preserveScroll: true, replace: true },
         );
     };
 
     const clearSearch = () => {
         setSearch('');
-        router.get(route('my-events.registrations', event.id), {}, { preserveState: true, replace: true });
+        router.get(appRoute('my-events.registrations', event.id), {}, { preserveScroll: true, replace: true });
     };
 
     const handleConfirm = (reg: Registration) => {
         setProcessing(reg.id);
-        router.post(route('registrations.confirm', reg.id), {}, {
+        router.post(appRoute('registrations.confirm', reg.id), {}, {
             preserveScroll: true,
-            preserveState: true,
             onFinish: () => setProcessing(null),
         });
     };
 
     const handleReject = (reg: Registration) => {
         setProcessing(reg.id);
-        router.post(route('registrations.reject', reg.id), {}, {
+        router.post(appRoute('registrations.reject', reg.id), {}, {
             preserveScroll: true,
-            preserveState: true,
             onFinish: () => setProcessing(null),
         });
     };
@@ -114,9 +115,8 @@ export default function EventRegistrations({
         }
 
         setProcessing(reg.id);
-        router.delete(route('registrations.destroy', reg.id), {
+        router.delete(appRoute('registrations.destroy', reg.id), {
             preserveScroll: true,
-            preserveState: true,
             onFinish: () => setProcessing(null),
         });
     };
@@ -126,9 +126,24 @@ export default function EventRegistrations({
             <Head title={`Registrations - ${event.title}`} />
 
             <div className="p-6 lg:p-10">
+                {(flash?.success || flash?.error) && (
+                    <div className="mb-6 space-y-2">
+                        {flash?.success && (
+                            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-400">
+                                {flash.success}
+                            </div>
+                        )}
+                        {flash?.error && (
+                            <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                                {flash.error}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div className="mb-8">
                     <Link
-                        href={route('my-events')}
+                        href={appRoute('my-events')}
                         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-white transition-colors mb-4"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -306,6 +321,7 @@ export default function EventRegistrations({
                                                 {reg.status === 'tentative' && (
                                                     <>
                                                         <button
+                                                            type="button"
                                                             onClick={() => handleConfirm(reg)}
                                                             disabled={processing === reg.id}
                                                             className="px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
@@ -313,6 +329,7 @@ export default function EventRegistrations({
                                                             {processing === reg.id ? '...' : 'Confirm'}
                                                         </button>
                                                         <button
+                                                            type="button"
                                                             onClick={() => handleReject(reg)}
                                                             disabled={processing === reg.id}
                                                             className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-50"
@@ -365,7 +382,7 @@ export default function EventRegistrations({
                                 <button
                                     key={idx}
                                     type="button"
-                                    onClick={() => link.url && router.get(link.url, {}, { preserveState: true })}
+                                    onClick={() => link.url && router.get(link.url, {}, { preserveScroll: true })}
                                     disabled={!link.url}
                                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                                         link.active

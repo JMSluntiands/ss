@@ -113,7 +113,7 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
 
         const formData = new FormData();
         formData.append('name', form.name);
-        formData.append('role', form.role);
+        formData.append('role', modalMode === 'create' ? 'Member' : form.role);
         formData.append('rank', form.rank);
         if (form.bey) formData.append('bey', form.bey);
         if (form.joined) formData.append('joined', form.joined);
@@ -389,15 +389,21 @@ export default function Members({ members }: { members: PaginatedData<SiteMember
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Role</label>
-                                        <select
-                                            value={form.role}
-                                            onChange={(e) => setField('role', e.target.value)}
-                                            className="w-full px-4 py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-sm text-white focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 transition-colors"
-                                        >
-                                            {ROLE_OPTIONS.map((r) => (
-                                                <option key={r} value={r}>{r}</option>
-                                            ))}
-                                        </select>
+                                        {modalMode === 'create' ? (
+                                            <div className="w-full px-4 py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-sm text-white">
+                                                Member
+                                            </div>
+                                        ) : (
+                                            <select
+                                                value={form.role}
+                                                onChange={(e) => setField('role', e.target.value)}
+                                                className="w-full px-4 py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-sm text-white focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 transition-colors"
+                                            >
+                                                {ROLE_OPTIONS.map((r) => (
+                                                    <option key={r} value={r}>{r}</option>
+                                                ))}
+                                            </select>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Rank</label>

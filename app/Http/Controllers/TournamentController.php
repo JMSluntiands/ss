@@ -98,65 +98,71 @@ class TournamentController extends Controller
 
     public function index()
     {
-        $tournaments = Tournament::where('user_id', auth()->id())
-            ->latest()
-            ->with(['matches.winner', 'swissStandings.participant'])
-            ->get()
-            ->map(function ($tournament) {
-                $champion = null;
+        $user = auth()->user();
+        $user->loadMissing('siteMember');
+        $statsService = app(\App\Services\MemberDashboardStatsService::class);
+        $isMemberDashboard = $statsService->isMemberDashboardUser($user);
 
-                if ($tournament->status === 'completed') {
-                    if ($tournament->tournament_type === 'two_stage') {
-                        $match = $tournament->matches
-                            ->where('stage', 'final')
-                            ->filter(fn ($m) => $m->winner_id && $m->next_match_id === null
-                                && !in_array($m->bracket, ['placement_3', 'placement_5']))
-                            ->sortByDesc('round')
-                            ->first();
+        $tournaments = collect();
 
-                        if (!$match) {
+        if (! $isMemberDashboard) {
+            $tournaments = Tournament::where('user_id', $user->id)
+                ->latest()
+                ->with(['matches.winner', 'swissStandings.participant'])
+                ->get()
+                ->map(function ($tournament) {
+                    $champion = null;
+
+                    if ($tournament->status === 'completed') {
+                        if ($tournament->tournament_type === 'two_stage') {
                             $match = $tournament->matches
-                                ->first(fn ($m) => $m->stage === 'final' && $m->bracket === 'grand_final' && $m->winner_id);
-                        }
-
-                        $champion = $match?->winner?->name;
-                    } elseif (in_array($tournament->format, ['swiss', 'round_robin'], true)) {
-                        $finalWinners = $tournament->matches
-                            ->where('stage', 'final')
-                            ->filter(fn ($m) => $m->winner_id && ($m->next_match_id === null || $m->bracket === 'grand_final'));
-                        if ($finalWinners->isNotEmpty()) {
-                            $match = $finalWinners->sortByDesc('round')->first();
-                            $champion = $match?->winner?->name;
-                        } else {
-                            $topStanding = $tournament->swissStandings->sortBy('rank')->first();
-                            $champion = $topStanding?->participant?->name;
-                        }
-                    } else {
-                        $match = $tournament->matches
-                            ->first(fn ($m) => $m->bracket === 'grand_final' && $m->winner_id);
-
-                        if (!$match) {
-                            $match = $tournament->matches
+                                ->where('stage', 'final')
                                 ->filter(fn ($m) => $m->winner_id && $m->next_match_id === null
                                     && !in_array($m->bracket, ['placement_3', 'placement_5']))
                                 ->sortByDesc('round')
                                 ->first();
+
+                            if (!$match) {
+                                $match = $tournament->matches
+                                    ->first(fn ($m) => $m->stage === 'final' && $m->bracket === 'grand_final' && $m->winner_id);
+                            }
+
+                            $champion = $match?->winner?->name;
+                        } elseif (in_array($tournament->format, ['swiss', 'round_robin'], true)) {
+                            $finalWinners = $tournament->matches
+                                ->where('stage', 'final')
+                                ->filter(fn ($m) => $m->winner_id && ($m->next_match_id === null || $m->bracket === 'grand_final'));
+                            if ($finalWinners->isNotEmpty()) {
+                                $match = $finalWinners->sortByDesc('round')->first();
+                                $champion = $match?->winner?->name;
+                            } else {
+                                $topStanding = $tournament->swissStandings->sortBy('rank')->first();
+                                $champion = $topStanding?->participant?->name;
+                            }
+                        } else {
+                            $match = $tournament->matches
+                                ->first(fn ($m) => $m->bracket === 'grand_final' && $m->winner_id);
+
+                            if (!$match) {
+                                $match = $tournament->matches
+                                    ->filter(fn ($m) => $m->winner_id && $m->next_match_id === null
+                                        && !in_array($m->bracket, ['placement_3', 'placement_5']))
+                                    ->sortByDesc('round')
+                                    ->first();
+                            }
+
+                            $champion = $match?->winner?->name;
                         }
-
-                        $champion = $match?->winner?->name;
                     }
-                }
 
-                $tournament->champion_name = $champion;
-                unset($tournament->matches, $tournament->swissStandings);
-                return $tournament;
-            });
+                    $tournament->champion_name = $champion;
+                    unset($tournament->matches, $tournament->swissStandings);
 
-        $user = auth()->user();
-        $user->loadMissing('siteMember');
-        $statsService = app(\App\Services\MemberDashboardStatsService::class);
+                    return $tournament;
+                });
+        }
+
         $memberStats = $statsService->forUser($user);
-
         $participated = $statsService->participatedTournaments($user);
 
         return Inertia::render('Dashboard', [
@@ -164,6 +170,9 @@ class TournamentController extends Controller
             'memberStats' => $memberStats,
             'participatedTournaments' => $participated->all(),
             'isShadowMember' => $memberStats !== null,
+            'isMemberDashboard' => $isMemberDashboard,
+            'aggregateFinishStats' => $isMemberDashboard ? $statsService->aggregateFinishStats($user) : null,
+            'matchHistory' => $isMemberDashboard ? $statsService->matchHistory($user) : [],
         ]);
     }
 

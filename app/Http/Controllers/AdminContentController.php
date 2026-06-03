@@ -346,6 +346,7 @@ class AdminContentController extends Controller
         }
         unset($data['image']);
 
+        $data['role'] = 'Member';
         $data['wins'] = 0;
         $data['losses'] = 0;
 

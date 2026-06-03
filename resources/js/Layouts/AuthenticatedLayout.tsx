@@ -14,6 +14,13 @@ export default function Authenticated({
 }: PropsWithChildren<{ currentPage?: string }>) {
     const { auth, is_admin, permissions } = usePage<PageProps>().props;
     const user = auth.user;
+    const isMemberDashboard = Boolean(
+        user?.site_member_id &&
+            !is_admin &&
+            !permissions.can_create_tournaments &&
+            !permissions.can_manage_tournaments &&
+            !permissions.can_manage_events,
+    );
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -26,7 +33,7 @@ export default function Authenticated({
 
     const workspaceNav: SidebarNavItem[] = [
         {
-            name: 'Your Tournaments',
+            name: isMemberDashboard ? 'Your Stats' : 'Your Tournaments',
             href: withAppBase(route('dashboard', undefined, false)),
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -156,6 +156,140 @@ class MemberDashboardStatsService
         ];
     }
 
+    public function isMemberDashboardUser(User $user): bool
+    {
+        if ($user->isAdmin()) {
+            return false;
+        }
+
+        if ($user->can_create_tournaments || $user->can_manage_tournaments || $user->can_manage_events) {
+            return false;
+        }
+
+        return $user->siteMember !== null;
+    }
+
+    /**
+     * @return array{sf: int, of: int, bf: int, xf: int, matches_played: int, rounds_won: int}
+     */
+    public function aggregateFinishStats(User $user): array
+    {
+        $totals = [
+            'sf' => 0,
+            'of' => 0,
+            'bf' => 0,
+            'xf' => 0,
+            'matches_played' => 0,
+            'rounds_won' => 0,
+        ];
+
+        foreach ($this->participatedTournaments($user) as $entry) {
+            $stats = $entry['finish_stats'] ?? null;
+
+            if (! $stats) {
+                continue;
+            }
+
+            foreach (array_keys($totals) as $key) {
+                $totals[$key] += (int) ($stats[$key] ?? 0);
+            }
+        }
+
+        return $totals;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function matchHistory(User $user): array
+    {
+        $participantIds = $this->participantIdsForUser($user);
+
+        if ($participantIds === []) {
+            return [];
+        }
+
+        return TournamentMatch::query()
+            ->with([
+                'tournament:id,name,slug',
+                'player1:id,name',
+                'player2:id,name',
+            ])
+            ->where('status', 'completed')
+            ->where(function ($query) use ($participantIds) {
+                $query->whereIn('player1_id', $participantIds)
+                    ->orWhereIn('player2_id', $participantIds);
+            })
+            ->orderByDesc('updated_at')
+            ->get()
+            ->map(function (TournamentMatch $match) use ($participantIds) {
+                $myId = in_array($match->player1_id, $participantIds, true)
+                    ? $match->player1_id
+                    : $match->player2_id;
+
+                if (! $myId) {
+                    return null;
+                }
+
+                $side = $match->player1_id === $myId ? 'p1' : 'p2';
+                $opponent = $side === 'p1' ? $match->player2 : $match->player1;
+
+                $finishes = [];
+                foreach ($match->round_details ?? [] as $round) {
+                    if (($round['winner'] ?? '') === $side) {
+                        $finish = (string) ($round['finish'] ?? '');
+                        if ($finish !== '') {
+                            $finishes[] = $finish;
+                        }
+                    }
+                }
+
+                $result = 'loss';
+                if ($match->is_bye) {
+                    $result = 'bye';
+                } elseif ($match->is_draw) {
+                    $result = 'draw';
+                } elseif ($match->winner_id === $myId) {
+                    $result = 'win';
+                }
+
+                return [
+                    'id' => $match->id,
+                    'tournament_name' => $match->tournament?->name ?? 'Tournament',
+                    'tournament_slug' => $match->tournament?->slug,
+                    'opponent_name' => $opponent?->name,
+                    'result' => $result,
+                    'finishes' => $finishes,
+                    'round' => $match->round,
+                    'played_at' => $match->updated_at?->toIso8601String(),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int>
+     */
+    private function participantIdsForUser(User $user): array
+    {
+        $user->loadMissing('siteMember');
+
+        $ids = Participant::query()
+            ->where('user_id', $user->id)
+            ->pluck('id')
+            ->all();
+
+        if ($user->siteMember) {
+            $scoped = Participant::query();
+            $this->applyParticipantScope($scoped, $user->siteMember);
+            $ids = array_values(array_unique([...$ids, ...$scoped->pluck('id')->all()]));
+        }
+
+        return $ids;
+    }
+
     /**
      * @return Collection<int, array<string, mixed>>
      */

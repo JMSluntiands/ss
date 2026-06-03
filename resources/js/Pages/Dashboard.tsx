@@ -126,6 +126,44 @@ interface MemberStats {
     tournament_match_wins: number;
 }
 
+interface MatchHistoryEntry {
+    id: number;
+    tournament_name: string;
+    tournament_slug: string | null;
+    opponent_name: string | null;
+    result: 'win' | 'loss' | 'draw' | 'bye';
+    finishes: string[];
+    round: number | null;
+    played_at: string | null;
+}
+
+const finishCards = [
+    { key: 'xf' as const, label: 'XF', className: 'border-red-500/20 bg-red-500/10 text-red-400' },
+    { key: 'bf' as const, label: 'BF', className: 'border-amber-500/20 bg-amber-500/10 text-amber-400' },
+    { key: 'of' as const, label: 'OF', className: 'border-blue-500/20 bg-blue-500/10 text-blue-400' },
+    { key: 'sf' as const, label: 'SF', className: 'border-slate-600/40 bg-slate-500/10 text-slate-300' },
+];
+
+const resultStyles: Record<MatchHistoryEntry['result'], string> = {
+    win: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    loss: 'bg-red-500/10 text-red-400 border-red-500/20',
+    draw: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    bye: 'bg-zinc-700/30 text-gray-400 border-zinc-600/40',
+};
+
+function resultLabel(result: MatchHistoryEntry['result']): string {
+    switch (result) {
+        case 'win':
+            return 'Win';
+        case 'loss':
+            return 'Loss';
+        case 'draw':
+            return 'Draw';
+        case 'bye':
+            return 'Bye';
+    }
+}
+
 const formatLabel: Record<string, string> = {
     single_elimination: 'Single Elim',
     double_elimination: 'Double Elim',
@@ -159,16 +197,21 @@ export default function Dashboard({
     memberStats = null,
     participatedTournaments = [],
     isShadowMember = false,
+    isMemberDashboard = false,
+    aggregateFinishStats = null,
+    matchHistory = [],
 }: {
     tournaments?: Tournament[];
     memberStats?: MemberStats | null;
     participatedTournaments?: ParticipatedTournament[];
     isShadowMember?: boolean;
+    isMemberDashboard?: boolean;
+    aggregateFinishStats?: FinishStats | null;
+    matchHistory?: MatchHistoryEntry[];
 }) {
     const [showCreateDropdown, setShowCreateDropdown] = useState(false);
     const { permissions, main_site_url } = usePage<PageProps>().props;
     const canCreate = permissions.can_create_tournaments;
-    const memberView = isShadowMember && memberStats && !canCreate;
     const hasParticipated = participatedTournaments.length > 0;
 
     const withAppBase = (href: string): string => {
@@ -188,22 +231,124 @@ export default function Dashboard({
 
     const statRanking = statsFromMember ? memberStats.rank : '--';
 
+    if (isMemberDashboard && memberStats) {
+        return (
+            <AuthenticatedLayout currentPage="tournaments">
+                <Head title="Your Stats" />
+
+                <div className="p-6 lg:p-10 max-w-5xl">
+                    <div className="mb-8">
+                        <h1 className="text-3xl font-bold text-white">Your Stats</h1>
+                        <div className="mt-2 w-16 h-1 rounded-full tx-underline" />
+                        <p className="mt-3 text-sm text-gray-500">
+                            {memberStats.name} · {memberStats.role}
+                            {memberStats.bey ? ` · ${memberStats.bey}` : ''}
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5 sm:col-span-1">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400/80">Win Rate</p>
+                            <p className="text-4xl font-black text-white mt-2">{memberStats.win_rate ?? 0}%</p>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {memberStats.wins}W · {memberStats.losses}L
+                            </p>
+                        </div>
+                        <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5 sm:col-span-2">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Finish Records</p>
+                            <div className="grid grid-cols-4 gap-3">
+                                {finishCards.map((card) => (
+                                    <div
+                                        key={card.key}
+                                        className={`rounded-xl border px-3 py-4 text-center ${card.className}`}
+                                    >
+                                        <p className="text-2xl font-bold">{aggregateFinishStats?.[card.key] ?? 0}</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider mt-1 opacity-80">{card.label}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            {aggregateFinishStats && aggregateFinishStats.matches_played > 0 && (
+                                <p className="text-[11px] text-gray-600 mt-3">
+                                    {aggregateFinishStats.matches_played} matches scored · {aggregateFinishStats.rounds_won} rounds won
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 overflow-hidden">
+                        <div className="px-5 py-4 border-b border-zinc-800/60">
+                            <h2 className="text-sm font-semibold text-white uppercase tracking-wider">Match History</h2>
+                        </div>
+
+                        {matchHistory.length > 0 ? (
+                            <div className="divide-y divide-zinc-800/50">
+                                {matchHistory.map((match) => (
+                                    <div key={match.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-white truncate">{match.tournament_name}</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                vs {match.opponent_name ?? '—'}
+                                                {match.round != null ? ` · Round ${match.round}` : ''}
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                            <span
+                                                className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${resultStyles[match.result]}`}
+                                            >
+                                                {resultLabel(match.result)}
+                                            </span>
+                                            {match.finishes.length > 0 ? (
+                                                match.finishes.map((finish, i) => (
+                                                    <span
+                                                        key={`${match.id}-${finish}-${i}`}
+                                                        className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold border border-zinc-700/50 bg-zinc-800/50 text-gray-300"
+                                                    >
+                                                        {finish}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="text-[10px] text-gray-600">No finish data</span>
+                                            )}
+                                            {match.played_at && (
+                                                <span className="text-[10px] text-gray-600">
+                                                    {new Date(match.played_at).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="px-5 py-14 text-center">
+                                <p className="text-sm text-gray-500">No scored matches yet.</p>
+                                <p className="text-xs text-gray-600 mt-2 max-w-sm mx-auto">
+                                    Once you play in a tournament and matches are scored, your history and finish records will show here.
+                                </p>
+                                {main_site_url && (
+                                    <a
+                                        href={`${main_site_url.replace(/\/$/, '')}/events`}
+                                        className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-sm font-medium text-red-400 hover:bg-red-500/20 transition-all"
+                                    >
+                                        Browse events
+                                    </a>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </AuthenticatedLayout>
+        );
+    }
+
     return (
         <AuthenticatedLayout currentPage="tournaments">
-            <Head title={memberView ? 'Your Stats' : 'Your Tournaments'} />
+            <Head title="Your Tournaments" />
 
             <div className="p-6 lg:p-10">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-white">
-                            {memberView ? 'Your Stats' : 'Your Tournaments'}
-                        </h1>
+                        <h1 className="text-3xl font-bold text-white">Your Tournaments</h1>
                         <div className="mt-2 w-16 h-1 rounded-full tx-underline" />
-                        {memberView && (
-                            <p className="mt-3 text-sm text-gray-500">
-                                Shadow Syndicate member — synced with your roster profile
-                            </p>
-                        )}
                     </div>
 
                     {canCreate && (
@@ -243,76 +388,7 @@ export default function Dashboard({
                     )}
                 </div>
 
-                {memberView && memberStats && (
-                    <div className="rounded-2xl border border-zinc-800/80 bg-gradient-to-br from-zinc-900/80 to-zinc-950/80 p-5 sm:p-6 mb-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-2xl font-black text-white shrink-0 shadow-lg shadow-red-500/20">
-                                {memberStats.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                    <h2 className="text-xl font-bold text-white">{memberStats.name}</h2>
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border bg-red-500/10 text-red-400 border-red-500/20">
-                                        {memberStats.role}
-                                    </span>
-                                    <span
-                                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${rankColor(memberStats.rank)}`}
-                                    >
-                                        Rank {memberStats.rank}
-                                    </span>
-                                </div>
-                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
-                                    {memberStats.bey && (
-                                        <span>
-                                            Bey: <span className="text-gray-300">{memberStats.bey}</span>
-                                        </span>
-                                    )}
-                                    {memberStats.joined && (
-                                        <span>
-                                            Joined: <span className="text-gray-300">{memberStats.joined}</span>
-                                        </span>
-                                    )}
-                                    {memberStats.win_rate !== null && (
-                                        <span>
-                                            Win rate: <span className="text-emerald-400">{memberStats.win_rate}%</span>
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            {main_site_url && (
-                                <a
-                                    href={`${main_site_url.replace(/\/$/, '')}/members`}
-                                    className="shrink-0 px-4 py-2 rounded-xl text-xs font-medium text-gray-400 border border-zinc-700/50 hover:text-white hover:border-zinc-600 transition-colors"
-                                >
-                                    View on site
-                                </a>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {memberView && !hasParticipated && (
-                    <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm mb-6">
-                        <div className="flex flex-col items-center justify-center py-16 px-6">
-                            <h3 className="text-lg font-semibold text-white mb-2">No tournament entries yet</h3>
-                            <p className="text-gray-500 text-sm text-center max-w-sm">
-                                Ask the organizer to add you using your exact blader / member name, or pick your account
-                                from the suggestions when they add participants. Then this page shows your XF, OF, BF, and SF counts.
-                            </p>
-                            {main_site_url && (
-                                <a
-                                    href={`${main_site_url.replace(/\/$/, '')}/events`}
-                                    className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-sm font-medium text-red-400 hover:bg-red-500/20 transition-all"
-                                >
-                                    Browse events
-                                </a>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {!memberView && (
-                    tournaments.length === 0 ? (
+                {tournaments.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm">
                         <div className="flex flex-col items-center justify-center py-24 px-6">
                             <div className="w-20 h-20 rounded-2xl bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center mb-6">
@@ -386,11 +462,10 @@ export default function Dashboard({
                             </Link>
                         ))}
                     </div>
-                    )
                 )}
 
-                {hasParticipated && (
-                    <div className={`space-y-3 ${!memberView ? 'mt-8' : 'mb-6'}`}>
+                {hasParticipated && !isShadowMember && (
+                    <div className="space-y-3 mt-8">
                         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
                             Tournaments you entered
                         </h3>
