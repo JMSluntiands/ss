@@ -204,10 +204,17 @@ function getGroupMemberIds(
     );
 }
 
+/** Main bracket only — excludes placement mini-brackets (e.g. final_g1_placement_5). */
+function isMainBracketForFinalGroupTag(bracket: string | null, tag: string): boolean {
+    if (!bracket) return false;
+    if (bracket === tag) return true;
+    if (!bracket.startsWith(`${tag}_`)) return false;
+
+    return !bracket.includes('placement');
+}
+
 function filterMatchesForFinalGroupTag(matches: TournamentMatch[], bracketTag: string): TournamentMatch[] {
-    return matches.filter(
-        (m) => m.bracket === bracketTag || (m.bracket?.startsWith(`${bracketTag}_`) ?? false),
-    );
+    return matches.filter((m) => isMainBracketForFinalGroupTag(m.bracket, bracketTag));
 }
 
 function splitFinalStageGroups(
@@ -1816,6 +1823,41 @@ function PlayerStatsTable({ participants, matches, standings }: {
     );
 }
 
+function sortMatchesByNumber(matches: TournamentMatch[]): TournamentMatch[] {
+    return [...matches].sort((a, b) => a.match_number - b.match_number);
+}
+
+function shouldHideBracketMatch(match: TournamentMatch, isFirstRound: boolean): boolean {
+    if (isFirstRound && match.is_bye) return true;
+    if ((!match.player1_id || !match.player2_id) && match.winner_id) return true;
+    if (isFirstRound && !match.player1_id && !match.player2_id) return true;
+    return false;
+}
+
+function BracketRoundMatches({
+    roundMatches,
+    roundIndex,
+    children,
+}: {
+    roundMatches: TournamentMatch[];
+    roundIndex: number;
+    children: (match: TournamentMatch) => React.ReactNode;
+}) {
+    const isFirstRound = roundIndex === 0;
+    const visible = sortMatchesByNumber(roundMatches).filter(
+        (m) => !shouldHideBracketMatch(m, isFirstRound),
+    );
+    if (visible.length === 0) return null;
+
+    return (
+        <div className="flex flex-col justify-around flex-1 gap-4">
+            {visible.map((match) => (
+                <div key={match.id}>{children(match)}</div>
+            ))}
+        </div>
+    );
+}
+
 /* ─── Elimination Bracket Renderer (SE or DE) ─── */
 function EliminationBracket({
     matches,
@@ -1889,11 +1931,11 @@ function EliminationBracket({
             return (
                 <div className="space-y-6">
                     <NowPlayingBanner />
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                    <div className="flex flex-col gap-6 w-full">
                         {groups.map((group) => (
                             <div
                                 key={group.tag}
-                                className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden min-w-0"
+                                className="w-full rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden min-w-0"
                             >
                                 <div className="px-4 py-3 border-b border-slate-800/80 bg-slate-800/20">
                                     <h3 className="text-sm font-semibold text-white">
@@ -1963,21 +2005,19 @@ function EliminationBracket({
                     </div>
                     <div className="p-6 overflow-x-auto">
                         <div className="flex gap-8 min-w-max">
-                            {wRounds.map(round => {
-                                const roundMatches = wRoundsMap[round].filter(
-                                    m => !((!m.player1_id || !m.player2_id) && m.winner_id)
-                                );
+                            {wRounds.map((round, roundIndex) => {
+                                const roundMatches = wRoundsMap[round];
                                 if (roundMatches.length === 0) return null;
                                 return (
                                     <div key={round} className="flex flex-col">
                                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 text-center">
                                             {getWRoundName(round)}
                                         </h4>
-                                        <div className="flex flex-col justify-around flex-1 gap-4">
-                                            {roundMatches.map(match => (
-                                                <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
-                                            ))}
-                                        </div>
+                                        <BracketRoundMatches roundMatches={roundMatches} roundIndex={roundIndex}>
+                                            {(match) => (
+                                                <MatchCard match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                            )}
+                                        </BracketRoundMatches>
                                     </div>
                                 );
                             })}
@@ -1993,18 +2033,18 @@ function EliminationBracket({
                     </div>
                     <div className="p-6 overflow-x-auto">
                         <div className="flex gap-8 min-w-max">
-                            {lRounds.map(round => {
+                            {lRounds.map((round, roundIndex) => {
                                 const roundMatches = lRoundsMap[round];
                                 return (
                                     <div key={round} className="flex flex-col">
                                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 text-center">
                                             {getLRoundName(round)}
                                         </h4>
-                                        <div className="flex flex-col justify-around flex-1 gap-4">
-                                            {roundMatches.map(match => (
-                                                <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
-                                            ))}
-                                        </div>
+                                        <BracketRoundMatches roundMatches={roundMatches} roundIndex={roundIndex}>
+                                            {(match) => (
+                                                <MatchCard match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                            )}
+                                        </BracketRoundMatches>
                                     </div>
                                 );
                             })}
@@ -2037,7 +2077,7 @@ function EliminationBracket({
         (m) =>
             !m.bracket ||
             m.bracket === 'winners' ||
-            (m.bracket?.startsWith('final_g') ?? false),
+            (m.bracket != null && /^final_g\d+(_(?:winners|losers|grand_final))?$/.test(m.bracket)),
     );
     const placement3Matches = matches.filter(
         (m) => m.bracket === 'placement_3' || m.bracket?.includes('_placement_3'),
@@ -2071,24 +2111,19 @@ function EliminationBracket({
     const bracketSection = (
         <div className={embedded ? 'p-4 overflow-x-auto' : 'p-6 overflow-x-auto'}>
             <div className="flex gap-8 min-w-max">
-                {rounds.map(round => {
-                    const isFirstRound = round === rounds[0];
-                    const roundMatches = roundsMap[round].filter(m => {
-                        if ((!m.player1_id || !m.player2_id) && m.winner_id) return false;
-                        if (isFirstRound && !m.player1_id && !m.player2_id) return false;
-                        return true;
-                    });
+                {rounds.map((round, roundIndex) => {
+                    const roundMatches = roundsMap[round];
                     if (roundMatches.length === 0) return null;
                     return (
                         <div key={round} className="flex flex-col">
                             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 text-center">
                                 {getRoundName(round)}
                             </h4>
-                            <div className="flex flex-col justify-around flex-1 gap-4">
-                                {roundMatches.map(match => (
-                                    <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
-                                ))}
-                            </div>
+                            <BracketRoundMatches roundMatches={roundMatches} roundIndex={roundIndex}>
+                                {(match) => (
+                                    <MatchCard match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                )}
+                            </BracketRoundMatches>
                         </div>
                     );
                 })}
@@ -4074,13 +4109,8 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                 ) : (
                                     <div className="p-6 overflow-x-auto">
                                         <div className="flex gap-8 min-w-max">
-                                            {rounds.map((round) => {
-                                                const isFirstRound = round === rounds[0];
-                                                const roundMatches = roundsMap[round].filter(m => {
-                                                    if ((!m.player1_id || !m.player2_id) && m.winner_id) return false;
-                                                    if (isFirstRound && !m.player1_id && !m.player2_id) return false;
-                                                    return true;
-                                                });
+                                            {rounds.map((round, roundIndex) => {
+                                                const roundMatches = roundsMap[round];
                                                 if (roundMatches.length === 0) return null;
 
                                                 return (
@@ -4088,10 +4118,9 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                                         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 text-center">
                                                             {getRoundName(round)}
                                                         </h3>
-                                                        <div className="flex flex-col justify-around flex-1 gap-4">
-                                                            {roundMatches.map((match) => (
+                                                        <BracketRoundMatches roundMatches={roundMatches} roundIndex={roundIndex}>
+                                                            {(match) => (
                                                                 <MatchCard
-                                                                    key={match.id}
                                                                     match={match}
                                                                     tournamentId={tournament.id}
                                                                     isActive={isActive}
@@ -4103,8 +4132,8 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                                                     stadiumCount={tournament.stadiums || 0}
                                                                     occupiedStadiums={occupiedStadiums}
                                                                 />
-                                                            ))}
-                                                        </div>
+                                                            )}
+                                                        </BracketRoundMatches>
                                                     </div>
                                                 );
                                             })}

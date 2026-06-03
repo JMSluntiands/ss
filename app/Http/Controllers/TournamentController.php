@@ -531,16 +531,9 @@ class TournamentController extends Controller
             'status' => 'completed',
         ]);
 
-        // Winner advances to next match
+        // Winner advances to next match (feeder order determines player1 vs player2)
         if ($match->next_match_id) {
-            $nextMatch = TournamentMatch::find($match->next_match_id);
-            if ($nextMatch) {
-                if (!$nextMatch->player1_id) {
-                    $nextMatch->update(['player1_id' => $validated['winner_id']]);
-                } elseif ($nextMatch->player1_id != $validated['winner_id'] && !$nextMatch->player2_id) {
-                    $nextMatch->update(['player2_id' => $validated['winner_id']]);
-                }
-            }
+            $this->propagateParticipantToNextMatch($match, $validated['winner_id'], 'next_match_id');
         }
 
         // DE: Loser drops to losers bracket
@@ -550,14 +543,7 @@ class TournamentController extends Controller
                 : $match->player1_id;
 
             if ($loserId) {
-                $loserMatch = TournamentMatch::find($match->loser_next_match_id);
-                if ($loserMatch) {
-                    if (!$loserMatch->player1_id) {
-                        $loserMatch->update(['player1_id' => $loserId]);
-                    } elseif (!$loserMatch->player2_id) {
-                        $loserMatch->update(['player2_id' => $loserId]);
-                    }
-                }
+                $this->propagateParticipantToNextMatch($match, $loserId, 'loser_next_match_id');
             }
         }
 
@@ -1104,6 +1090,52 @@ class TournamentController extends Controller
     }
 
     /**
+     * Place a participant into the correct slot of the downstream match based on
+     * feeder match order (first feeder → player1, second → player2).
+     */
+    private function propagateParticipantToNextMatch(
+        TournamentMatch $fromMatch,
+        int $participantId,
+        string $linkColumn = 'next_match_id',
+    ): void {
+        $nextMatchId = $fromMatch->{$linkColumn};
+        if (!$nextMatchId) {
+            return;
+        }
+
+        $nextMatch = TournamentMatch::find($nextMatchId);
+        if (!$nextMatch) {
+            return;
+        }
+
+        $feeders = TournamentMatch::where('tournament_id', $fromMatch->tournament_id)
+            ->where('stage', $fromMatch->stage)
+            ->where($linkColumn, $nextMatchId)
+            ->orderBy('match_number')
+            ->get();
+
+        if ($feeders->count() === 2) {
+            $feederIndex = $feeders->search(fn ($f) => $f->id === $fromMatch->id);
+            if ($feederIndex === 0) {
+                $nextMatch->update(['player1_id' => $participantId]);
+
+                return;
+            }
+            if ($feederIndex === 1) {
+                $nextMatch->update(['player2_id' => $participantId]);
+
+                return;
+            }
+        }
+
+        if (!$nextMatch->player1_id) {
+            $nextMatch->update(['player1_id' => $participantId]);
+        } elseif (!$nextMatch->player2_id && $nextMatch->player1_id !== $participantId) {
+            $nextMatch->update(['player2_id' => $participantId]);
+        }
+    }
+
+    /**
      * Auto-advance matches where one player is present, the other is missing,
      * and all feeder matches have been resolved.
      */
@@ -1153,16 +1185,8 @@ class TournamentController extends Controller
                     'status' => 'completed',
                 ]);
 
-                // Propagate winner
                 if ($match->next_match_id) {
-                    $next = TournamentMatch::find($match->next_match_id);
-                    if ($next) {
-                        if (!$next->player1_id) {
-                            $next->update(['player1_id' => $winnerId]);
-                        } elseif (!$next->player2_id && $next->player1_id != $winnerId) {
-                            $next->update(['player2_id' => $winnerId]);
-                        }
-                    }
+                    $this->propagateParticipantToNextMatch($match, $winnerId, 'next_match_id');
                 }
 
                 $changed = true;
