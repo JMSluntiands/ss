@@ -5,6 +5,11 @@
 
     RewriteEngine On
 
+    # Public disk uploads when storage:link cannot run (Hostinger disables symlink/exec)
+    RewriteCond %{REQUEST_URI} ^/storage/(.+)$
+    RewriteCond %{DOCUMENT_ROOT}/../storage/app/public/%1 -f
+    RewriteRule ^storage/(.+)$ ../storage/app/public/$1 [L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
