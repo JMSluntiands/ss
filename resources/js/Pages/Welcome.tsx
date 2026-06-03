@@ -37,7 +37,7 @@ export default function Welcome({
         <>
             <Head title="Shadow Syndicate - Beyblade Community" />
 
-            <div className="min-h-screen bg-zinc-950 text-white">
+            <div className="min-h-screen w-full overflow-x-hidden bg-zinc-950 text-white">
                 <SiteNav
                     activePage="home"
                     position="fixed"
@@ -48,7 +48,7 @@ export default function Welcome({
                 />
 
                 {/* ── Hero Section ── */}
-                <section id="home" className={`relative min-h-screen flex items-center justify-center pt-20 transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+                <section id="home" className={`relative min-h-screen flex items-center justify-center overflow-x-hidden pt-20 transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
                     <div className="absolute inset-0 overflow-hidden">
                         <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-red-600/15 rounded-full blur-[150px] animate-pulse" />
                         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-red-900/20 rounded-full blur-[120px]" />
@@ -67,7 +67,7 @@ export default function Welcome({
                         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
                             {/* Left column - Text */}
                             <div className="text-center lg:text-left order-2 lg:order-1">
-                                <h1 className="text-5xl sm:text-6xl lg:text-8xl font-black tracking-tighter leading-none mb-6">
+                                <h1 className="text-4xl sm:text-6xl lg:text-8xl font-black tracking-tighter leading-none mb-6 break-words">
                                     SHADOW
                                     <br />
                                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-400 to-red-600">
@@ -171,36 +171,36 @@ export default function Welcome({
                             </div>
 
                             {/* Right column - Logo */}
-                            <div className="flex justify-center order-1 lg:order-2">
-                                <div className="relative">
-                                    <SiteLogo className="w-56 h-56 sm:w-72 sm:h-72 lg:w-[400px] lg:h-[400px] drop-shadow-[0_0_60px_rgba(220,38,38,0.5)] relative z-10 object-contain" />
+                            <div className="flex justify-center order-1 lg:order-2 w-full min-w-0">
+                                <div className="relative mx-auto max-w-full overflow-hidden px-6 sm:px-10 py-4">
+                                    <SiteLogo className="w-48 h-48 sm:w-72 sm:h-72 lg:w-[400px] lg:h-[400px] mx-auto drop-shadow-[0_0_60px_rgba(220,38,38,0.5)] relative z-10 object-contain" />
 
-                                    <svg className="absolute -top-6 -right-8 w-16 h-24 animate-lightning-1" viewBox="0 0 64 96" fill="none">
+                                    <svg className="absolute top-0 right-2 sm:-top-6 sm:-right-8 w-12 h-20 sm:w-16 sm:h-24 animate-lightning-1" viewBox="0 0 64 96" fill="none">
                                         <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg1)" />
                                         <defs><linearGradient id="lg1" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fff" /><stop offset="1" stopColor="#ef4444" /></linearGradient></defs>
                                     </svg>
 
-                                    <svg className="absolute -bottom-4 -left-10 w-14 h-20 rotate-[200deg] animate-lightning-2" viewBox="0 0 64 96" fill="none">
+                                    <svg className="absolute bottom-0 left-0 sm:-bottom-4 sm:-left-10 w-10 h-16 sm:w-14 sm:h-20 rotate-[200deg] animate-lightning-2" viewBox="0 0 64 96" fill="none">
                                         <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg2)" />
                                         <defs><linearGradient id="lg2" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fca5a5" /><stop offset="1" stopColor="#dc2626" /></linearGradient></defs>
                                     </svg>
 
-                                    <svg className="absolute top-1/2 -right-12 w-12 h-16 -rotate-[30deg] animate-lightning-3" viewBox="0 0 64 96" fill="none">
+                                    <svg className="absolute top-1/2 right-0 sm:-right-12 w-10 h-14 sm:w-12 sm:h-16 -rotate-[30deg] animate-lightning-3" viewBox="0 0 64 96" fill="none">
                                         <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg3)" />
                                         <defs><linearGradient id="lg3" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fff" /><stop offset="1" stopColor="#b91c1c" /></linearGradient></defs>
                                     </svg>
 
-                                    <svg className="absolute -top-2 -left-8 w-10 h-14 rotate-[160deg] animate-lightning-4" viewBox="0 0 64 96" fill="none">
+                                    <svg className="absolute top-0 left-0 sm:-top-2 sm:-left-8 w-8 h-12 sm:w-10 sm:h-14 rotate-[160deg] animate-lightning-4" viewBox="0 0 64 96" fill="none">
                                         <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg4)" />
                                         <defs><linearGradient id="lg4" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fecaca" /><stop offset="1" stopColor="#ef4444" /></linearGradient></defs>
                                     </svg>
 
-                                    <svg className="absolute bottom-4 -right-6 w-10 h-16 rotate-[45deg] animate-lightning-2" viewBox="0 0 64 96" fill="none">
+                                    <svg className="absolute bottom-2 right-1 sm:bottom-4 sm:-right-6 w-8 h-12 sm:w-10 sm:h-16 rotate-[45deg] animate-lightning-2" viewBox="0 0 64 96" fill="none">
                                         <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg5)" />
                                         <defs><linearGradient id="lg5" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fff" /><stop offset="1" stopColor="#dc2626" /></linearGradient></defs>
                                     </svg>
 
-                                    <svg className="absolute top-8 -left-6 w-8 h-12 -rotate-[120deg] animate-lightning-1" viewBox="0 0 64 96" fill="none">
+                                    <svg className="absolute top-6 left-1 sm:top-8 sm:-left-6 w-7 h-10 sm:w-8 sm:h-12 -rotate-[120deg] animate-lightning-1" viewBox="0 0 64 96" fill="none">
                                         <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg6)" />
                                         <defs><linearGradient id="lg6" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fca5a5" /><stop offset="1" stopColor="#b91c1c" /></linearGradient></defs>
                                     </svg>

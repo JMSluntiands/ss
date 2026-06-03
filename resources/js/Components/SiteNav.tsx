@@ -73,12 +73,12 @@ export default function SiteNav({
     );
 
     return (
-        <nav className={navClass}>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between gap-3 h-16 sm:h-20 min-w-0">
-                    <Link href={logoHref} className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
-                        <SiteLogo className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
-                        <span className="text-base sm:text-lg md:text-xl font-black tracking-tight truncate">
+        <nav className={`${navClass} w-full`}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+                <div className="flex items-center justify-between gap-2 sm:gap-3 h-16 sm:h-20 min-w-0 w-full">
+                    <Link href={logoHref} className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
+                        <SiteLogo className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 shrink-0 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
+                        <span className="text-sm sm:text-lg md:text-xl font-black tracking-tight truncate">
                             SHADOW <span className="text-red-500">SYNDICATE</span>
                         </span>
                     </Link>
