@@ -22,7 +22,6 @@ $registerMainSite = function (): void {
     Route::get('/jersey', [\App\Http\Controllers\SitePageController::class, 'jersey'])->name('jersey');
 
     Route::post('/events/{event}/register', [EventRegistrationController::class, 'register'])
-        ->middleware(['auth', 'verified'])
         ->name('events.register');
 
     Route::get('/private-file/payment-qr/{event}', function (\App\Models\SiteEvent $event) {

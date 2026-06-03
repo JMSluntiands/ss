@@ -4,7 +4,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { PageProps } from '@/types';
 import { formatEventFeeDisplay, getRegistrationFee } from '@/utils/eventFees';
-import { getEventRegistrationDefaults, tournamentxLoginUrl } from '@/utils/eventRegistration';
+import { getEventRegistrationDefaults } from '@/utils/eventRegistration';
 import { isEventSlotsFull } from '@/utils/eventSlots';
 
 interface EventRegistrationItem {
@@ -105,7 +105,7 @@ export default function EventShow({
     event: EventData;
     registrationCounts: { total: number; confirmed: number; tentative: number };
 }) {
-    const { flash, auth, tournamentx_url } = usePage<PageProps>().props;
+    const { flash, auth } = usePage<PageProps>().props;
     const [regOpen, setRegOpen] = useState(false);
     const [regForm, setRegForm] = useState<RegForm>(emptyReg);
     const [processing, setProcessing] = useState(false);
@@ -124,13 +124,6 @@ export default function EventShow({
 
     const openRegister = () => {
         if (slotsFull) return;
-        if (!auth.user) {
-            window.location.href = tournamentxLoginUrl(
-                tournamentx_url,
-                typeof window !== 'undefined' ? window.location.href : undefined,
-            );
-            return;
-        }
         const defaults = getEventRegistrationDefaults(auth);
         setRegForm({ ...emptyReg, ...defaults });
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -370,16 +363,46 @@ export default function EventShow({
                                         <p className="text-[11px] text-gray-600 mt-1">Door price: {event.entry_fee}</p>
                                     )}
                                 </div>
-                                <div className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20">
+                                <div className={`p-3 rounded-xl border ${auth.user ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
                                     <p className="text-xs text-gray-500">Registering as</p>
-                                    <p className="text-sm font-semibold text-white">{auth.user?.name}</p>
+                                    {auth.user ? (
+                                        <>
+                                            <p className="text-sm font-semibold text-emerald-400">Logged in</p>
+                                            <p className="text-sm font-medium text-white mt-0.5">{auth.user.name}</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="text-sm font-semibold text-amber-400">Guest</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">No login required — fill in your details below.</p>
+                                        </>
+                                    )}
                                 </div>
-                                <input type="text" required value={regForm.full_name} readOnly className={`${inputClass} opacity-80 cursor-not-allowed`} placeholder="Full name" />
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Full Name *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={regForm.full_name}
+                                        onChange={(e) => setRegForm({ ...regForm, full_name: e.target.value })}
+                                        className={inputClass}
+                                        placeholder="Your full name"
+                                    />
+                                </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button type="button" onClick={() => setRegForm({ ...regForm, entry_type: 'single' })} className={`px-4 py-2.5 rounded-xl text-sm font-medium border ${regForm.entry_type === 'single' ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-zinc-800/50 text-gray-400 border-zinc-700/50'}`}>Single</button>
                                     <button type="button" onClick={() => event.allow_double_entry && setRegForm({ ...regForm, entry_type: 'double' })} disabled={!event.allow_double_entry} className={`px-4 py-2.5 rounded-xl text-sm font-medium border ${regForm.entry_type === 'double' ? 'bg-red-500/10 text-red-400 border-red-500/30' : !event.allow_double_entry ? 'bg-zinc-800/30 text-gray-600 border-zinc-700/30 cursor-not-allowed' : 'bg-zinc-800/50 text-gray-400 border-zinc-700/50'}`}>Double</button>
                                 </div>
-                                <input type="text" required value={regForm.blader_name_1} readOnly className={`${inputClass} opacity-80 cursor-not-allowed`} placeholder="Blader Name 1" />
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Blader Name *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={regForm.blader_name_1}
+                                        onChange={(e) => setRegForm({ ...regForm, blader_name_1: e.target.value })}
+                                        className={inputClass}
+                                        placeholder="Your blader name"
+                                    />
+                                </div>
                                 {regForm.entry_type === 'double' && <input type="text" required value={regForm.blader_name_2} onChange={(e) => setRegForm({ ...regForm, blader_name_2: e.target.value })} className={inputClass} placeholder="Blader Name 2" />}
                                 {event.require_payment && (
                                     <div>

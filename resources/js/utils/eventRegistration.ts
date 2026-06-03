@@ -7,10 +7,10 @@ export interface EventRegFormDefaults {
 
 export function getEventRegistrationDefaults(
     auth: PageProps['auth'],
-): EventRegFormDefaults | null {
+): EventRegFormDefaults {
     const user = auth.user;
     if (!user) {
-        return null;
+        return { full_name: '', blader_name_1: '' };
     }
 
     const bladerName =

@@ -1,0 +1,1 @@
+function a(n){const e=n.user;if(!e)return{full_name:"",blader_name_1:""};const t=e.tournament_blader_name??e.blader_name??e.name;return{full_name:e.name,blader_name_1:t}}function r(n){if(!n?.trim())return null;const e=parseInt(n.trim(),10);return Number.isFinite(e)&&e>0?e:null}function l(n,e){const t=r(n);return t!==null&&e>=t}export{a as g,l as i};

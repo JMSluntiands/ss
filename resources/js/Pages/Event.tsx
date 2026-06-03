@@ -4,7 +4,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import { PageProps } from '@/types';
 import { formatEventFeeDisplay, getRegistrationFee } from '@/utils/eventFees';
-import { getEventRegistrationDefaults, tournamentxLoginUrl } from '@/utils/eventRegistration';
+import { getEventRegistrationDefaults } from '@/utils/eventRegistration';
 import { isEventSlotsFull } from '@/utils/eventSlots';
 
 interface UpcomingEvent {
@@ -99,7 +99,7 @@ function formatEventDateTime(date: string, time?: string | null): string {
 }
 
 export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomingEvents?: UpcomingEvent[]; pastEvents?: PastEvent[] }) {
-    const { flash, auth, tournamentx_url } = usePage<PageProps>().props;
+    const { flash, auth } = usePage<PageProps>().props;
     const [regEvent, setRegEvent] = useState<UpcomingEvent | null>(null);
     const [regForm, setRegForm] = useState<RegForm>(emptyReg);
     const [processing, setProcessing] = useState(false);
@@ -107,13 +107,6 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
 
     const openRegister = (event: UpcomingEvent) => {
         if (isEventSlotsFull(event.slots, event.registration_count ?? 0)) {
-            return;
-        }
-        if (!auth.user) {
-            window.location.href = tournamentxLoginUrl(
-                tournamentx_url,
-                typeof window !== 'undefined' ? window.location.href : undefined,
-            );
             return;
         }
         const defaults = getEventRegistrationDefaults(auth);
@@ -486,20 +479,32 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
                                     )}
                                 </div>
 
-                                <div className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20">
+                                <div className={`p-3 rounded-xl border ${auth.user ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
                                     <p className="text-xs text-gray-500">Registering as</p>
-                                    <p className="text-sm font-semibold text-white">{auth.user?.name}</p>
-                                    <p className="text-xs text-cyan-400/80 mt-0.5">{auth.user?.email}</p>
+                                    {auth.user ? (
+                                        <>
+                                            <p className="text-sm font-semibold text-emerald-400">Logged in</p>
+                                            <p className="text-sm font-medium text-white mt-0.5">{auth.user.name}</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">{auth.user.email}</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="text-sm font-semibold text-amber-400">Guest</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">No login required — fill in your details below.</p>
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Full Name */}
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Full Name</label>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Full Name *</label>
                                     <input
                                         type="text"
                                         value={regForm.full_name}
-                                        readOnly
-                                        className={`${inputClass} opacity-80 cursor-not-allowed`}
+                                        onChange={(e) => setRegForm({ ...regForm, full_name: e.target.value })}
+                                        required
+                                        className={inputClass}
+                                        placeholder="Your full name"
                                     />
                                 </div>
 
@@ -546,11 +551,14 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
                                     <input
                                         type="text"
                                         value={regForm.blader_name_1}
-                                        readOnly
+                                        onChange={(e) => setRegForm({ ...regForm, blader_name_1: e.target.value })}
                                         required
-                                        className={`${inputClass} opacity-80 cursor-not-allowed`}
+                                        className={inputClass}
+                                        placeholder="Your blader name"
                                     />
-                                    <p className="text-[11px] text-gray-600 mt-1">Linked to your TournamentX account. Update under Profile if needed.</p>
+                                    {auth.user && (
+                                        <p className="text-[11px] text-gray-600 mt-1">Pre-filled from your account. Update under Profile if needed.</p>
+                                    )}
                                 </div>
 
                                 {/* Blader Name 2 (for double entry) */}

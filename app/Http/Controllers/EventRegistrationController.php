@@ -5,25 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\EventRegistration;
 use App\Models\SiteEvent;
 use App\Services\MemberAccountService;
-use App\Support\TournamentXDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class EventRegistrationController extends Controller
 {
-    public function register(Request $request, SiteEvent $event, MemberAccountService $memberAccounts)
+    public function register(Request $request, SiteEvent $event)
     {
         $user = $request->user();
-        if (! $user) {
-            return redirect()->guest(TournamentXDomain::url('/login'))
-                ->with('error', 'Log in with your TournamentX account to register for this event.');
+
+        if ($user) {
+            if ($event->registrations()->where('user_id', $user->id)->whereIn('status', ['tentative', 'confirmed'])->exists()) {
+                return back()->with('error', 'You already have a registration for this event.');
+            }
         }
 
-        $bladerName = $memberAccounts->tournamentBladerName($user);
-
-        if ($event->registrations()->where('user_id', $user->id)->whereIn('status', ['tentative', 'confirmed'])->exists()) {
-            return back()->with('error', 'You already have a registration for this event.');
-        }
         $maxSlots = (int) $event->slots;
         if ($maxSlots > 0) {
             $registeredCount = $event->registrations()
@@ -58,14 +54,23 @@ class EventRegistrationController extends Controller
 
         $data = $request->validate($rules);
 
+        if (! $user) {
+            $duplicate = $event->registrations()
+                ->whereIn('status', ['tentative', 'confirmed'])
+                ->whereRaw('LOWER(blader_name_1) = ?', [mb_strtolower($data['blader_name_1'])])
+                ->exists();
+
+            if ($duplicate) {
+                return back()->with('error', 'This blader name is already registered for this event.');
+            }
+        }
+
         if ($request->hasFile('payment_proof')) {
             $data['payment_proof'] = $request->file('payment_proof')->store('payment-proofs');
         }
 
         $data['site_event_id'] = $event->id;
-        $data['user_id'] = $user->id;
-        $data['full_name'] = $user->name;
-        $data['blader_name_1'] = $bladerName;
+        $data['user_id'] = $user?->id;
         $data['status'] = 'tentative';
 
         EventRegistration::create($data);
