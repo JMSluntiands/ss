@@ -66,7 +66,7 @@ class EventRegistrationController extends Controller
         }
 
         if ($request->hasFile('payment_proof')) {
-            $data['payment_proof'] = $request->file('payment_proof')->store('payment-proofs');
+            $data['payment_proof'] = $request->file('payment_proof')->store('payment-proofs', 'local');
         }
 
         $data['site_event_id'] = $event->id;
@@ -141,8 +141,8 @@ class EventRegistrationController extends Controller
             }
         }
 
-        if ($registration->payment_proof && Storage::exists($registration->payment_proof)) {
-            Storage::delete($registration->payment_proof);
+        if ($registration->payment_proof && Storage::disk('local')->exists($registration->payment_proof)) {
+            Storage::disk('local')->delete($registration->payment_proof);
         }
 
         $fullName = $registration->full_name;

@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\PublicStorage;
+
 return [
 
     /*
@@ -41,7 +43,7 @@ return [
         'public' => [
             'driver' => 'local',
             // Outside the Git deploy folder on shared hosting so redeploys do not wipe uploads.
-            'root' => env('PUBLIC_STORAGE_PATH', storage_path('app/public')),
+            'root' => PublicStorage::root(),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'serve' => true,
@@ -76,7 +78,7 @@ return [
     */
 
     'links' => [
-        public_path('storage') => env('PUBLIC_STORAGE_PATH', storage_path('app/public')),
+        public_path('storage') => PublicStorage::root(),
     ],
 
 ];

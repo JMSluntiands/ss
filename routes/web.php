@@ -25,11 +25,11 @@ $registerMainSite = function (): void {
         ->name('events.register');
 
     Route::get('/private-file/payment-qr/{event}', function (\App\Models\SiteEvent $event) {
-        if (! $event->payment_qr || ! \Illuminate\Support\Facades\Storage::exists($event->payment_qr)) {
+        if (! $event->payment_qr || ! \Illuminate\Support\Facades\Storage::disk('local')->exists($event->payment_qr)) {
             abort(404);
         }
 
-        return \Illuminate\Support\Facades\Storage::response($event->payment_qr);
+        return \Illuminate\Support\Facades\Storage::disk('local')->response($event->payment_qr);
     })->name('private.payment-qr');
 
     Route::get('/admin/login', [AdminLoginController::class, 'create'])->name('admin.login');
