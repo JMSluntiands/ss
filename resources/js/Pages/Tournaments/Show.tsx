@@ -1432,6 +1432,9 @@ function SwissMatchCard({
     );
 }
 
+/** Standings: page scroll only; horizontal scroll on narrow screens for wide tables. */
+const standingsTableWrapClass = 'overflow-x-auto';
+
 function StandingsTableHead({ tournament }: { tournament: Tournament }) {
     return (
         <thead>
@@ -1576,7 +1579,7 @@ function StandingsTablePanel({
             <div className="px-4 py-2 border-b border-slate-800/60 bg-slate-800/20">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</span>
             </div>
-            <div className="overflow-x-auto max-h-[min(28rem,55vh)] overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600">
+            <div className={standingsTableWrapClass}>
                 <table className="w-full text-sm">
                     <StandingsTableHead tournament={tournament} />
                     <StandingsTableBody
@@ -1674,7 +1677,7 @@ function StandingsTable({
                     ))}
                 </div>
             ) : (
-                <div className="overflow-x-auto max-h-[min(32rem,65vh)] overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgb(71_85_105)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600">
+                <div className={standingsTableWrapClass}>
                     <table className="w-full text-sm">
                         <StandingsTableHead tournament={tournament} />
                         <StandingsTableBody

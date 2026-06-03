@@ -1,1 +1,0 @@
-import{y as s,j as u}from"./app-BKa2fP1M.js";function m({className:o,alt:t="Tournament X",loading:r,fetchPriority:n}){const{tournament_x_logo_url:e}=s().props;return u.jsx("img",{src:e??route("site.tournamentx-logo"),alt:t,className:o,loading:r,fetchPriority:n})}export{m as T};
