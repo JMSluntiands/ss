@@ -1,12 +1,13 @@
 import { MemberSlideData, MembersSliderSection } from '@/Components/MembersMarquee';
 // import TournamentRosterSection, { TournamentRosterData } from '@/Components/TournamentRosterSection';
-import TournamentXFeaturesSection from '@/Components/TournamentXFeaturesSection';
 import SiteFooter from '@/Components/SiteFooter';
 import SiteLogo from '@/Components/SiteLogo';
+import SiteNav from '@/Components/SiteNav';
 import SiteVisitsStrip from '@/Components/SiteVisitsStrip';
 import VisitorCounter from '@/Components/VisitorCounter';
 import { PageProps } from '@/types';
 import { tournamentxDashboardUrl, tournamentxLoginUrl } from '@/utils/tournamentxUrl';
+import TournamentXFeaturesSection from '@/Components/TournamentXFeaturesSection';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
@@ -20,7 +21,6 @@ export default function Welcome({
     const txDashboard = tournamentxDashboardUrl(page.props);
     const manageTournamentHref = auth.user ? txDashboard : txLogin;
     const [scrollY, setScrollY] = useState(0);
-    const [menuOpen, setMenuOpen] = useState(false);
     const [joinModalOpen, setJoinModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
 
@@ -38,67 +38,14 @@ export default function Welcome({
             <Head title="Shadow Syndicate - Beyblade Community" />
 
             <div className="min-h-screen bg-zinc-950 text-white overflow-x-hidden">
-                {/* ── Navigation ── */}
-                <nav
-                    className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-                        navScrolled
-                            ? 'bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-800/60 shadow-lg shadow-black/20'
-                            : 'bg-transparent'
-                    }`}
-                >
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16 sm:h-20">
-                            <div className="flex items-center gap-3">
-                                <SiteLogo className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
-                                <span className="text-lg sm:text-xl font-black tracking-tight">
-                                    SHADOW <span className="text-red-500">SYNDICATE</span>
-                                </span>
-                            </div>
-
-                            <div className="hidden md:flex items-center gap-2">
-                                <a href="#home" className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Home</a>
-                                <Link href={route('members')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Members</Link>
-                                <Link href={route('events')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Event</Link>
-                                <Link href={route('blog')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Blog</Link>
-                                <Link href={route('jersey')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Shop</Link>
-                                <div className="w-px h-6 bg-zinc-700 mx-2" />
-                                <button
-                                    onClick={() => setJoinModalOpen(true)}
-                                    className="px-5 py-2 text-sm font-semibold bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
-                                >
-                                    Join Us
-                                </button>
-                            </div>
-
-                            <button
-                                onClick={() => setMenuOpen(!menuOpen)}
-                                className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-zinc-800 transition-colors"
-                            >
-                                {menuOpen ? (
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                                    </svg>
-                                )}
-                            </button>
-                        </div>
-
-                        {menuOpen && (
-                            <div className="md:hidden border-t border-zinc-800/60 py-4 space-y-1 bg-zinc-950/95 backdrop-blur-xl">
-                                <a href="#home" className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 rounded-lg" onClick={() => setMenuOpen(false)}>Home</a>
-                                <Link href={route('members')} className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 rounded-lg">Members</Link>
-                                <Link href={route('events')} className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 rounded-lg">Event</Link>
-                                <Link href={route('blog')} className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 rounded-lg">Blog</Link>
-                                <Link href={route('jersey')} className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 rounded-lg">Shop</Link>
-                                <div className="border-t border-zinc-800/60 my-2" />
-                                <button onClick={() => { setMenuOpen(false); setJoinModalOpen(true); }} className="block w-full text-left px-4 py-2.5 text-sm font-semibold text-red-400 hover:bg-zinc-800/60 rounded-lg">Join Us</button>
-                            </div>
-                        )}
-                    </div>
-                </nav>
+                <SiteNav
+                    activePage="home"
+                    position="fixed"
+                    scrolled={navScrolled}
+                    homeHref="#home"
+                    showJoinUs
+                    onJoinUsClick={() => setJoinModalOpen(true)}
+                />
 
                 {/* ── Hero Section ── */}
                 <section id="home" className={`relative min-h-screen flex items-center justify-center pt-20 transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>

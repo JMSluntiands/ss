@@ -1,5 +1,5 @@
 import SiteFooter from '@/Components/SiteFooter';
-import SiteLogo from '@/Components/SiteLogo';
+import SiteNav from '@/Components/SiteNav';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { PageProps } from '@/types';
@@ -155,21 +155,7 @@ export default function EventShow({
         <>
             <Head title={`${event.title} - Event Details`} />
             <div className="min-h-screen bg-zinc-950 text-white">
-                <nav className="bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-800/60 sticky top-0 z-50">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16 sm:h-20">
-                            <Link href={route('home')} className="flex items-center gap-3">
-                                <SiteLogo className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
-                                <span className="text-lg sm:text-xl font-black tracking-tight">
-                                    SHADOW <span className="text-red-500">SYNDICATE</span>
-                                </span>
-                            </Link>
-                            <Link href={route('events')} className="text-sm text-gray-400 hover:text-white transition-colors">
-                                Back to Events
-                            </Link>
-                        </div>
-                    </div>
-                </nav>
+                <SiteNav activePage="events" />
                 {(flash?.success || flash?.error) && (
                     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 space-y-2">
                         {flash?.success && (
@@ -186,6 +172,15 @@ export default function EventShow({
                 )}
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                    <Link
+                        href={route('events')}
+                        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-red-400 transition-colors mb-6"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Back to Events
+                    </Link>
                     <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-5 sm:p-7">
                         <div className="flex items-start justify-between gap-3 mb-4">
                             <h1 className="text-3xl sm:text-4xl font-black tracking-tight">{event.title}</h1>

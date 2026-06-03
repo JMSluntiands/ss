@@ -1,6 +1,6 @@
 import OptimizedImage from '@/Components/OptimizedImage';
 import SiteFooter from '@/Components/SiteFooter';
-import SiteLogo from '@/Components/SiteLogo';
+import SiteNav from '@/Components/SiteNav';
 import { memberImageSrc } from '@/utils/publicStorage';
 import { Head, Link } from '@inertiajs/react';
 
@@ -102,26 +102,18 @@ export default function MemberShow({
         <>
             <Head title={`${member.name} - Shadow Syndicate`} />
             <div className="min-h-screen bg-zinc-950 text-white">
-                <nav className="bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-800/60 sticky top-0 z-50">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16 sm:h-20">
-                            <Link href={route('home')} className="flex items-center gap-3">
-                                <SiteLogo className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
-                                <span className="text-lg sm:text-xl font-black tracking-tight">
-                                    SHADOW <span className="text-red-500">SYNDICATE</span>
-                                </span>
-                            </Link>
-                            <Link
-                                href={route('members')}
-                                className="text-sm text-gray-400 hover:text-white transition-colors"
-                            >
-                                ← All Members
-                            </Link>
-                        </div>
-                    </div>
-                </nav>
+                <SiteNav activePage="members" />
 
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                    <Link
+                        href={route('members')}
+                        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-red-400 transition-colors mb-6"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        All Members
+                    </Link>
                     <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/50 overflow-hidden mb-8">
                         <div className="grid grid-cols-1 md:grid-cols-[280px_1fr]">
                             <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[280px]">

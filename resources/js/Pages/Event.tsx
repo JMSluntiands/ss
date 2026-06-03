@@ -1,5 +1,5 @@
 import SiteFooter from '@/Components/SiteFooter';
-import SiteLogo from '@/Components/SiteLogo';
+import SiteNav from '@/Components/SiteNav';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import { PageProps } from '@/types';
@@ -145,26 +145,7 @@ export default function Event({ upcomingEvents = [], pastEvents = [] }: { upcomi
         <>
             <Head title="Events - Shadow Syndicate" />
             <div className="min-h-screen bg-zinc-950 text-white">
-                {/* Navigation */}
-                <nav className="bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-800/60 sticky top-0 z-50">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16 sm:h-20">
-                            <Link href={route('home')} className="flex items-center gap-3">
-                                <SiteLogo className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-[0_0_12px_rgba(220,38,38,0.4)]" />
-                                <span className="text-lg sm:text-xl font-black tracking-tight">
-                                    SHADOW <span className="text-red-500">SYNDICATE</span>
-                                </span>
-                            </Link>
-                            <div className="hidden md:flex items-center gap-2">
-                                <Link href={route('home')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Home</Link>
-                                <Link href={route('members')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Members</Link>
-                                <Link href={route('events')} className="px-4 py-2 text-sm font-medium text-red-400 transition-colors">Event</Link>
-                                <Link href={route('blog')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Blog</Link>
-                                <Link href={route('jersey')} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Shop</Link>
-                            </div>
-                        </div>
-                    </div>
-                </nav>
+                <SiteNav activePage="events" />
                 {/* Flash Messages */}
                 {flash?.success && (
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
