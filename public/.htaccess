@@ -5,11 +5,7 @@
 
     RewriteEngine On
 
-    # Public uploads (PUBLIC_STORAGE_PATH or storage/app/public; Laravel route is fallback)
-    RewriteCond %{REQUEST_URI} ^/storage/(.+)$
-    RewriteCond %{DOCUMENT_ROOT}/../uploads/%1 -f
-    RewriteRule ^storage/(.+)$ ../uploads/$1 [L]
-
+    # Public disk uploads when storage:link cannot run (Hostinger disables symlink/exec)
     RewriteCond %{REQUEST_URI} ^/storage/(.+)$
     RewriteCond %{DOCUMENT_ROOT}/../storage/app/public/%1 -f
     RewriteRule ^storage/(.+)$ ../storage/app/public/$1 [L]

@@ -276,7 +276,7 @@ class AdminContentController extends Controller
         $data['user_id'] = auth()->id();
 
         if ($request->hasFile('payment_qr')) {
-            $data['payment_qr'] = $request->file('payment_qr')->store('payment-qr', 'local');
+            $data['payment_qr'] = $request->file('payment_qr')->store('payment-qr');
         }
 
         SiteEvent::create($data);
@@ -290,9 +290,9 @@ class AdminContentController extends Controller
 
         if ($request->hasFile('payment_qr')) {
             if ($event->payment_qr) {
-                \Illuminate\Support\Facades\Storage::disk('local')->delete($event->payment_qr);
+                \Illuminate\Support\Facades\Storage::delete($event->payment_qr);
             }
-            $data['payment_qr'] = $request->file('payment_qr')->store('payment-qr', 'local');
+            $data['payment_qr'] = $request->file('payment_qr')->store('payment-qr');
         } else {
             unset($data['payment_qr']);
         }

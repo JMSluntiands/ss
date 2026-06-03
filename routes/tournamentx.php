@@ -58,11 +58,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/my-events/{event}', [AdminContentController::class, 'eventDestroy'])->name('my-events.destroy');
 
     Route::get('/private-file/payment-qr/{event}', function (\App\Models\SiteEvent $event) {
-        if (! $event->payment_qr || ! \Illuminate\Support\Facades\Storage::disk('local')->exists($event->payment_qr)) {
+        if (! $event->payment_qr || ! \Illuminate\Support\Facades\Storage::exists($event->payment_qr)) {
             abort(404);
         }
 
-        return \Illuminate\Support\Facades\Storage::disk('local')->response($event->payment_qr);
+        return \Illuminate\Support\Facades\Storage::response($event->payment_qr);
     })->name('private.payment-qr');
 
     Route::get('/private-file/payment-proof/{registration}', function (\App\Models\EventRegistration $registration) {
@@ -70,11 +70,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         if (! auth()->user()->isAdmin() && $event->user_id !== auth()->id()) {
             abort(403);
         }
-        if (! $registration->payment_proof || ! \Illuminate\Support\Facades\Storage::disk('local')->exists($registration->payment_proof)) {
+        if (! $registration->payment_proof || ! \Illuminate\Support\Facades\Storage::exists($registration->payment_proof)) {
             abort(404);
         }
 
-        return \Illuminate\Support\Facades\Storage::disk('local')->response($registration->payment_proof);
+        return \Illuminate\Support\Facades\Storage::response($registration->payment_proof);
     })->name('private.payment-proof');
 
     Route::get('/tournaments/create', [TournamentController::class, 'create'])->name('tournaments.create');
