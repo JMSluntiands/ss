@@ -1,3 +1,4 @@
+import PlanUpgradeButton from '@/Components/TournamentX/PlanUpgradeButton';
 import TournamentXBrand from '@/Components/TournamentXBrand';
 import {
     SidebarSectionLabel,
@@ -12,11 +13,17 @@ export default function Authenticated({
     children,
     currentPage = 'tournaments',
 }: PropsWithChildren<{ currentPage?: string }>) {
-    const { auth, is_admin, permissions } = usePage<PageProps>().props;
+    const {
+        auth,
+        permissions,
+        tournamentx_show_upgrade,
+        tournamentx_upgrade_pending,
+        tournamentx_pricing_url,
+        tournamentx_plan_label,
+    } = usePage<PageProps>().props;
     const user = auth.user;
     const isMemberDashboard = Boolean(
         user?.site_member_id &&
-            !is_admin &&
             !permissions.can_create_tournaments &&
             !permissions.can_manage_tournaments &&
             !permissions.can_manage_events,
@@ -106,33 +113,65 @@ export default function Authenticated({
         },
     ];
 
+    const renderUpgrade = (collapsed: boolean) => {
+        if (tournamentx_upgrade_pending) {
+            return (
+                <div
+                    className={`mb-3 flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-sm ${
+                        collapsed ? 'justify-center' : ''
+                    }`}
+                    title={collapsed ? 'Upgrade pending' : undefined}
+                >
+                    <svg className="w-5 h-5 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {!collapsed && (
+                        <span className="min-w-0 flex-1 text-left">
+                            <span className="block font-semibold text-amber-200">Upgrade pending</span>
+                            <span className="block text-[10px] font-normal text-gray-500">Waiting for admin approval</span>
+                        </span>
+                    )}
+                </div>
+            );
+        }
+
+        if (!tournamentx_show_upgrade) {
+            return null;
+        }
+
+        return (
+            <PlanUpgradeButton
+                className={`mb-3 w-full flex items-center gap-3 rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-500/15 to-cyan-500/10 px-3 py-3 text-sm font-semibold text-white hover:border-cyan-500/40 hover:from-violet-500/25 transition-all ${
+                    collapsed ? 'justify-center' : ''
+                }`}
+                title={collapsed ? 'Request upgrade' : undefined}
+            >
+                <svg className="w-5 h-5 shrink-0 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                    />
+                </svg>
+                {!collapsed && (
+                    <span className="min-w-0 flex-1 text-left">
+                        <span className="block">Request upgrade</span>
+                        <span className="block text-[10px] font-normal text-gray-500 truncate">
+                            {tournamentx_plan_label ?? 'Starter'} → Community
+                        </span>
+                    </span>
+                )}
+            </PlanUpgradeButton>
+        );
+    };
+
     const renderNav = (collapsed: boolean) => (
         <>
             <SidebarSectionLabel label="Workspace" collapsed={collapsed} />
             <TournamentSidebarNav items={workspaceNav} collapsed={collapsed} />
             <SidebarSectionLabel label="Explore" collapsed={collapsed} />
             <TournamentSidebarNav items={exploreNav} collapsed={collapsed} variant="subtle" />
-            {is_admin && (
-                <div className="pt-3 mt-3 border-t border-zinc-800/60">
-                    <Link
-                        href={withAppBase(route('admin.dashboard', undefined, false))}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium tx-nav-admin transition-all ${
-                            collapsed ? 'justify-center' : ''
-                        }`}
-                        title={collapsed ? 'Admin Panel' : undefined}
-                    >
-                        <svg className="w-5 h-5 text-violet-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.5}
-                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                            />
-                        </svg>
-                        {!collapsed && <span>Admin Panel</span>}
-                    </Link>
-                </div>
-            )}
         </>
     );
 
@@ -167,6 +206,7 @@ export default function Authenticated({
                 <nav className="flex-1 py-2 px-3 space-y-1 overflow-y-auto">{renderNav(sidebarCollapsed)}</nav>
 
                 <div className="border-t border-zinc-800/80 p-3">
+                    {renderUpgrade(sidebarCollapsed)}
                     <div className="relative">
                         <button
                             onClick={() => setUserDropdownOpen(!userDropdownOpen)}
@@ -198,6 +238,24 @@ export default function Authenticated({
                                         sidebarCollapsed ? 'left-full ml-2 bottom-0' : 'left-0'
                                     }`}
                                 >
+                                    {tournamentx_upgrade_pending && (
+                                        <span className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-400">
+                                            Upgrade pending approval
+                                        </span>
+                                    )}
+                                    {tournamentx_show_upgrade && (
+                                        <PlanUpgradeButton className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-cyan-400 hover:text-cyan-300 hover:bg-zinc-700/50 transition-colors text-left">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={1.5}
+                                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                                                />
+                                            </svg>
+                                            Request upgrade
+                                        </PlanUpgradeButton>
+                                    )}
                                     <Link
                                         href={withAppBase(route('profile.edit', undefined, false))}
                                         className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-700/50 transition-colors"
@@ -259,6 +317,7 @@ export default function Authenticated({
                 <nav className="flex-1 py-2 px-3 space-y-1 overflow-y-auto">{renderNav(false)}</nav>
 
                 <div className="border-t border-zinc-800/80 p-3">
+                    {renderUpgrade(false)}
                     <div className="flex items-center gap-3 px-3 py-2.5">
                         <div className="w-8 h-8 rounded-full tx-avatar flex items-center justify-center text-white text-xs font-bold">
                             {user.name.charAt(0).toUpperCase()}

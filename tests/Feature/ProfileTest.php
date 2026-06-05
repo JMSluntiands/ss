@@ -15,7 +15,7 @@ class ProfileTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this
-            ->actingAs($user)
+            ->actingAs($user, 'tournamentx')
             ->get('/profile');
 
         $response->assertOk();
@@ -26,7 +26,7 @@ class ProfileTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this
-            ->actingAs($user)
+            ->actingAs($user, 'tournamentx')
             ->patch('/profile', [
                 'name' => 'Test User',
                 'email' => 'test@example.com',
@@ -48,7 +48,7 @@ class ProfileTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this
-            ->actingAs($user)
+            ->actingAs($user, 'tournamentx')
             ->patch('/profile', [
                 'name' => 'Test User',
                 'email' => $user->email,
@@ -66,7 +66,7 @@ class ProfileTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this
-            ->actingAs($user)
+            ->actingAs($user, 'tournamentx')
             ->delete('/profile', [
                 'password' => 'password',
             ]);
@@ -84,7 +84,7 @@ class ProfileTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this
-            ->actingAs($user)
+            ->actingAs($user, 'tournamentx')
             ->from('/profile')
             ->delete('/profile', [
                 'password' => 'wrong-password',

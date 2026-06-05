@@ -1,6 +1,8 @@
+import OptimizedImage from '@/Components/OptimizedImage';
 import SiteLogo from '@/Components/SiteLogo';
-import { PageProps } from '@/types';
-import { tournamentxDashboardUrl, tournamentxLoginUrl } from '@/utils/tournamentxUrl';
+import { PageProps, User } from '@/types';
+import { accountHomeUrl, memberDisplayName, memberLoginUrl } from '@/utils/memberUrl';
+import { memberImageSrc } from '@/utils/publicStorage';
 import { Link, usePage } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
@@ -10,8 +12,6 @@ type SiteNavProps = {
     activePage?: SiteNavPage;
     position?: 'sticky' | 'fixed';
     scrolled?: boolean;
-    showJoinUs?: boolean;
-    onJoinUsClick?: () => void;
     homeHref?: string;
     trailing?: ReactNode;
 };
@@ -24,6 +24,30 @@ const navLinks: { key: SiteNavPage; label: string; href: () => string }[] = [
     { key: 'jersey', label: 'Shop', href: () => route('jersey') },
 ];
 
+function memberAvatar(user: User, sizeClass = 'h-9 w-9') {
+    const imageUrl = memberImageSrc(user.site_member_image_url ?? null, 'thumb')
+        ?? memberImageSrc(user.site_member_image_url ?? null, 'full');
+
+    if (imageUrl) {
+        return (
+            <OptimizedImage
+                src={imageUrl}
+                fallbackSrc={memberImageSrc(user.site_member_image_url ?? null, 'full') ?? undefined}
+                alt={memberDisplayName(user)}
+                className={`${sizeClass} shrink-0 rounded-full object-cover border border-zinc-700/50`}
+            />
+        );
+    }
+
+    return (
+        <span
+            className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-full bg-red-500/20 text-sm font-bold text-red-400`}
+        >
+            {memberDisplayName(user).charAt(0).toUpperCase()}
+        </span>
+    );
+}
+
 function linkClass(active: boolean): string {
     return `px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
         active ? 'text-red-400' : 'text-gray-300 hover:text-white'
@@ -34,16 +58,18 @@ export default function SiteNav({
     activePage,
     position = 'sticky',
     scrolled = true,
-    showJoinUs = false,
-    onJoinUsClick,
     homeHref,
     trailing,
 }: SiteNavProps) {
-    const { auth, tournamentx_enabled, tournamentx_url } = usePage<PageProps>().props;
+    const page = usePage<PageProps>();
+    const { auth, tournamentx_enabled, tournamentx_url, is_member_portal } = page.props;
     const [menuOpen, setMenuOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
 
-    const loginUrl = tournamentxLoginUrl({ tournamentx_enabled, tournamentx_url });
-    const dashboardUrl = tournamentxDashboardUrl({ tournamentx_enabled, tournamentx_url });
+    const loginUrl = memberLoginUrl();
+    const profileUrl = auth.user
+        ? accountHomeUrl({ is_member_portal, tournamentx_enabled, tournamentx_url })
+        : memberLoginUrl();
 
     const navClass =
         position === 'fixed'
@@ -57,12 +83,66 @@ export default function SiteNav({
     const logoHref = homeHref ?? route('home');
 
     const authAction = auth.user ? (
-        <a
-            href={dashboardUrl}
-            className="shrink-0 px-4 py-2 text-sm font-semibold text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 rounded-lg transition-colors"
-        >
-            Dashboard
-        </a>
+        <div className="relative shrink-0">
+            {profileOpen && (
+                <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} aria-hidden />
+            )}
+            <button
+                type="button"
+                onClick={() => setProfileOpen((open) => !open)}
+                className="flex items-center gap-2 max-w-[10rem] sm:max-w-[12rem] py-1 text-left hover:opacity-90 transition-opacity"
+                aria-expanded={profileOpen}
+                aria-haspopup="menu"
+            >
+                {memberAvatar(auth.user)}
+                <span className="min-w-0 text-sm font-semibold text-white truncate">
+                    {memberDisplayName(auth.user)}
+                </span>
+                <svg
+                    className={`w-4 h-4 shrink-0 text-gray-500 transition-transform ${profileOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            {profileOpen && (
+                <div
+                    role="menu"
+                    className="absolute right-0 top-full z-50 mt-2 w-40 rounded-xl border border-zinc-800/80 bg-zinc-900 py-1 shadow-xl shadow-black/40"
+                >
+                    <a
+                        href={profileUrl}
+                        role="menuitem"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 transition-colors"
+                        onClick={() => setProfileOpen(false)}
+                    >
+                        {is_member_portal ? 'Profile' : 'Dashboard'}
+                    </a>
+                    {!is_member_portal && tournamentx_enabled && tournamentx_url && (
+                        <a
+                            href={`${tournamentx_url.replace(/\/$/, '')}/profile`}
+                            role="menuitem"
+                            className="block px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800/60 transition-colors"
+                            onClick={() => setProfileOpen(false)}
+                        >
+                            Account settings
+                        </a>
+                    )}
+                    <Link
+                        href={route('member.logout', undefined, false)}
+                        method="post"
+                        as="button"
+                        role="menuitem"
+                        className="block w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:text-red-400 hover:bg-zinc-800/60 transition-colors"
+                        onClick={() => setProfileOpen(false)}
+                    >
+                        Logout
+                    </Link>
+                </div>
+            )}
+        </div>
     ) : (
         <a
             href={loginUrl}
@@ -111,16 +191,6 @@ export default function SiteNav({
 
                             {authAction}
 
-                            {showJoinUs && onJoinUsClick && (
-                                <button
-                                    type="button"
-                                    onClick={onJoinUsClick}
-                                    className="hidden sm:inline-flex shrink-0 px-4 sm:px-5 py-2 text-sm font-semibold bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
-                                >
-                                    Join Us
-                                </button>
-                            )}
-
                             <button
                                 type="button"
                                 onClick={() => setMenuOpen(!menuOpen)}
@@ -167,21 +237,6 @@ export default function SiteNav({
                                     {item.label}
                                 </Link>
                             ),
-                        )}
-                        {showJoinUs && onJoinUsClick && (
-                            <>
-                                <div className="border-t border-zinc-800/60 my-2" />
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setMenuOpen(false);
-                                        onJoinUsClick();
-                                    }}
-                                    className="block w-full text-left px-4 py-2.5 text-sm font-semibold text-red-400 hover:bg-zinc-800/60 rounded-lg"
-                                >
-                                    Join Us
-                                </button>
-                            </>
                         )}
                     </div>
                 )}

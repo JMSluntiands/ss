@@ -1,9 +1,9 @@
 <?php
 
-use App\Http\Controllers\AdminContentController;
-use App\Http\Controllers\AdminController;
-use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\EventRegistrationController;
+use App\Http\Controllers\MemberAuthController;
+use App\Http\Controllers\MemberDashboardController;
+use App\Services\MemberDashboardStatsService;
 use App\Support\TournamentXDomain;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +24,18 @@ $registerMainSite = function (): void {
     Route::post('/events/{event}/register', [EventRegistrationController::class, 'register'])
         ->name('events.register');
 
+    Route::middleware('guest')->group(function () {
+        Route::get('/member/login', [MemberAuthController::class, 'create'])->name('member.login');
+        Route::post('/member/login', [MemberAuthController::class, 'store'])->name('member.login.store');
+    });
+
+    Route::middleware('auth')->post('/member/logout', [MemberAuthController::class, 'destroy'])->name('member.logout');
+
+    Route::middleware(['auth', 'site.member'])->prefix('member')->name('member.')->group(function () {
+        Route::get('/dashboard', [MemberDashboardController::class, 'index'])->name('dashboard');
+        Route::put('/password', [MemberDashboardController::class, 'updatePassword'])->name('password');
+    });
+
     Route::get('/private-file/payment-qr/{event}', function (\App\Models\SiteEvent $event) {
         if (! $event->payment_qr || ! \Illuminate\Support\Facades\Storage::exists($event->payment_qr)) {
             abort(404);
@@ -32,41 +44,7 @@ $registerMainSite = function (): void {
         return \Illuminate\Support\Facades\Storage::response($event->payment_qr);
     })->name('private.payment-qr');
 
-    Route::get('/admin/login', [AdminLoginController::class, 'create'])->name('admin.login');
-    Route::post('/admin/login', [AdminLoginController::class, 'store'])->name('admin.login.store');
-
-    Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
-        Route::get('/users', [AdminController::class, 'users'])->name('users');
-        Route::post('/users', [AdminController::class, 'storeUser'])->name('users.store');
-        Route::patch('/users/{user}/role', [AdminController::class, 'updateUserRole'])->name('users.role');
-        Route::post('/users/{user}/tournament-access', [AdminController::class, 'toggleTournamentAccess'])->name('users.tournamentAccess');
-        Route::patch('/users/{user}/permissions', [AdminController::class, 'updatePermissions'])->name('users.permissions');
-        Route::get('/tournaments', [AdminController::class, 'tournaments'])->name('tournaments');
-        Route::delete('/tournaments/{tournament}', [AdminController::class, 'deleteTournament'])->name('tournaments.delete');
-
-        Route::get('/content/blog', [AdminContentController::class, 'blogIndex'])->name('content.blog');
-        Route::post('/content/blog', [AdminContentController::class, 'blogStore'])->name('content.blog.store');
-        Route::put('/content/blog/{post}', [AdminContentController::class, 'blogUpdate'])->name('content.blog.update');
-        Route::delete('/content/blog/{post}', [AdminContentController::class, 'blogDestroy'])->name('content.blog.destroy');
-
-        Route::get('/content/events', [AdminContentController::class, 'eventsIndex'])->name('content.events');
-        Route::post('/content/events', [AdminContentController::class, 'eventStore'])->name('content.events.store');
-        Route::put('/content/events/{event}', [AdminContentController::class, 'eventUpdate'])->name('content.events.update');
-        Route::delete('/content/events/{event}', [AdminContentController::class, 'eventDestroy'])->name('content.events.destroy');
-
-        Route::get('/content/members', [AdminContentController::class, 'membersIndex'])->name('content.members');
-        Route::post('/content/members', [AdminContentController::class, 'memberStore'])->name('content.members.store');
-        Route::put('/content/members/{member}', [AdminContentController::class, 'memberUpdate'])->name('content.members.update');
-        Route::post('/content/members/{member}/provision-account', [AdminContentController::class, 'memberProvisionAccount'])->name('content.members.provision');
-        Route::put('/content/members/{member}/password', [AdminContentController::class, 'memberUpdatePassword'])->name('content.members.password');
-        Route::delete('/content/members/{member}', [AdminContentController::class, 'memberDestroy'])->name('content.members.destroy');
-
-        Route::get('/content/jersey', [AdminContentController::class, 'jerseyIndex'])->name('content.jersey');
-        Route::post('/content/jersey', [AdminContentController::class, 'jerseyStore'])->name('content.jersey.store');
-        Route::put('/content/jersey/{item}', [AdminContentController::class, 'jerseyUpdate'])->name('content.jersey.update');
-        Route::delete('/content/jersey/{item}', [AdminContentController::class, 'jerseyDestroy'])->name('content.jersey.destroy');
-    });
+    Route::any('/admin/{any?}', fn () => abort(404))->where('any', '.*');
 };
 
 $registerTournamentRedirects = function (): void {
@@ -75,7 +53,14 @@ $registerTournamentRedirects = function (): void {
     Route::get('/login', fn () => $to('/login'));
     Route::get('/register', fn () => $to('/register'));
     Route::get('/forgot-password', fn () => $to('/forgot-password'));
-    Route::get('/dashboard', fn () => $to('/dashboard'));
+    Route::get('/dashboard', function () use ($to) {
+        $user = auth()->user();
+        if ($user && app(MemberDashboardStatsService::class)->isMemberDashboardUser($user)) {
+            return redirect()->route('member.dashboard');
+        }
+
+        return $to('/dashboard');
+    });
     Route::get('/profile', fn () => $to('/profile'));
     Route::get('/my-events', fn () => $to('/my-events'));
     Route::get('/my-events/{any}', fn () => $to('/my-events'))->where('any', '.*');
@@ -86,15 +71,21 @@ $registerTournamentRedirects = function (): void {
 
 $mainDomain = config('tournamentx.main_domain');
 
+$registerPlatformAdmin = function (): void {
+    require __DIR__.'/platform_admin.php';
+};
+
 if ($mainDomain) {
-    Route::domain($mainDomain)->group(function () use ($registerMainSite, $registerTournamentRedirects): void {
+    Route::domain($mainDomain)->group(function () use ($registerMainSite, $registerTournamentRedirects, $registerPlatformAdmin): void {
         $registerMainSite();
+        $registerPlatformAdmin();
         if (TournamentXDomain::isEnabled()) {
             $registerTournamentRedirects();
         }
     });
 } else {
     $registerMainSite();
+    $registerPlatformAdmin();
     if (TournamentXDomain::isEnabled()) {
         $registerTournamentRedirects();
     }

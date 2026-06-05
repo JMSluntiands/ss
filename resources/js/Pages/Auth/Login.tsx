@@ -9,9 +9,17 @@ const inputClass =
 export default function Login({
     status,
     canResetPassword,
+    mainSiteUrl = '',
+    memberLoginUrl = null as string | null,
+    registerUrl = route('register', undefined, false),
+    homeUrl = route('tournamentx.home', undefined, false),
 }: {
     status?: string;
     canResetPassword: boolean;
+    mainSiteUrl?: string;
+    memberLoginUrl?: string | null;
+    registerUrl?: string;
+    homeUrl?: string;
 }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
@@ -33,8 +41,8 @@ export default function Login({
             <Head title="Log in" />
 
             <div>
-                <h2 className="text-3xl font-bold text-white mb-2">Welcome back</h2>
-                <p className="text-gray-500 mb-8">Sign in to your account</p>
+                <h2 className="text-3xl font-bold text-white mb-2">Organizer log in</h2>
+                <p className="text-gray-500 mb-8">Tournament X — manage brackets, judging, and live scores</p>
 
                 {status && (
                     <div className="mb-6 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-4 py-3 text-sm text-cyan-300">
@@ -142,6 +150,35 @@ export default function Login({
                         )}
                     </button>
                 </form>
+
+                <p className="mt-8 text-center text-sm text-gray-500">
+                    No account?{' '}
+                    <a href={registerUrl} className="guest-tx-link font-semibold">
+                        Register free
+                    </a>
+                </p>
+
+                {(memberLoginUrl || mainSiteUrl) && (
+                    <p className="mt-4 text-center text-xs text-gray-600 leading-relaxed">
+                        Shadow Syndicate member?{' '}
+                        {memberLoginUrl ? (
+                            <a href={memberLoginUrl} className="guest-tx-link font-medium">
+                                Log in on the main site
+                            </a>
+                        ) : (
+                            <a href={mainSiteUrl} className="guest-tx-link font-medium">
+                                Go to Shadow Syndicate
+                            </a>
+                        )}{' '}
+                        for profile & stats.
+                    </p>
+                )}
+
+                <p className="mt-4 text-center text-xs text-gray-600">
+                    <a href={homeUrl} className="guest-tx-link">
+                        ← Back to Tournament X
+                    </a>
+                </p>
             </div>
         </GuestLayout>
     );

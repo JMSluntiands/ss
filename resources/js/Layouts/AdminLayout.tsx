@@ -1,5 +1,4 @@
 import { PageProps } from '@/types';
-import { tournamentxDashboardUrl } from '@/utils/tournamentxUrl';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, useState } from 'react';
 
@@ -8,6 +7,7 @@ interface AdminNavItem {
     href: string;
     icon: React.ReactNode;
     active?: boolean;
+    badge?: number;
 }
 
 export default function AdminLayout({
@@ -15,8 +15,7 @@ export default function AdminLayout({
     currentPage = 'dashboard',
 }: PropsWithChildren<{ currentPage?: string }>) {
     const page = usePage<PageProps>();
-    const { auth, flash, main_site_url } = page.props;
-    const txDashboard = tournamentxDashboardUrl(page.props);
+    const { auth, flash, admin_pending_plan_upgrades = 0 } = page.props;
     const user = auth.user;
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -25,7 +24,7 @@ export default function AdminLayout({
 
     const navItems: AdminNavItem[] = [
         {
-            name: 'Dashboard',
+            name: 'Platform Hub',
             href: route('admin.dashboard'),
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,6 +33,19 @@ export default function AdminLayout({
             ),
             active: currentPage === 'dashboard',
         },
+        {
+            name: 'Websites',
+            href: route('admin.platform.sites'),
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+            ),
+            active: currentPage === 'sites',
+        },
+    ];
+
+    const tournamentXItems: AdminNavItem[] = [
         {
             name: 'Users',
             href: route('admin.users'),
@@ -45,6 +57,17 @@ export default function AdminLayout({
             active: currentPage === 'users',
         },
         {
+            name: 'Plan requests',
+            href: route('admin.plan-requests'),
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+            ),
+            active: currentPage === 'plan-requests',
+            badge: admin_pending_plan_upgrades,
+        },
+        {
             name: 'Tournaments',
             href: route('admin.tournaments'),
             icon: (
@@ -53,6 +76,16 @@ export default function AdminLayout({
                 </svg>
             ),
             active: currentPage === 'tournaments',
+        },
+        {
+            name: 'Pricing',
+            href: route('admin.platform.pricing'),
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            ),
+            active: currentPage === 'pricing',
         },
     ];
 
@@ -115,7 +148,7 @@ export default function AdminLayout({
                     {!sidebarCollapsed && (
                         <Link href={route('admin.dashboard')} className="flex items-center gap-2">
                             <span className="text-lg font-black text-white tracking-tight whitespace-nowrap">
-                                SHADOW <span className="text-red-500">SYNDICATE</span>
+                                PLATFORM <span className="text-red-500">ADMIN</span>
                             </span>
                         </Link>
                     )}
@@ -135,7 +168,7 @@ export default function AdminLayout({
                             <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                             </svg>
-                            <span className="text-xs font-bold text-red-400 uppercase tracking-wider">Admin Panel</span>
+                            <span className="text-xs font-bold text-red-400 uppercase tracking-wider">Shadow + TX</span>
                         </div>
                     </div>
                 )}
@@ -159,7 +192,39 @@ export default function AdminLayout({
 
                     {!sidebarCollapsed && (
                         <div className="pt-4 mt-4 border-t border-zinc-800/50">
-                            <p className="px-3 mb-2 text-[10px] font-bold text-gray-600 uppercase tracking-wider">Website Content</p>
+                            <p className="px-3 mb-2 text-[10px] font-bold text-cyan-500/70 uppercase tracking-wider">Tournament X</p>
+                        </div>
+                    )}
+                    {sidebarCollapsed && <div className="pt-2 mt-2 border-t border-zinc-800/50" />}
+
+                    {tournamentXItems.map((item) => (
+                        <Link
+                            key={item.name}
+                            href={item.href}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                                item.active
+                                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                                    : 'text-gray-500 hover:text-white hover:bg-zinc-800/60 border border-transparent'
+                            } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                            title={sidebarCollapsed ? item.name : undefined}
+                        >
+                            <span className={item.active ? 'text-cyan-400' : 'text-gray-600'}>{item.icon}</span>
+                            {!sidebarCollapsed && (
+                                <span className="flex-1 flex items-center justify-between gap-2">
+                                    <span>{item.name}</span>
+                                    {item.badge != null && item.badge > 0 && (
+                                        <span className="min-w-[1.25rem] h-5 px-1.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center">
+                                            {item.badge}
+                                        </span>
+                                    )}
+                                </span>
+                            )}
+                        </Link>
+                    ))}
+
+                    {!sidebarCollapsed && (
+                        <div className="pt-4 mt-4 border-t border-zinc-800/50">
+                            <p className="px-3 mb-2 text-[10px] font-bold text-gray-600 uppercase tracking-wider">Shadow Syndicate</p>
                         </div>
                     )}
                     {sidebarCollapsed && <div className="pt-2 mt-2 border-t border-zinc-800/50" />}
@@ -180,28 +245,6 @@ export default function AdminLayout({
                         </Link>
                     ))}
 
-                    <div className="pt-4 mt-4 border-t border-zinc-800/50 space-y-1">
-                        <a
-                            href={txDashboard}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-white hover:bg-zinc-800/60 border border-transparent transition-all ${sidebarCollapsed ? 'justify-center' : ''}`}
-                            title={sidebarCollapsed ? 'Tournament X' : undefined}
-                        >
-                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                            {!sidebarCollapsed && <span>Tournament X</span>}
-                        </a>
-                        <a
-                            href={main_site_url}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-white hover:bg-zinc-800/60 border border-transparent transition-all ${sidebarCollapsed ? 'justify-center' : ''}`}
-                            title={sidebarCollapsed ? 'Back to Site' : undefined}
-                        >
-                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-                            </svg>
-                            {!sidebarCollapsed && <span>Back to Site</span>}
-                        </a>
-                    </div>
                 </nav>
 
                 <div className="border-t border-zinc-800/80 p-3">
@@ -244,7 +287,7 @@ export default function AdminLayout({
                                         Profile
                                     </Link>
                                     <Link
-                                        href={route('logout')}
+                                        href={route('admin.logout')}
                                         method="post"
                                         as="button"
                                         className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-zinc-700/50 transition-colors"
@@ -272,7 +315,7 @@ export default function AdminLayout({
             }`}>
                 <div className="flex items-center justify-between h-16 px-4 border-b border-zinc-800/80">
                     <Link href={route('admin.dashboard')} className="text-xl font-black text-white tracking-tight">
-                        SHADOW <span className="text-red-500">SYNDICATE</span>
+                        PLATFORM <span className="text-red-500">ADMIN</span>
                     </Link>
                     <button
                         onClick={() => setMobileMenuOpen(false)}
@@ -289,7 +332,7 @@ export default function AdminLayout({
                         <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
-                        <span className="text-xs font-bold text-red-400 uppercase tracking-wider">Admin Panel</span>
+                        <span className="text-xs font-bold text-red-400 uppercase tracking-wider">Shadow + TX</span>
                     </div>
                 </div>
 
@@ -310,7 +353,33 @@ export default function AdminLayout({
                     ))}
 
                     <div className="pt-4 mt-4 border-t border-zinc-800/50">
-                        <p className="px-3 mb-2 text-[10px] font-bold text-gray-600 uppercase tracking-wider">Website Content</p>
+                        <p className="px-3 mb-2 text-[10px] font-bold text-cyan-500/70 uppercase tracking-wider">Tournament X</p>
+                    </div>
+
+                    {tournamentXItems.map((item) => (
+                        <Link
+                            key={item.name}
+                            href={item.href}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                                item.active
+                                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                                    : 'text-gray-500 hover:text-white hover:bg-zinc-800/60 border border-transparent'
+                            }`}
+                        >
+                            <span className={item.active ? 'text-cyan-400' : 'text-gray-600'}>{item.icon}</span>
+                            <span className="flex-1 flex items-center justify-between gap-2">
+                                <span>{item.name}</span>
+                                {item.badge != null && item.badge > 0 && (
+                                    <span className="min-w-[1.25rem] h-5 px-1.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center">
+                                        {item.badge}
+                                    </span>
+                                )}
+                            </span>
+                        </Link>
+                    ))}
+
+                    <div className="pt-4 mt-4 border-t border-zinc-800/50">
+                        <p className="px-3 mb-2 text-[10px] font-bold text-gray-600 uppercase tracking-wider">Shadow Syndicate</p>
                     </div>
 
                     {contentItems.map((item) => (
@@ -328,26 +397,6 @@ export default function AdminLayout({
                         </Link>
                     ))}
 
-                    <div className="pt-4 mt-4 border-t border-zinc-800/50 space-y-1">
-                        <a
-                            href={txDashboard}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-white hover:bg-zinc-800/60 border border-transparent transition-all"
-                        >
-                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                            <span>Tournament X</span>
-                        </a>
-                        <a
-                            href={main_site_url}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-white hover:bg-zinc-800/60 border border-transparent transition-all"
-                        >
-                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-                            </svg>
-                            <span>Back to Site</span>
-                        </a>
-                    </div>
                 </nav>
 
                 <div className="border-t border-zinc-800/80 p-3">
@@ -361,7 +410,7 @@ export default function AdminLayout({
                         </div>
                     </div>
                     <Link
-                        href={route('logout')}
+                        href={route('admin.logout')}
                         method="post"
                         as="button"
                         className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-red-400 hover:text-red-300 hover:bg-zinc-800/60 transition-colors"

@@ -4,12 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\BlogPost;
 use App\Models\JerseyItem;
+use App\Models\PlanUpgradeRequest;
 use App\Models\SiteEvent;
 use App\Models\SiteMember;
 use App\Models\Tournament;
 use App\Models\User;
+use App\Support\TournamentXDomain;
+use App\Support\TournamentXPlan;
+use App\Support\UserAccountType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 class AdminController extends Controller
 {
@@ -23,6 +29,9 @@ class AdminController extends Controller
             'tournament_admins' => User::where('can_manage_tournaments', true)
                 ->orWhere('role', 'admin')
                 ->count(),
+            'starter_plans' => User::where('tournamentx_plan', TournamentXPlan::STARTER)->count(),
+            'community_plans' => User::where('tournamentx_plan', TournamentXPlan::COMMUNITY)->count(),
+            'pending_plan_upgrades' => PlanUpgradeRequest::where('status', 'pending')->count(),
             'blog_posts' => BlogPost::count(),
             'site_events' => SiteEvent::count(),
             'site_members' => SiteMember::count(),
@@ -40,6 +49,11 @@ class AdminController extends Controller
             'stats' => $stats,
             'recentUsers' => $recentUsers,
             'recentTournaments' => $recentTournaments,
+            'sites' => [
+                'main_site_url' => TournamentXDomain::mainSiteUrl(),
+                'tournamentx_url' => TournamentXDomain::baseUrl(),
+                'tournamentx_home' => route('tournamentx.home', absolute: true),
+            ],
         ]);
     }
 
@@ -56,9 +70,14 @@ class AdminController extends Controller
             'can_use_judge' => 'boolean',
             'can_score_matches' => 'boolean',
             'can_manage_events' => 'boolean',
+            'tournamentx_plan' => 'nullable|in:starter,community,pro',
         ]);
 
         $data['password'] = bcrypt($data['password']);
+        $data['tournamentx_plan'] = $data['tournamentx_plan'] ?? TournamentXPlan::STARTER;
+        $data['account_type'] = $data['role'] === 'admin'
+            ? UserAccountType::ADMIN
+            : UserAccountType::ORGANIZER;
         User::create($data);
 
         return back()->with('success', "User \"{$data['name']}\" has been created.");
@@ -90,7 +109,101 @@ class AdminController extends Controller
                 'search' => $search,
                 'role' => $role,
             ],
+            'planOptions' => [
+                ['value' => TournamentXPlan::STARTER, 'label' => 'Starter (Free)'],
+                ['value' => TournamentXPlan::COMMUNITY, 'label' => 'Community'],
+                ['value' => TournamentXPlan::PRO, 'label' => 'Pro'],
+            ],
         ]);
+    }
+
+    public function updateUserPlan(Request $request, User $user)
+    {
+        $request->validate([
+            'tournamentx_plan' => ['required', 'in:'.implode(',', [
+                TournamentXPlan::STARTER,
+                TournamentXPlan::COMMUNITY,
+                TournamentXPlan::PRO,
+            ])],
+        ]);
+
+        TournamentXPlan::applyEntitlements($user, $request->tournamentx_plan);
+
+        PlanUpgradeRequest::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'approved',
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+        return back()->with('success', "Plan updated to ".TournamentXPlan::label($request->tournamentx_plan)." for {$user->name}.");
+    }
+
+    public function planRequests()
+    {
+        $requests = PlanUpgradeRequest::query()
+            ->with(['user:id,name,email,tournamentx_plan'])
+            ->where('status', 'pending')
+            ->latest()
+            ->paginate(20);
+
+        return Inertia::render('Admin/PlanRequests', [
+            'requests' => $requests,
+            'planOptions' => [
+                ['value' => TournamentXPlan::STARTER, 'label' => 'Starter (Free)'],
+                ['value' => TournamentXPlan::COMMUNITY, 'label' => 'Community'],
+                ['value' => TournamentXPlan::PRO, 'label' => 'Pro'],
+            ],
+        ]);
+    }
+
+    public function approvePlanRequest(PlanUpgradeRequest $planUpgradeRequest)
+    {
+        if (! $planUpgradeRequest->isPending()) {
+            return back()->with('error', 'This request was already processed.');
+        }
+
+        $user = $planUpgradeRequest->user;
+        TournamentXPlan::applyEntitlements($user, $planUpgradeRequest->requested_plan);
+
+        $planUpgradeRequest->update([
+            'status' => 'approved',
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        return back()->with('success', "Approved Community plan for {$user->name}.");
+    }
+
+    public function rejectPlanRequest(Request $request, PlanUpgradeRequest $planUpgradeRequest)
+    {
+        if (! $planUpgradeRequest->isPending()) {
+            return back()->with('error', 'This request was already processed.');
+        }
+
+        $validated = $request->validate([
+            'admin_note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $planUpgradeRequest->update([
+            'status' => 'rejected',
+            'admin_note' => $validated['admin_note'] ?? null,
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        return back()->with('success', 'Upgrade request rejected.');
+    }
+
+    public function planRequestPaymentProof(PlanUpgradeRequest $planUpgradeRequest): Response
+    {
+        if (! $planUpgradeRequest->payment_proof || ! Storage::exists($planUpgradeRequest->payment_proof)) {
+            abort(404);
+        }
+
+        return Storage::response($planUpgradeRequest->payment_proof);
     }
 
     public function updateUserRole(Request $request, User $user)
@@ -103,7 +216,16 @@ class AdminController extends Controller
             return back()->with('error', 'You cannot remove your own admin role.');
         }
 
-        $user->update(['role' => $request->role]);
+        if ($user->isMemberAccount()) {
+            return back()->with('error', 'Member accounts cannot be changed to admin or organizer here.');
+        }
+
+        $user->update([
+            'role' => $request->role,
+            'account_type' => $request->role === 'admin'
+                ? UserAccountType::ADMIN
+                : UserAccountType::ORGANIZER,
+        ]);
 
         return back()->with('success', "Updated {$user->name}'s role to {$request->role}.");
     }

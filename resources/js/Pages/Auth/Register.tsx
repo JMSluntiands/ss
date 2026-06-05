@@ -3,7 +3,17 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 
-export default function Register() {
+export default function Register({
+    loginUrl = route('login', undefined, false),
+    homeUrl = route('tournamentx.home', undefined, false),
+    mainSiteUrl = '',
+    registrationEnabled = false,
+}: {
+    loginUrl?: string;
+    homeUrl?: string;
+    mainSiteUrl?: string;
+    registrationEnabled?: boolean;
+}) {
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         email: '',
@@ -15,6 +25,9 @@ export default function Register() {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+        if (!registrationEnabled) {
+            return;
+        }
         post(route('register'), {
             onFinish: () => reset('password', 'password_confirmation'),
         });
@@ -25,8 +38,14 @@ export default function Register() {
             <Head title="Create Account" />
 
             <div>
-                <h2 className="text-3xl font-bold text-white mb-2">Create account</h2>
-                <p className="text-slate-400 mb-8">Join SHADOW SYNDICATE and start your journey</p>
+                <h2 className="text-3xl font-bold text-white mb-2">Create organizer account</h2>
+                <p className="text-slate-400 mb-8">Register on Tournament X to run brackets, judging, and live events</p>
+
+                {!registrationEnabled && (
+                    <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                        Registration is not available during the beta. If you already have an organizer account, log in below.
+                    </div>
+                )}
 
                 <form onSubmit={submit} className="space-y-5">
                     <div>
@@ -48,7 +67,8 @@ export default function Register() {
                                 placeholder="Enter your name"
                                 onChange={(e) => setData('name', e.target.value)}
                                 required
-                                className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 pl-12 pr-4 text-white placeholder-slate-500 backdrop-blur-sm transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                                disabled={!registrationEnabled}
+                                className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 pl-12 pr-4 text-white placeholder-slate-500 backdrop-blur-sm transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                             />
                         </div>
                         <InputError message={errors.name} className="mt-2" />
@@ -73,7 +93,8 @@ export default function Register() {
                                 placeholder="you@example.com"
                                 onChange={(e) => setData('email', e.target.value)}
                                 required
-                                className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 pl-12 pr-4 text-white placeholder-slate-500 backdrop-blur-sm transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                                disabled={!registrationEnabled}
+                                className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 pl-12 pr-4 text-white placeholder-slate-500 backdrop-blur-sm transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                             />
                         </div>
                         <InputError message={errors.email} className="mt-2" />
@@ -98,11 +119,13 @@ export default function Register() {
                                 placeholder="Create a strong password"
                                 onChange={(e) => setData('password', e.target.value)}
                                 required
-                                className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 pl-12 pr-12 text-white placeholder-slate-500 backdrop-blur-sm transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                                disabled={!registrationEnabled}
+                                className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 pl-12 pr-12 text-white placeholder-slate-500 backdrop-blur-sm transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
+                                disabled={!registrationEnabled}
                                 className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-500 hover:text-slate-300 transition-colors"
                             >
                                 {showPassword ? (
@@ -134,7 +157,8 @@ export default function Register() {
                                 placeholder="Confirm your password"
                                 onChange={(e) => setData('password_confirmation', e.target.value)}
                                 required
-                                className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 pl-12 pr-4 text-white placeholder-slate-500 backdrop-blur-sm transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                                disabled={!registrationEnabled}
+                                className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 py-3 pl-12 pr-4 text-white placeholder-slate-500 backdrop-blur-sm transition-all focus:border-cyan-500/50 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                             />
                         </div>
                         <InputError message={errors.password_confirmation} className="mt-2" />
@@ -142,7 +166,7 @@ export default function Register() {
 
                     <button
                         type="submit"
-                        disabled={processing}
+                        disabled={processing || !registrationEnabled}
                         className="relative w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 transition-all hover:shadow-cyan-500/40 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {processing ? (
@@ -153,8 +177,10 @@ export default function Register() {
                                 </svg>
                                 Creating account...
                             </span>
-                        ) : (
+                        ) : registrationEnabled ? (
                             'Create account'
+                        ) : (
+                            'Registration closed (beta)'
                         )}
                     </button>
                 </form>
@@ -162,12 +188,22 @@ export default function Register() {
                 <div className="mt-8 text-center">
                     <p className="text-sm text-slate-400">
                         Already have an account?{' '}
-                        <Link
-                            href={route('login')}
-                            className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
-                        >
-                            Sign in
+                        <Link href={loginUrl} className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">
+                            Log in
                         </Link>
+                    </p>
+                    <p className="mt-4 text-center text-xs text-gray-600">
+                        <a href={homeUrl} className="guest-tx-link">
+                            ← Tournament X home
+                        </a>
+                        {mainSiteUrl && (
+                            <>
+                                {' · '}
+                                <a href={mainSiteUrl} className="text-gray-500 hover:text-red-400/80">
+                                    Shadow Syndicate members login here
+                                </a>
+                            </>
+                        )}
                     </p>
                 </div>
             </div>

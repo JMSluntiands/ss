@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\UserAccountType;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -24,16 +25,33 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'account_type',
         'can_manage_tournaments',
         'can_use_judge',
         'can_score_matches',
         'can_create_tournaments',
         'can_manage_events',
+        'tournamentx_plan',
     ];
 
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    public function isOrganizerAccount(): bool
+    {
+        return UserAccountType::isOrganizer($this);
+    }
+
+    public function isMemberAccount(): bool
+    {
+        return UserAccountType::isMember($this);
+    }
+
+    public function isAdminAccount(): bool
+    {
+        return UserAccountType::isAdmin($this);
     }
 
     public function isSiteMember(): bool

@@ -42,6 +42,16 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        'tournamentx' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+
+        'platform_admin' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
     ],
 
     /*

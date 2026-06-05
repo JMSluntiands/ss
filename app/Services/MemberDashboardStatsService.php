@@ -158,15 +158,7 @@ class MemberDashboardStatsService
 
     public function isMemberDashboardUser(User $user): bool
     {
-        if ($user->isAdmin()) {
-            return false;
-        }
-
-        if ($user->canCreateTournaments() || $user->canManageTournaments() || $user->canManageEvents()) {
-            return false;
-        }
-
-        return $user->isSiteMember();
+        return \App\Support\UserAccountType::isMember($user);
     }
 
     /**

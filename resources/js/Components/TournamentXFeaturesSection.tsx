@@ -115,7 +115,7 @@ function FeatureCard({ icon, title, description }: FeatureItem) {
     );
 }
 
-export default function TournamentXFeaturesSection({ manageHref }: { manageHref: string }) {
+export default function TournamentXFeaturesSection({ visitSiteHref }: { visitSiteHref: string }) {
     return (
         <section id="features" className="relative py-24 sm:py-32">
             <div className="absolute inset-0 bg-zinc-900/30" />
@@ -124,8 +124,11 @@ export default function TournamentXFeaturesSection({ manageHref }: { manageHref:
 
             <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-14 sm:mb-16">
-                    <div className="flex items-center justify-center gap-3 mb-6">
-                        <TournamentXLogo className="h-10 w-auto drop-shadow-[0_0_16px_rgba(34,211,238,0.25)]" alt="Tournament X" />
+                    <div className="flex items-center justify-center mb-6">
+                        <TournamentXLogo
+                            className="h-20 sm:h-28 md:h-36 w-auto max-w-[min(100%,28rem)] object-contain"
+                            alt="Tournament X"
+                        />
                     </div>
                     <span className="inline-block px-4 py-1.5 text-xs font-bold tracking-widest text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-full mb-6 uppercase">
                         Tournament Platform
@@ -148,13 +151,13 @@ export default function TournamentXFeaturesSection({ manageHref }: { manageHref:
 
                 <div className="mt-12 sm:mt-14 text-center">
                     <a
-                        href={manageHref}
+                        href={visitSiteHref}
                         className="inline-flex items-center gap-3 px-8 py-4 text-base font-bold rounded-xl tx-btn text-white"
                     >
+                        Visit Site
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
-                        Manage a Tournament
                     </a>
                 </div>
             </div>

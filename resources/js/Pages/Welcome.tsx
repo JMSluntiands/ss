@@ -6,7 +6,7 @@ import SiteNav from '@/Components/SiteNav';
 import SiteVisitsStrip from '@/Components/SiteVisitsStrip';
 import VisitorCounter from '@/Components/VisitorCounter';
 import { PageProps } from '@/types';
-import { tournamentxDashboardUrl, tournamentxLoginUrl } from '@/utils/tournamentxUrl';
+import { tournamentxSiteUrl } from '@/utils/tournamentxUrl';
 import TournamentXFeaturesSection from '@/Components/TournamentXFeaturesSection';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -17,9 +17,7 @@ export default function Welcome({
     // tournamentRosters = [],
 }: PageProps & { members?: MemberSlideData[] /* ; tournamentRosters?: TournamentRosterData[] */ }) {
     const page = usePage<PageProps>();
-    const txLogin = tournamentxLoginUrl(page.props);
-    const txDashboard = tournamentxDashboardUrl(page.props);
-    const manageTournamentHref = auth.user ? txDashboard : txLogin;
+    const tournamentXSiteHref = tournamentxSiteUrl(page.props);
     const [scrollY, setScrollY] = useState(0);
     const [joinModalOpen, setJoinModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -43,8 +41,6 @@ export default function Welcome({
                     position="fixed"
                     scrolled={navScrolled}
                     homeHref="#home"
-                    showJoinUs
-                    onJoinUsClick={() => setJoinModalOpen(true)}
                 />
 
                 {/* ── Hero Section ── */}
@@ -75,105 +71,33 @@ export default function Welcome({
                                     </span>
                                 </h1>
 
-                                <p className="text-lg sm:text-xl text-gray-400 max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
-                                    The ultimate Beyblade community. Join tournaments,
-                                    battle head-to-head, and climb the rankings. Let it rip!
+                                <p className="text-lg sm:text-xl text-gray-400 max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
+                                    Stay sharp. Stay ready.{' '}
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-400 to-red-600 font-semibold">
+                                        Feel the Shadow
+                                    </span>
                                 </p>
 
-                                <div className="w-full max-w-md mx-auto lg:mx-0">
-                                    <div className="rounded-2xl border border-zinc-800/70 bg-zinc-900/50 backdrop-blur-sm shadow-xl shadow-black/30 overflow-hidden">
-                                        {auth.user ? (
-                                            <a
-                                                href={txDashboard}
-                                                className="group flex items-center gap-4 p-4 sm:p-5 border-l-4 border-l-red-500 hover:bg-red-500/5 transition-colors"
-                                            >
-                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/15 border border-red-500/25 text-red-400 group-hover:bg-red-500/25 transition-colors">
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                                                    </svg>
-                                                </div>
-                                                <div className="flex-1 min-w-0 text-left">
-                                                    <p className="font-bold text-white group-hover:text-red-300 transition-colors">Go to Dashboard</p>
-                                                    <p className="text-sm text-gray-500">Profile, stats & member tools</p>
-                                                </div>
-                                                <svg className="w-5 h-5 shrink-0 text-zinc-600 group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                </svg>
-                                            </a>
-                                        ) : (
-                                            <>
-                                                <a
-                                                    href={txLogin}
-                                                    className="group flex items-center gap-4 p-4 sm:p-5 border-l-4 border-l-red-500 hover:bg-red-500/5 transition-colors"
-                                                >
-                                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/15 border border-red-500/25 text-red-400 group-hover:bg-red-500/25 transition-colors">
-                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                                                        </svg>
-                                                    </div>
-                                                    <div className="flex-1 min-w-0 text-left">
-                                                        <p className="font-bold text-white group-hover:text-red-300 transition-colors">Login</p>
-                                                        <p className="text-sm text-gray-500">Sign in to your blader account</p>
-                                                    </div>
-                                                    <svg className="w-5 h-5 shrink-0 text-zinc-600 group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                    </svg>
-                                                </a>
-                                                <div className="h-px bg-zinc-800/80" />
-                                                <Link
-                                                    href={route('register')}
-                                                    className="group flex items-center gap-4 p-4 sm:p-5 border-l-4 border-l-zinc-600 hover:bg-zinc-800/30 transition-colors"
-                                                >
-                                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-700/40 border border-zinc-600/50 text-gray-300 group-hover:bg-zinc-700/60 transition-colors">
-                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                                        </svg>
-                                                    </div>
-                                                    <div className="flex-1 min-w-0 text-left">
-                                                        <p className="font-bold text-white group-hover:text-gray-200 transition-colors">Join Now</p>
-                                                        <p className="text-sm text-gray-500">Create your blader account</p>
-                                                    </div>
-                                                    <svg className="w-5 h-5 shrink-0 text-zinc-600 group-hover:text-gray-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                    </svg>
-                                                </Link>
-                                            </>
-                                        )}
-                                        <div className="h-px bg-zinc-800/80" />
-                                        <a
-                                            href={manageTournamentHref}
-                                            className="group flex items-center gap-4 p-4 sm:p-5 border-l-4 border-l-cyan-500/80 hover:bg-cyan-500/5 transition-colors"
-                                        >
-                                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-400 group-hover:bg-cyan-500/20 transition-colors">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                </svg>
-                                            </div>
-                                            <div className="flex-1 min-w-0 text-left">
-                                                <p className="font-bold text-white group-hover:text-cyan-300 transition-colors">Manage Tournament</p>
-                                                <p className="text-sm text-gray-500">Brackets, judging & live scores</p>
-                                            </div>
-                                            <svg className="w-5 h-5 shrink-0 text-zinc-600 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                            </svg>
-                                        </a>
-                                    </div>
-                                    <div className="mt-4 flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-2 text-sm">
-                                        <Link href={route('events')} className="text-gray-500 hover:text-red-400 transition-colors font-medium">
-                                            View Events
-                                        </Link>
-                                        <span className="text-zinc-700 hidden sm:inline" aria-hidden>·</span>
-                                        <Link href={route('members')} className="text-gray-500 hover:text-red-400 transition-colors font-medium">
-                                            Meet Members
-                                        </Link>
-                                    </div>
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setJoinModalOpen(true)}
+                                    className="mb-6 inline-flex items-center justify-center gap-2 px-8 py-3.5 text-sm font-bold text-white bg-red-600 hover:bg-red-500 rounded-xl shadow-lg shadow-red-900/30 transition-colors mx-auto lg:mx-0"
+                                >
+                                    Join Us
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                    </svg>
+                                </button>
                             </div>
 
                             {/* Right column - Logo */}
                             <div className="flex justify-center order-1 lg:order-2 w-full min-w-0">
-                                <div className="relative mx-auto max-w-full overflow-hidden px-6 sm:px-10 py-4">
-                                    <SiteLogo className="w-48 h-48 sm:w-72 sm:h-72 lg:w-[400px] lg:h-[400px] mx-auto drop-shadow-[0_0_60px_rgba(220,38,38,0.5)] relative z-10 object-contain" />
+                                <div className="relative mx-auto max-w-full px-6 sm:px-10 py-4">
+                                    <SiteLogo
+                                        glow
+                                        blend
+                                        className="w-48 h-48 sm:w-72 sm:h-72 lg:w-[400px] lg:h-[400px] mx-auto object-contain"
+                                    />
 
                                     <svg className="absolute top-0 right-2 sm:-top-6 sm:-right-8 w-12 h-20 sm:w-16 sm:h-24 animate-lightning-1" viewBox="0 0 64 96" fill="none">
                                         <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg1)" />
@@ -267,7 +191,7 @@ export default function Welcome({
                     </div>
                 </section>
 
-                <TournamentXFeaturesSection manageHref={manageTournamentHref} />
+                <TournamentXFeaturesSection visitSiteHref={tournamentXSiteHref} />
 
                 {/* Tournament history — hidden for now
                 <TournamentRosterSection tournaments={tournamentRosters} />

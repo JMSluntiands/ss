@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function (): void {
             $domain = config('tournamentx.domain');
             $group = Route::middleware([
+                \App\Http\Middleware\ConfigureTournamentXSession::class,
                 'web',
                 \App\Http\Middleware\SetTournamentXUrl::class,
             ]);
@@ -35,6 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'site.member' => \App\Http\Middleware\EnsureSiteMember::class,
+            'organizer.account' => \App\Http\Middleware\EnsureOrganizerAccount::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

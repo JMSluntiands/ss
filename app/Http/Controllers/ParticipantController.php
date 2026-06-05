@@ -6,6 +6,7 @@ use App\Models\Participant;
 use App\Models\Tournament;
 use App\Services\MemberAccountService;
 use App\Support\ImageOptimizer;
+use App\Support\TournamentXPlan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -27,6 +28,11 @@ class ParticipantController extends Controller
             'user_id' => 'nullable|integer|exists:users,id',
             'avatar' => 'nullable|image|max:5120',
         ]);
+
+        $limitError = $this->participantLimitError($tournament, 1);
+        if ($limitError) {
+            return back()->withErrors(['name' => $limitError]);
+        }
 
         $nextSeed = $tournament->participants()->count() + 1;
         $userId = $this->resolveUserId($validated['name'], $validated['user_id'] ?? null);
@@ -69,6 +75,10 @@ class ParticipantController extends Controller
         }
 
         $currentCount = $tournament->participants()->count();
+        $limitError = $this->participantLimitError($tournament, count($names));
+        if ($limitError) {
+            return back()->withErrors(['names' => $limitError]);
+        }
 
         foreach ($names as $index => $name) {
             $tournament->participants()->create([
@@ -247,6 +257,24 @@ class ParticipantController extends Controller
         }
 
         return $this->accounts->resolveUserByBladerName($name)?->id;
+    }
+
+    private function participantLimitError(Tournament $tournament, int $adding): ?string
+    {
+        $max = TournamentXPlan::maxParticipantsForTournament($tournament);
+        if ($max === null) {
+            return null;
+        }
+
+        $current = $tournament->participants()->count();
+        if ($current + $adding > $max) {
+            $plan = TournamentXPlan::forUser($tournament->user);
+            $planLabel = TournamentXPlan::label($plan);
+
+            return "Your {$planLabel} plan allows up to {$max} players per tournament. Upgrade to Community for unlimited players.";
+        }
+
+        return null;
     }
 
     private function storeAvatar(Tournament $tournament, Participant $participant, $file): void

@@ -56,9 +56,10 @@ class FillSwissDemoScores extends Command
                     continue;
                 }
 
-                [$winnerId, $p1Bp, $p2Bp] = $this->sampleOutcome($match, $round);
+                [$winnerId, $p1Bp, $p2Bp, $roundDetails] = $this->sampleOutcome($match, $round);
 
                 $service->submitMatchResult($match, $winnerId, $p1Bp, $p2Bp, false);
+                $match->update(['round_details' => $roundDetails]);
                 $filled++;
             }
 
@@ -102,21 +103,63 @@ class FillSwissDemoScores extends Command
     }
 
     /**
-     * @return array{0: int, 1: int, 2: int}
+     * Beyblade X: first to 4 points wins. Generates round_details + battle points.
+     *
+     * @return array{0: int, 1: int, 2: int, 3: list<array{round: int, winner: string, finish: string, points: int}>}
      */
     private function sampleOutcome(TournamentMatch $match, int $round): array
     {
-        $finishPoints = [1, 2, 2, 3];
-        $p1Wins = (($match->id + $round) % 3) !== 0;
+        $p1WinsMatch = (($match->id + $round) % 3) !== 0;
+        $winnerSide = $p1WinsMatch ? 'p1' : 'p2';
+        $loserSide = $p1WinsMatch ? 'p2' : 'p1';
 
-        $winnerId = $p1Wins ? $match->player1_id : $match->player2_id;
-        $winnerBp = $finishPoints[($match->match_number + $round) % count($finishPoints)];
-        $loserBp = max(0, $finishPoints[($match->match_number + $round + 1) % count($finishPoints)] - 1);
+        $templates = [
+            [
+                ['side' => 'w', 'finish' => 'XF', 'points' => 3],
+                ['side' => 'l', 'finish' => 'BF', 'points' => 2],
+                ['side' => 'w', 'finish' => 'SF', 'points' => 1],
+            ],
+            [
+                ['side' => 'w', 'finish' => 'OF', 'points' => 2],
+                ['side' => 'l', 'finish' => 'SF', 'points' => 1],
+                ['side' => 'w', 'finish' => 'BF', 'points' => 2],
+            ],
+            [
+                ['side' => 'l', 'finish' => 'SF', 'points' => 1],
+                ['side' => 'w', 'finish' => 'XF', 'points' => 3],
+                ['side' => 'l', 'finish' => 'OF', 'points' => 2],
+                ['side' => 'w', 'finish' => 'SF', 'points' => 1],
+            ],
+            [
+                ['side' => 'w', 'finish' => 'XF', 'points' => 3],
+                ['side' => 'w', 'finish' => 'SF', 'points' => 1],
+            ],
+        ];
 
-        $p1Bp = $winnerId === $match->player1_id ? $winnerBp : $loserBp;
-        $p2Bp = $winnerId === $match->player2_id ? $winnerBp : $loserBp;
+        $template = $templates[($match->match_number + $round) % count($templates)];
+        $roundDetails = [];
+        $p1Bp = 0;
+        $p2Bp = 0;
 
-        return [$winnerId, $p1Bp, $p2Bp];
+        foreach ($template as $i => $entry) {
+            $side = $entry['side'] === 'w' ? $winnerSide : $loserSide;
+            $roundDetails[] = [
+                'round' => $i + 1,
+                'winner' => $side,
+                'finish' => $entry['finish'],
+                'points' => $entry['points'],
+            ];
+
+            if ($side === 'p1') {
+                $p1Bp += $entry['points'];
+            } else {
+                $p2Bp += $entry['points'];
+            }
+        }
+
+        $winnerId = $p1Bp >= $p2Bp ? $match->player1_id : $match->player2_id;
+
+        return [$winnerId, $p1Bp, $p2Bp, $roundDetails];
     }
 
     private function startFinalStage(Tournament $tournament): void

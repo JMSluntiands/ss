@@ -34,11 +34,11 @@ class TournamentXDomain
         }
 
         $host = self::host();
-        if (! $host) {
-            return true;
+        if ($host) {
+            return strcasecmp($request->getHost(), $host) === 0;
         }
 
-        return strcasecmp($request->getHost(), $host) === 0;
+        return (bool) $request->attributes->get('tournamentx_context');
     }
 
     public static function url(string $path = ''): string

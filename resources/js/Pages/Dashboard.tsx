@@ -1,3 +1,4 @@
+import PlanUpgradeButton from '@/Components/TournamentX/PlanUpgradeButton';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
@@ -210,7 +211,14 @@ export default function Dashboard({
     matchHistory?: MatchHistoryEntry[];
 }) {
     const [showCreateDropdown, setShowCreateDropdown] = useState(false);
-    const { permissions, main_site_url } = usePage<PageProps>().props;
+    const {
+        permissions,
+        main_site_url,
+        tournamentx_show_upgrade,
+        tournamentx_upgrade_pending,
+        tournamentx_pricing_url,
+        tournamentx_plan_label,
+    } = usePage<PageProps>().props;
     const canCreate = permissions.can_create_tournaments;
     const hasParticipated = participatedTournaments.length > 0;
 
@@ -351,6 +359,15 @@ export default function Dashboard({
                         <div className="mt-2 w-16 h-1 rounded-full tx-underline" />
                     </div>
 
+                    <div className="flex flex-wrap items-center gap-3 shrink-0">
+                    {tournamentx_show_upgrade && (
+                        <PlanUpgradeButton className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white border border-violet-500/40 bg-gradient-to-r from-violet-600/80 to-cyan-600/70 hover:brightness-110 transition-all shadow-lg shadow-violet-500/20">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                            Request upgrade
+                        </PlanUpgradeButton>
+                    )}
                     {canCreate && (
                         <div className="relative">
                             <button
@@ -386,7 +403,43 @@ export default function Dashboard({
                             )}
                         </div>
                     )}
+                    </div>
                 </div>
+
+                {(tournamentx_show_upgrade || tournamentx_upgrade_pending) && (
+                    <div
+                        className={`mb-6 rounded-2xl border px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${
+                            tournamentx_upgrade_pending
+                                ? 'border-amber-500/25 bg-amber-500/5'
+                                : 'border-violet-500/25 bg-violet-500/5'
+                        }`}
+                    >
+                        <div>
+                            <p className="text-sm font-semibold text-white">
+                                {tournamentx_upgrade_pending
+                                    ? 'Upgrade request submitted'
+                                    : `You're on the ${tournamentx_plan_label ?? 'Starter'} plan`}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {tournamentx_upgrade_pending
+                                    ? 'Payment proof submitted — an admin will verify your payment and activate the Community plan.'
+                                    : 'Free tournaments only — up to 50 players, no judge panel or live scoring. Pay and upload proof to request Community plan.'}
+                            </p>
+                        </div>
+                        {tournamentx_show_upgrade ? (
+                            <PlanUpgradeButton className="shrink-0 inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-sm font-semibold tx-btn text-white">
+                                Request Community plan
+                            </PlanUpgradeButton>
+                        ) : tournamentx_pricing_url ? (
+                            <a
+                                href={tournamentx_pricing_url}
+                                className="shrink-0 inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-400 border border-zinc-700 hover:text-white transition-colors"
+                            >
+                                View plans
+                            </a>
+                        ) : null}
+                    </div>
+                )}
 
                 {tournaments.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm">

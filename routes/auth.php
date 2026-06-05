@@ -11,10 +11,10 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('register', fn () => abort(403, 'Registration is currently disabled.'))
+    Route::get('register', [\App\Http\Controllers\Auth\RegisteredUserController::class, 'create'])
         ->name('register');
 
-    Route::post('register', fn () => abort(403, 'Registration is currently disabled.'));
+    Route::post('register', [\App\Http\Controllers\Auth\RegisteredUserController::class, 'store']);
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');

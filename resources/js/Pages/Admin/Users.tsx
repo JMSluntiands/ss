@@ -7,6 +7,7 @@ interface UserRecord {
     name: string;
     email: string;
     role: string;
+    tournamentx_plan?: string;
     can_manage_tournaments: boolean;
     can_use_judge: boolean;
     can_score_matches: boolean;
@@ -36,9 +37,11 @@ const permDefs = [
 export default function Users({
     users,
     filters,
+    planOptions = [],
 }: {
     users: PaginatedUsers;
     filters: { search?: string; role?: string };
+    planOptions?: Array<{ value: string; label: string }>;
 }) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [confirmAction, setConfirmAction] = useState<{ user: UserRecord; newRole: string } | null>(null);
@@ -175,6 +178,33 @@ export default function Users({
                                     )}
                                 </div>
                             </div>
+
+                            {/* Tournament X plan */}
+                            {user.role !== 'admin' && planOptions.length > 0 && (
+                                <div className="border-t border-zinc-800/60 px-5 py-4 bg-cyan-500/5">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                        <div>
+                                            <p className="text-[10px] font-bold text-cyan-400/80 uppercase tracking-wider">Tournament X plan</p>
+                                            <p className="text-xs text-gray-600 mt-0.5">Controls player limits, judge panel, and live scoring.</p>
+                                        </div>
+                                        <select
+                                            value={user.tournamentx_plan ?? 'starter'}
+                                            onChange={(e) =>
+                                                router.patch(route('admin.users.plan', user.id), {
+                                                    tournamentx_plan: e.target.value,
+                                                }, { preserveState: true })
+                                            }
+                                            className="rounded-xl border border-cyan-500/30 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                                        >
+                                            {planOptions.map((opt) => (
+                                                <option key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Permissions Checklist */}
                             <div className="border-t border-zinc-800/60 px-5 py-4 bg-zinc-900/60">

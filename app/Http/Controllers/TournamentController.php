@@ -103,6 +103,18 @@ class TournamentController extends Controller
         $statsService = app(\App\Services\MemberDashboardStatsService::class);
         $isMemberDashboard = $statsService->isMemberDashboardUser($user);
 
+        if ($isMemberDashboard) {
+            $mainUrl = \App\Support\TournamentXDomain::mainSiteUrl();
+
+            if ($mainUrl) {
+                return redirect()->away(rtrim($mainUrl, '/').route('member.dashboard', [], false));
+            }
+
+            if (\Illuminate\Support\Facades\Route::has('member.dashboard')) {
+                return redirect()->route('member.dashboard');
+            }
+        }
+
         $tournaments = collect();
 
         if (! $isMemberDashboard) {
@@ -250,6 +262,7 @@ class TournamentController extends Controller
 
         return Inertia::render('Tournaments/Show', [
             'tournament' => $tournament,
+            'plan_participant_limit' => \App\Support\TournamentXPlan::maxParticipantsForTournament($tournament),
         ]);
     }
 
@@ -263,9 +276,12 @@ class TournamentController extends Controller
             }]);
         }
 
+        $tournament->loadMissing('user');
+
         return Inertia::render('Tournaments/Show', [
             'tournament' => $tournament,
             'readOnly' => true,
+            'plan_participant_limit' => \App\Support\TournamentXPlan::maxParticipantsForTournament($tournament),
         ]);
     }
 

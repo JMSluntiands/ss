@@ -3324,7 +3324,15 @@ function StadiumsField({
 }
 
 /* ─── Main Show Page ─── */
-export default function Show({ tournament, readOnly = false }: { tournament: Tournament; readOnly?: boolean }) {
+export default function Show({
+    tournament,
+    readOnly = false,
+    plan_participant_limit = null,
+}: {
+    tournament: Tournament;
+    readOnly?: boolean;
+    plan_participant_limit?: number | null;
+}) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [openSwissStadiumMatchId, setOpenSwissStadiumMatchId] = useState<number | null>(null);
@@ -3443,7 +3451,11 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
     const matches = liveTournament.matches;
     const standings = liveTournament.swiss_standings;
     const participantCount = participants.length;
-    const maxLabel = tournament.max_participants ? tournament.max_participants.toString() : '\u221e';
+    const effectiveMax =
+        plan_participant_limit ??
+        (tournament.max_participants != null ? tournament.max_participants : null);
+    const maxLabel = effectiveMax != null ? effectiveMax.toString() : '\u221e';
+    const atParticipantLimit = effectiveMax != null && participantCount >= effectiveMax;
     const isActive = !readOnly && liveTournament.status === 'active';
     const occupiedStadiums = matches
         .filter(m => m.status === 'playing' && m.stadium)
@@ -3839,7 +3851,12 @@ export default function Show({ tournament, readOnly = false }: { tournament: Tou
                                 <span className="text-xs text-slate-500">{participantCount} / {maxLabel}</span>
                             </div>
                             <div className="flex flex-col">
-                                {liveTournament.status === 'pending' && (
+                                {liveTournament.status === 'pending' && atParticipantLimit && (
+                                    <p className="text-xs text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 mb-3">
+                                        Player limit reached ({effectiveMax}). Upgrade to Community for unlimited players.
+                                    </p>
+                                )}
+                                {liveTournament.status === 'pending' && !atParticipantLimit && (
                                     <div className="shrink-0 mb-3">
                                         <SingleAddForm tournamentId={tournament.id} />
                                         <button onClick={() => setShowAddModal(true)} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 text-xs text-slate-400 hover:text-white hover:bg-slate-700/50 hover:border-slate-600/50 transition-all mt-3">

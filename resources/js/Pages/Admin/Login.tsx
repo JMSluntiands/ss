@@ -20,7 +20,7 @@ export default function AdminLogin({ status }: { status?: string }) {
 
     return (
         <>
-            <Head title="Admin Access" />
+            <Head title="Platform Admin" />
 
             <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-4 py-12 relative overflow-hidden">
                 {/* Animated background grid */}
@@ -72,10 +72,10 @@ export default function AdminLogin({ status }: { status?: string }) {
                             <div className="h-px w-8 bg-gradient-to-l from-transparent to-red-500/50" />
                         </div>
                         <h1 className="text-3xl font-black text-white tracking-tight mb-1">
-                            ADMIN <span className="text-red-500">PORTAL</span>
+                            PLATFORM <span className="text-red-500">ADMIN</span>
                         </h1>
                         <p className="text-sm text-gray-600">
-                            Authorized personnel only
+                            Shadow Syndicate + Tournament X — not public
                         </p>
                     </div>
 

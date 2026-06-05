@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\EventRegistration;
 use App\Models\SiteEvent;
 use App\Services\MemberAccountService;
+use App\Support\TournamentXAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -12,7 +13,7 @@ class EventRegistrationController extends Controller
 {
     public function register(Request $request, SiteEvent $event)
     {
-        $user = $request->user();
+        $user = TournamentXAuth::resolveUser($request);
 
         if ($user) {
             if ($event->registrations()->where('user_id', $user->id)->whereIn('status', ['tentative', 'confirmed'])->exists()) {

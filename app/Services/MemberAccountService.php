@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\SiteMember;
 use App\Models\User;
+use App\Support\UserAccountType;
 use Illuminate\Support\Str;
 
 class MemberAccountService
@@ -105,6 +106,7 @@ class MemberAccountService
             'email' => $email,
             'password' => bcrypt($password),
             'role' => 'user',
+            'account_type' => UserAccountType::MEMBER,
             'can_create_tournaments' => false,
             'can_manage_tournaments' => false,
             'can_manage_events' => false,
@@ -124,6 +126,7 @@ class MemberAccountService
         }
 
         $user->update([
+            'account_type' => UserAccountType::MEMBER,
             'can_create_tournaments' => false,
             'can_manage_tournaments' => false,
             'can_manage_events' => false,

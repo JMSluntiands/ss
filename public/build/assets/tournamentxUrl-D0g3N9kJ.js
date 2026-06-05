@@ -1,1 +1,0 @@
-function r(n){return n.tournamentx_enabled&&n.tournamentx_url?`${n.tournamentx_url.replace(/\/$/,"")}/login`:route("login",void 0,!1)}function t(n){return n.tournamentx_enabled&&n.tournamentx_url?`${n.tournamentx_url.replace(/\/$/,"")}/dashboard`:route("dashboard",void 0,!1)}export{r as a,t};

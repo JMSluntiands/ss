@@ -6,6 +6,7 @@ use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
 use App\Http\Controllers\TournamentHubController;
+use App\Http\Controllers\TournamentXHomeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/csrf-cookie', [TournamentController::class, 'csrfCookie'])->name('csrf.cookie');
@@ -14,20 +15,16 @@ Route::get('/site-assets/logo', fn () => \App\Support\SiteAssets::logoResponse()
 Route::get('/site-assets/tournamentx-logo', fn () => \App\Support\SiteAssets::tournamentXLogoResponse())->name('site.tournamentx-logo');
 
 if (config('tournamentx.domain')) {
-    Route::get('/', function () {
-        if (auth()->check()) {
-            return redirect()->route('dashboard');
-        }
-
-        return redirect()->route('login');
-    })->name('tournamentx.home');
+    Route::get('/', [TournamentXHomeController::class, 'index'])->name('tournamentx.home');
+} else {
+    Route::get('/tournamentx', [TournamentXHomeController::class, 'index'])->name('tournamentx.home');
 }
 
 Route::get('/dashboard', [TournamentController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth:tournamentx', 'organizer.account', 'verified'])
     ->name('dashboard');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth:tournamentx', 'organizer.account', 'verified'])->group(function () {
     Route::get('/communities', [TournamentHubController::class, 'communities'])->name('communities');
     Route::get('/discover', [TournamentHubController::class, 'discover'])->name('discover');
     Route::get('/news', [TournamentHubController::class, 'news'])->name('news');
@@ -43,7 +40,19 @@ Route::get('/t/{tournament:slug}/judge/panel', [TournamentController::class, 'ju
 Route::post('/t/{tournament:slug}/judge/matches/{match}/report', [TournamentController::class, 'judgeReportMatch'])->name('judge.report');
 Route::patch('/t/{tournament:slug}/judge/matches/{match}/live-score', [TournamentController::class, 'judgeUpdateMatchLiveScore'])->name('judge.liveScore');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth:tournamentx', 'organizer.account', 'verified'])->group(function () {
+    Route::get('/plan-upgrade/payment-qr', function () {
+        $payment = app(\App\Services\SiteSettingsService::class)->planUpgradePayment();
+        if (! $payment['payment_qr'] || ! \Illuminate\Support\Facades\Storage::exists($payment['payment_qr'])) {
+            abort(404);
+        }
+
+        return \Illuminate\Support\Facades\Storage::response($payment['payment_qr']);
+    })->name('plan-upgrade.payment-qr');
+
+    Route::post('/plan-upgrade-request', [\App\Http\Controllers\PlanUpgradeRequestController::class, 'store'])
+        ->name('plan-upgrade-request.store');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -105,4 +114,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/tournaments/{tournament}/participants/{participantId}', [ParticipantController::class, 'destroy'])->name('participants.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__.'/tournamentx-auth.php';
+
+Route::middleware('guest:tournamentx')->group(function () {
+    Route::get('forgot-password', [\App\Http\Controllers\Auth\PasswordResetLinkController::class, 'create'])
+        ->name('password.request');
+    Route::post('forgot-password', [\App\Http\Controllers\Auth\PasswordResetLinkController::class, 'store'])
+        ->name('password.email');
+    Route::get('reset-password/{token}', [\App\Http\Controllers\Auth\NewPasswordController::class, 'create'])
+        ->name('password.reset');
+    Route::post('reset-password', [\App\Http\Controllers\Auth\NewPasswordController::class, 'store'])
+        ->name('password.store');
+});
+
+Route::middleware(['auth:tournamentx', 'organizer.account'])->group(function () {
+    Route::get('verify-email', \App\Http\Controllers\Auth\EmailVerificationPromptController::class)
+        ->name('verification.notice');
+    Route::get('verify-email/{id}/{hash}', \App\Http\Controllers\Auth\VerifyEmailController::class)
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+    Route::post('email/verification-notification', [\App\Http\Controllers\Auth\EmailVerificationNotificationController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+    Route::get('confirm-password', [\App\Http\Controllers\Auth\ConfirmablePasswordController::class, 'show'])
+        ->name('password.confirm');
+    Route::post('confirm-password', [\App\Http\Controllers\Auth\ConfirmablePasswordController::class, 'store']);
+    Route::put('password', [\App\Http\Controllers\Auth\PasswordController::class, 'update'])->name('password.update');
+});

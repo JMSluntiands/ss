@@ -31,6 +31,9 @@ interface Props {
     tournament?: Tournament;
 }
 
+/** Two-stage tournament UI (hidden until ready for general use). */
+const SHOW_TWO_STAGE_TOURNAMENT = false;
+
 type PlacementTone = 'yes' | 'maybe' | 'no' | 'na';
 
 function placementToneClass(tone: PlacementTone): string {
@@ -257,6 +260,9 @@ export default function Create({ tournament }: Props) {
     const [showAdvanced, setShowAdvanced] = useState(false);
     const isEditing = !!tournament;
 
+    const showTwoStageType =
+        SHOW_TWO_STAGE_TOURNAMENT || tournament?.tournament_type === 'two_stage';
+
     const { data, setData, post, put, processing, errors } = useForm({
         name: tournament?.name ?? '',
         slug: tournament?.slug ?? '',
@@ -476,29 +482,31 @@ export default function Create({ tournament }: Props) {
                                             </p>
                                         </div>
                                     </label>
-                                    <label className="flex items-start gap-3 cursor-pointer group">
-                                        <input
-                                            type="radio"
-                                            name="tournament_type"
-                                            value="two_stage"
-                                            checked={data.tournament_type === 'two_stage'}
-                                            onChange={() => setData((prev) => ({
-                                                ...prev,
-                                                tournament_type: 'two_stage',
-                                                format: prev.group_stage_format || 'swiss',
-                                            }))}
-                                            className="mt-0.5 h-4 w-4 border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/20 focus:ring-offset-0"
-                                        />
-                                        <div>
-                                            <span className="text-sm font-medium text-white group-hover:text-cyan-400 transition-colors">
-                                                Two Stage Tournament
-                                            </span>
-                                            <p className="text-xs text-slate-500 mt-0.5">
-                                                Swiss or round robin in two groups, then a <span className="text-slate-400">top cut</span> into a final
-                                                bracket (single or double elimination). Configure how many advance per group below.
-                                            </p>
-                                        </div>
-                                    </label>
+                                    {showTwoStageType && (
+                                        <label className="flex items-start gap-3 cursor-pointer group">
+                                            <input
+                                                type="radio"
+                                                name="tournament_type"
+                                                value="two_stage"
+                                                checked={data.tournament_type === 'two_stage'}
+                                                onChange={() => setData((prev) => ({
+                                                    ...prev,
+                                                    tournament_type: 'two_stage',
+                                                    format: prev.group_stage_format || 'swiss',
+                                                }))}
+                                                className="mt-0.5 h-4 w-4 border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/20 focus:ring-offset-0"
+                                            />
+                                            <div>
+                                                <span className="text-sm font-medium text-white group-hover:text-cyan-400 transition-colors">
+                                                    Two Stage Tournament
+                                                </span>
+                                                <p className="text-xs text-slate-500 mt-0.5">
+                                                    Swiss or round robin in two groups, then a <span className="text-slate-400">top cut</span> into a final
+                                                    bracket (single or double elimination). Configure how many advance per group below.
+                                                </p>
+                                            </div>
+                                        </label>
+                                    )}
                                 </div>
                             </div>
 
@@ -527,7 +535,7 @@ export default function Create({ tournament }: Props) {
                                                 <p className="text-xs text-slate-300 leading-relaxed">
                                                     After all Round Robin rounds finish, the top players by standings can enter a{' '}
                                                     <span className="text-white font-medium">single elimination playoff</span>. Leave blank for
-                                                    standings-only (no playoff bracket). For two parallel groups into one finals bracket, use Two stage.
+                                                    standings-only (no playoff bracket).
                                                 </p>
                                                 <div>
                                                     <label htmlFor="rr_top_cut_players" className={labelClass}>
@@ -550,21 +558,23 @@ export default function Create({ tournament }: Props) {
                                                     </p>
                                                     <InputError message={errors.swiss_top_cut_players} className="mt-2" />
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setData((prev) => ({
-                                                            ...prev,
-                                                            tournament_type: 'two_stage',
-                                                            group_stage_format: 'round_robin',
-                                                            format: 'round_robin',
-                                                            final_stage_format: 'single_elimination',
-                                                        }))
-                                                    }
-                                                    className="text-xs font-semibold rounded-lg px-3 py-2 bg-cyan-600/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-600/30 transition-colors"
-                                                >
-                                                    Switch to two-stage (top cut layout)
-                                                </button>
+                                                {SHOW_TWO_STAGE_TOURNAMENT && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setData((prev) => ({
+                                                                ...prev,
+                                                                tournament_type: 'two_stage',
+                                                                group_stage_format: 'round_robin',
+                                                                format: 'round_robin',
+                                                                final_stage_format: 'single_elimination',
+                                                            }))
+                                                        }
+                                                        className="text-xs font-semibold rounded-lg px-3 py-2 bg-cyan-600/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-600/30 transition-colors"
+                                                    >
+                                                        Switch to two-stage (top cut layout)
+                                                    </button>
+                                                )}
                                             </div>
                                             <div>
                                                 <label htmlFor="rr_rounds_single" className={labelClass}>Number of rounds</label>
@@ -613,8 +623,7 @@ export default function Create({ tournament }: Props) {
                                                 <p className="text-xs text-slate-300 leading-relaxed">
                                                     After all Swiss rounds finish, the top players by standings can enter a{' '}
                                                     <span className="text-white font-medium">single elimination playoff</span>. Leave the field blank for
-                                                    Swiss-only (standings decide final order). For two parallel Swiss groups into one finals bracket, use
-                                                    Two stage instead.
+                                                    Swiss-only (standings decide final order).
                                                 </p>
                                                 <div>
                                                     <label htmlFor="swiss_top_cut_players" className={labelClass}>
@@ -637,21 +646,23 @@ export default function Create({ tournament }: Props) {
                                                     </p>
                                                     <InputError message={errors.swiss_top_cut_players} className="mt-2" />
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setData((prev) => ({
-                                                            ...prev,
-                                                            tournament_type: 'two_stage',
-                                                            group_stage_format: 'swiss',
-                                                            format: 'swiss',
-                                                            final_stage_format: 'single_elimination',
-                                                        }))
-                                                    }
-                                                    className="text-xs font-semibold rounded-lg px-3 py-2 bg-cyan-600/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-600/30 transition-colors"
-                                                >
-                                                    Switch to two-stage (two Swiss groups → finals)
-                                                </button>
+                                                {SHOW_TWO_STAGE_TOURNAMENT && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setData((prev) => ({
+                                                                ...prev,
+                                                                tournament_type: 'two_stage',
+                                                                group_stage_format: 'swiss',
+                                                                format: 'swiss',
+                                                                final_stage_format: 'single_elimination',
+                                                            }))
+                                                        }
+                                                        className="text-xs font-semibold rounded-lg px-3 py-2 bg-cyan-600/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-600/30 transition-colors"
+                                                    >
+                                                        Switch to two-stage (two Swiss groups → finals)
+                                                    </button>
+                                                )}
                                             </div>
                                             <div>
                                                 <label htmlFor="swiss_rounds_single" className={labelClass}>Number of rounds</label>
@@ -706,7 +717,7 @@ export default function Create({ tournament }: Props) {
                             )}
 
                             {/* Two Stage Configuration */}
-                            {data.tournament_type === 'two_stage' && (
+                            {showTwoStageType && data.tournament_type === 'two_stage' && (
                                 <>
                                     {/* Group Stage */}
                                     <div>
