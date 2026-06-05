@@ -29,8 +29,12 @@ class AdminController extends Controller
             'tournament_admins' => User::where('can_manage_tournaments', true)
                 ->orWhere('role', 'admin')
                 ->count(),
-            'starter_plans' => User::where('tournamentx_plan', TournamentXPlan::STARTER)->count(),
-            'community_plans' => User::where('tournamentx_plan', TournamentXPlan::COMMUNITY)->count(),
+            'organizer_accounts' => User::where('account_type', UserAccountType::ORGANIZER)->count(),
+            'member_accounts' => User::where('account_type', UserAccountType::MEMBER)->count(),
+            'starter_plans' => User::where('account_type', UserAccountType::ORGANIZER)
+                ->where('tournamentx_plan', TournamentXPlan::STARTER)->count(),
+            'community_plans' => User::where('account_type', UserAccountType::ORGANIZER)
+                ->where('tournamentx_plan', TournamentXPlan::COMMUNITY)->count(),
             'pending_plan_upgrades' => PlanUpgradeRequest::where('status', 'pending')->count(),
             'blog_posts' => BlogPost::count(),
             'site_events' => SiteEvent::count(),
@@ -38,7 +42,9 @@ class AdminController extends Controller
             'jersey_items' => JerseyItem::count(),
         ];
 
-        $recentUsers = User::latest()->take(10)->get(['id', 'name', 'email', 'role', 'can_manage_tournaments', 'created_at']);
+        $recentUsers = User::latest()
+            ->take(10)
+            ->get(['id', 'name', 'email', 'role', 'account_type', 'can_manage_tournaments', 'created_at']);
 
         $recentTournaments = Tournament::with('user:id,name')
             ->latest()
@@ -85,17 +91,25 @@ class AdminController extends Controller
 
     public function users(Request $request)
     {
-        $query = User::query();
+        $search = $request->input('search');
+        $accountType = $request->input('account_type');
 
-        if ($search = $request->input('search')) {
+        $query = User::query()->with(['siteMember:id,user_id,name,rank,role']);
+
+        if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('blader_name', 'like', "%{$search}%");
             });
         }
 
-        if ($role = $request->input('role')) {
-            $query->where('role', $role);
+        if ($accountType && in_array($accountType, [
+            UserAccountType::ORGANIZER,
+            UserAccountType::MEMBER,
+            UserAccountType::ADMIN,
+        ], true)) {
+            $query->where('account_type', $accountType);
         }
 
         $users = $query->withCount('tournaments')
@@ -106,8 +120,14 @@ class AdminController extends Controller
         return Inertia::render('Admin/Users', [
             'users' => $users,
             'filters' => [
-                'search' => $search,
-                'role' => $role,
+                'search' => $search ?? '',
+                'account_type' => $accountType ?? '',
+            ],
+            'counts' => [
+                'all' => User::count(),
+                'organizer' => User::where('account_type', UserAccountType::ORGANIZER)->count(),
+                'member' => User::where('account_type', UserAccountType::MEMBER)->count(),
+                'admin' => User::where('account_type', UserAccountType::ADMIN)->count(),
             ],
             'planOptions' => [
                 ['value' => TournamentXPlan::STARTER, 'label' => 'Starter (Free)'],

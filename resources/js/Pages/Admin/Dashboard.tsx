@@ -3,6 +3,8 @@ import { Head, Link } from '@inertiajs/react';
 
 interface Stats {
     total_users: number;
+    organizer_accounts: number;
+    member_accounts: number;
     total_tournaments: number;
     active_tournaments: number;
     completed_tournaments: number;
@@ -21,6 +23,7 @@ interface RecentUser {
     name: string;
     email: string;
     role: string;
+    account_type?: string;
     can_manage_tournaments: boolean;
     created_at: string;
 }
@@ -120,12 +123,12 @@ export default function Dashboard({
                                 <p className="text-[10px] text-gray-500 uppercase">Active</p>
                             </div>
                             <div className="rounded-xl bg-zinc-900/60 py-3 border border-zinc-800/60">
-                                <p className="text-xl font-bold text-white">{stats.starter_plans}</p>
-                                <p className="text-[10px] text-gray-500 uppercase">Starter</p>
+                                <p className="text-xl font-bold text-cyan-400">{stats.organizer_accounts}</p>
+                                <p className="text-[10px] text-gray-500 uppercase">Organizers</p>
                             </div>
                             <div className="rounded-xl bg-zinc-900/60 py-3 border border-zinc-800/60">
-                                <p className="text-xl font-bold text-cyan-400">{stats.community_plans}</p>
-                                <p className="text-[10px] text-gray-500 uppercase">Community</p>
+                                <p className="text-xl font-bold text-white">{stats.starter_plans}</p>
+                                <p className="text-[10px] text-gray-500 uppercase">Starter</p>
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -140,8 +143,8 @@ export default function Dashboard({
                             <Link href={route('admin.platform.pricing')} className="text-xs font-semibold text-gray-400 hover:text-white">
                                 Edit pricing →
                             </Link>
-                            <Link href={route('admin.users')} className="text-xs font-semibold text-gray-400 hover:text-white">
-                                Users →
+                            <Link href={route('admin.users', { account_type: 'organizer' })} className="text-xs font-semibold text-gray-400 hover:text-white">
+                                Organizers →
                             </Link>
                             {stats.pending_plan_upgrades > 0 && (
                                 <Link href={route('admin.plan-requests')} className="text-xs font-semibold text-amber-400 hover:text-amber-300">
@@ -154,10 +157,10 @@ export default function Dashboard({
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
                     {[
-                        { label: 'Total users', value: stats.total_users },
-                        { label: 'Tournament admins', value: stats.tournament_admins },
-                        { label: 'Completed events', value: stats.completed_tournaments },
-                        { label: 'Total users (TX)', value: stats.total_users },
+                        { label: 'Tournament X organizers', value: stats.organizer_accounts },
+                        { label: 'Member logins', value: stats.member_accounts },
+                        { label: 'Total accounts', value: stats.total_users },
+                        { label: 'Completed tournaments', value: stats.completed_tournaments },
                     ].map((item) => (
                         <div key={item.label} className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 px-4 py-3">
                             <p className="text-lg font-bold text-white">{item.value}</p>
@@ -178,22 +181,38 @@ export default function Dashboard({
                             {recentUsers.length === 0 ? (
                                 <div className="px-6 py-8 text-center text-gray-500 text-sm">No users yet</div>
                             ) : (
-                                recentUsers.map((user) => (
-                                    <div key={user.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-zinc-800/30">
-                                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                                            {user.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-white truncate">{user.name}</p>
-                                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                                        </div>
-                                        {user.role === 'admin' && (
-                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 uppercase">
-                                                Admin
+                                recentUsers.map((user) => {
+                                    const accountType = user.account_type ?? (user.role === 'admin' ? 'admin' : 'organizer');
+                                    const badgeClass =
+                                        accountType === 'member'
+                                            ? 'bg-violet-500/10 text-violet-400 border-violet-500/20'
+                                            : accountType === 'organizer'
+                                            ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                                            : 'bg-red-500/10 text-red-400 border-red-500/20';
+                                    const badgeLabel =
+                                        accountType === 'member' ? 'Member' : accountType === 'organizer' ? 'TX' : 'Admin';
+
+                                    return (
+                                        <div key={user.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-zinc-800/30">
+                                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${
+                                                accountType === 'member'
+                                                    ? 'bg-gradient-to-tr from-violet-700 to-violet-500'
+                                                    : accountType === 'organizer'
+                                                    ? 'bg-gradient-to-tr from-cyan-700 to-cyan-500'
+                                                    : 'bg-gradient-to-tr from-red-700 to-red-500'
+                                            }`}>
+                                                {user.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-white truncate">{user.name}</p>
+                                                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${badgeClass}`}>
+                                                {badgeLabel}
                                             </span>
-                                        )}
-                                    </div>
-                                ))
+                                        </div>
+                                    );
+                                })
                             )}
                         </div>
                     </div>

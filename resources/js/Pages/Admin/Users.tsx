@@ -2,11 +2,21 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 
+interface SiteMemberSummary {
+    id: number;
+    user_id: number;
+    name: string;
+    rank: string | null;
+    role: string | null;
+}
+
 interface UserRecord {
     id: number;
     name: string;
     email: string;
     role: string;
+    account_type: string;
+    blader_name?: string | null;
     tournamentx_plan?: string;
     can_manage_tournaments: boolean;
     can_use_judge: boolean;
@@ -15,6 +25,7 @@ interface UserRecord {
     can_manage_events: boolean;
     tournaments_count: number;
     created_at: string;
+    site_member?: SiteMemberSummary | null;
 }
 
 interface PaginatedUsers {
@@ -26,6 +37,8 @@ interface PaginatedUsers {
     links: Array<{ url: string | null; label: string; active: boolean }>;
 }
 
+type AccountTypeFilter = '' | 'organizer' | 'member' | 'admin';
+
 const permDefs = [
     { key: 'can_create_tournaments', label: 'Create Tournaments', desc: 'Can create and organize new tournaments' },
     { key: 'can_manage_tournaments', label: 'Manage Tournaments', desc: 'Can manage all tournaments on the platform' },
@@ -34,13 +47,52 @@ const permDefs = [
     { key: 'can_manage_events', label: 'Manage Events', desc: 'Can create and manage events from the dashboard' },
 ] as const;
 
+const accountTypeBadge: Record<string, { label: string; className: string }> = {
+    organizer: {
+        label: 'Tournament X',
+        className: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+    },
+    member: {
+        label: 'Member',
+        className: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+    },
+    admin: {
+        label: 'Admin',
+        className: 'bg-red-500/10 text-red-400 border-red-500/20',
+    },
+};
+
+const accountFilters: Array<{ value: AccountTypeFilter; label: string; countKey: keyof AccountCounts }> = [
+    { value: '', label: 'All accounts', countKey: 'all' },
+    { value: 'organizer', label: 'Tournament X', countKey: 'organizer' },
+    { value: 'member', label: 'Members', countKey: 'member' },
+    { value: 'admin', label: 'Admins', countKey: 'admin' },
+];
+
+interface AccountCounts {
+    all: number;
+    organizer: number;
+    member: number;
+    admin: number;
+}
+
+function resolveAccountType(user: UserRecord): string {
+    if (user.account_type === 'organizer' || user.account_type === 'member' || user.account_type === 'admin') {
+        return user.account_type;
+    }
+
+    return user.role === 'admin' ? 'admin' : 'organizer';
+}
+
 export default function Users({
     users,
     filters,
+    counts,
     planOptions = [],
 }: {
     users: PaginatedUsers;
-    filters: { search?: string; role?: string };
+    filters: { search?: string; account_type?: string };
+    counts: AccountCounts;
     planOptions?: Array<{ value: string; label: string }>;
 }) {
     const [search, setSearch] = useState(filters.search ?? '');
@@ -52,13 +104,22 @@ export default function Users({
         can_use_judge: false, can_score_matches: false, can_manage_events: false,
     });
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        router.get(route('admin.users'), { search, role: filters.role }, { preserveState: true });
+    const activeFilter = (filters.account_type ?? '') as AccountTypeFilter;
+
+    const navigate = (params: { search?: string; account_type?: string }) => {
+        router.get(route('admin.users'), {
+            search: params.search ?? filters.search ?? undefined,
+            account_type: params.account_type || undefined,
+        }, { preserveState: true });
     };
 
-    const handleFilterRole = (role: string) => {
-        router.get(route('admin.users'), { search: filters.search, role: role || undefined }, { preserveState: true });
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        navigate({ search, account_type: activeFilter });
+    };
+
+    const handleFilterAccountType = (accountType: AccountTypeFilter) => {
+        navigate({ search: filters.search, account_type: accountType });
     };
 
     const handleTogglePerm = (user: UserRecord, key: string) => {
@@ -66,6 +127,15 @@ export default function Users({
             [key]: !(user as any)[key],
         }, { preserveState: true });
     };
+
+    const filterDescription =
+        activeFilter === 'organizer'
+            ? 'Organizer accounts registered on Tournament X'
+            : activeFilter === 'member'
+            ? 'Shadow Syndicate community member logins'
+            : activeFilter === 'admin'
+            ? 'Platform admin accounts'
+            : 'All login accounts across Tournament X and Shadow Syndicate';
 
     return (
         <AdminLayout currentPage="users">
@@ -76,8 +146,11 @@ export default function Users({
                     <div>
                         <h1 className="text-3xl font-bold text-white">Manage Users</h1>
                         <div className="mt-2 w-16 h-1 rounded-full bg-gradient-to-r from-red-600 to-red-400" />
-                        <p className="text-sm text-gray-500 mt-3">
-                            {users.total} total user{users.total !== 1 ? 's' : ''}
+                        <p className="text-sm text-gray-500 mt-3">{filterDescription}</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                            Showing {users.total} account{users.total !== 1 ? 's' : ''}
+                            {activeFilter === 'organizer' && ` · ${counts.organizer} Tournament X total`}
+                            {activeFilter === 'member' && ` · ${counts.member} members total`}
                         </p>
                     </div>
                     <button
@@ -91,182 +164,243 @@ export default function Users({
                     </button>
                 </div>
 
-                {/* Search & Filter */}
-                <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                    <form onSubmit={handleSearch} className="flex-1">
-                        <div className="relative">
-                            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Search by name or email..."
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 transition-colors"
-                            />
-                        </div>
-                    </form>
-                    <div className="flex gap-2">
-                        {['', 'user', 'admin'].map((role) => (
+                {/* Account type tabs */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-6">
+                    {accountFilters.map(({ value, label, countKey }) => {
+                        const active = activeFilter === value;
+
+                        return (
                             <button
-                                key={role}
-                                onClick={() => handleFilterRole(role)}
-                                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                                    (filters.role ?? '') === role
-                                        ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                        : 'bg-zinc-900 text-gray-500 border-zinc-800 hover:text-white hover:bg-zinc-800'
+                                key={value || 'all'}
+                                onClick={() => handleFilterAccountType(value)}
+                                className={`rounded-xl border px-4 py-3 text-left transition-all ${
+                                    active
+                                        ? value === 'organizer'
+                                            ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
+                                            : value === 'member'
+                                            ? 'bg-violet-500/10 border-violet-500/30 text-violet-300'
+                                            : value === 'admin'
+                                            ? 'bg-red-500/10 border-red-500/30 text-red-300'
+                                            : 'bg-zinc-800/80 border-zinc-600 text-white'
+                                        : 'bg-zinc-900 border-zinc-800 text-gray-500 hover:text-white hover:border-zinc-700'
                                 }`}
                             >
-                                {role === '' ? 'All' : role === 'admin' ? 'Admins' : 'Users'}
+                                <p className="text-lg font-bold">{counts[countKey]}</p>
+                                <p className="text-xs font-medium mt-0.5">{label}</p>
                             </button>
-                        ))}
-                    </div>
+                        );
+                    })}
                 </div>
+
+                {/* Search */}
+                <form onSubmit={handleSearch} className="mb-6">
+                    <div className="relative">
+                        <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search by name, email, or blader name..."
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 transition-colors"
+                        />
+                    </div>
+                </form>
 
                 {/* User Cards */}
                 <div className="space-y-4">
                     {users.data.length === 0 && (
                         <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 px-6 py-12 text-center">
-                            <p className="text-gray-500 text-sm">No users found.</p>
+                            <p className="text-gray-500 text-sm">No accounts found for this filter.</p>
                         </div>
                     )}
 
-                    {users.data.map((user) => (
-                        <div key={user.id} className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 overflow-hidden hover:border-zinc-700/80 transition-colors">
-                            {/* User Info Row */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-red-700 to-red-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                                        {user.name.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-semibold text-white truncate">{user.name}</p>
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
-                                                user.role === 'admin'
-                                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                                    : 'bg-zinc-700/30 text-gray-400 border-zinc-700/50'
-                                            }`}>
-                                                {user.role}
-                                            </span>
+                    {users.data.map((user) => {
+                        const accountType = resolveAccountType(user);
+                        const badge = accountTypeBadge[accountType] ?? accountTypeBadge.organizer;
+                        const isOrganizer = accountType === 'organizer';
+                        const isMember = accountType === 'member';
+                        const isAdmin = accountType === 'admin';
+
+                        return (
+                            <div
+                                key={user.id}
+                                className={`rounded-2xl border overflow-hidden transition-colors ${
+                                    isOrganizer
+                                        ? 'border-cyan-500/20 bg-cyan-500/[0.03] hover:border-cyan-500/35'
+                                        : isMember
+                                        ? 'border-violet-500/20 bg-violet-500/[0.03] hover:border-violet-500/35'
+                                        : 'border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700/80'
+                                }`}
+                            >
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${
+                                            isOrganizer
+                                                ? 'bg-gradient-to-tr from-cyan-700 to-cyan-500'
+                                                : isMember
+                                                ? 'bg-gradient-to-tr from-violet-700 to-violet-500'
+                                                : 'bg-gradient-to-tr from-red-700 to-red-500'
+                                        }`}>
+                                            {user.name.charAt(0).toUpperCase()}
                                         </div>
-                                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                                        <span>{user.tournaments_count} tournament{user.tournaments_count !== 1 ? 's' : ''}</span>
-                                        <span className="text-zinc-700">·</span>
-                                        <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
-                                    </div>
-                                    {user.role === 'user' ? (
-                                        <button
-                                            onClick={() => setConfirmAction({ user, newRole: 'admin' })}
-                                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all"
-                                        >
-                                            Make Admin
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => setConfirmAction({ user, newRole: 'user' })}
-                                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 bg-zinc-800 border border-zinc-700/50 hover:text-white hover:bg-zinc-700 transition-all"
-                                        >
-                                            Remove Admin
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Tournament X plan */}
-                            {user.role !== 'admin' && planOptions.length > 0 && (
-                                <div className="border-t border-zinc-800/60 px-5 py-4 bg-cyan-500/5">
-                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                        <div>
-                                            <p className="text-[10px] font-bold text-cyan-400/80 uppercase tracking-wider">Tournament X plan</p>
-                                            <p className="text-xs text-gray-600 mt-0.5">Controls player limits, judge panel, and live scoring.</p>
-                                        </div>
-                                        <select
-                                            value={user.tournamentx_plan ?? 'starter'}
-                                            onChange={(e) =>
-                                                router.patch(route('admin.users.plan', user.id), {
-                                                    tournamentx_plan: e.target.value,
-                                                }, { preserveState: true })
-                                            }
-                                            className="rounded-xl border border-cyan-500/30 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                                        >
-                                            {planOptions.map((opt) => (
-                                                <option key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Permissions Checklist */}
-                            <div className="border-t border-zinc-800/60 px-5 py-4 bg-zinc-900/60">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <svg className="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                    </svg>
-                                    <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Access Permissions</span>
-                                </div>
-
-                                {user.role === 'admin' ? (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                                        {permDefs.map(({ label }) => (
-                                            <div key={label} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-red-500/5 border border-red-500/10">
-                                                <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                </svg>
-                                                <span className="text-xs font-medium text-red-400">{label}</span>
-                                                <span className="ml-auto text-[9px] text-red-400/50 uppercase font-bold">Admin</span>
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <p className="text-sm font-semibold text-white truncate">{user.name}</p>
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${badge.className}`}>
+                                                    {badge.label}
+                                                </span>
                                             </div>
-                                        ))}
+                                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                            {isMember && (user.blader_name || user.site_member?.name) && (
+                                                <p className="text-xs text-violet-400/80 mt-0.5">
+                                                    Blader: {user.blader_name || user.site_member?.name}
+                                                    {user.site_member?.rank ? ` · ${user.site_member.rank}` : ''}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                                        {permDefs.map(({ key, label, desc }) => {
-                                            const enabled = (user as any)[key] as boolean;
-                                            return (
-                                                <button
-                                                    key={key}
-                                                    onClick={() => handleTogglePerm(user, key)}
-                                                    className={`flex items-start gap-2.5 px-3 py-2 rounded-lg text-left transition-all border ${
-                                                        enabled
-                                                            ? 'bg-emerald-500/5 border-emerald-500/15 hover:bg-emerald-500/10'
-                                                            : 'bg-zinc-800/30 border-zinc-700/30 hover:bg-zinc-800/60'
-                                                    }`}
-                                                >
-                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
-                                                        enabled
-                                                            ? 'bg-emerald-500 border-emerald-500'
-                                                            : 'border-zinc-600 bg-transparent'
-                                                    }`}>
-                                                        {enabled && (
-                                                            <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                        )}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className={`text-xs font-semibold ${enabled ? 'text-emerald-400' : 'text-gray-400'}`}>{label}</p>
-                                                        <p className="text-[10px] text-gray-600 leading-tight">{desc}</p>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
+
+                                    <div className="flex items-center gap-3 shrink-0">
+                                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                                            {isOrganizer && (
+                                                <>
+                                                    <span>{user.tournaments_count} tournament{user.tournaments_count !== 1 ? 's' : ''}</span>
+                                                    <span className="text-zinc-700">·</span>
+                                                </>
+                                            )}
+                                            <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        {isAdmin || user.role === 'admin' ? (
+                                            <button
+                                                onClick={() => setConfirmAction({ user, newRole: 'user' })}
+                                                className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 bg-zinc-800 border border-zinc-700/50 hover:text-white hover:bg-zinc-700 transition-all"
+                                            >
+                                                Remove Admin
+                                            </button>
+                                        ) : isOrganizer ? (
+                                            <button
+                                                onClick={() => setConfirmAction({ user, newRole: 'admin' })}
+                                                className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all"
+                                            >
+                                                Make Admin
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                </div>
+
+                                {isOrganizer && planOptions.length > 0 && (
+                                    <div className="border-t border-cyan-500/15 px-5 py-4 bg-cyan-500/5">
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                            <div>
+                                                <p className="text-[10px] font-bold text-cyan-400/80 uppercase tracking-wider">Tournament X plan</p>
+                                                <p className="text-xs text-gray-600 mt-0.5">Controls player limits, judge panel, and live scoring.</p>
+                                            </div>
+                                            <select
+                                                value={user.tournamentx_plan ?? 'starter'}
+                                                onChange={(e) =>
+                                                    router.patch(route('admin.users.plan', user.id), {
+                                                        tournamentx_plan: e.target.value,
+                                                    }, { preserveState: true })
+                                                }
+                                                className="rounded-xl border border-cyan-500/30 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                                            >
+                                                {planOptions.map((opt) => (
+                                                    <option key={opt.value} value={opt.value}>
+                                                        {opt.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {isMember && (
+                                    <div className="border-t border-violet-500/15 px-5 py-4 bg-violet-500/5">
+                                        <p className="text-[10px] font-bold text-violet-400/80 uppercase tracking-wider">Shadow Syndicate member</p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Community login only — profile, events, and stats on the main site. Not a Tournament X organizer account.
+                                        </p>
+                                        {user.site_member && (
+                                            <p className="text-xs text-gray-600 mt-2">
+                                                Roster: {user.site_member.name}
+                                                {user.site_member.role ? ` · ${user.site_member.role}` : ''}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {isOrganizer && (
+                                    <div className="border-t border-zinc-800/60 px-5 py-4 bg-zinc-900/60">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <svg className="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                            </svg>
+                                            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Tournament X permissions</span>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                            {permDefs.map(({ key, label, desc }) => {
+                                                const enabled = (user as any)[key] as boolean;
+                                                return (
+                                                    <button
+                                                        key={key}
+                                                        onClick={() => handleTogglePerm(user, key)}
+                                                        className={`flex items-start gap-2.5 px-3 py-2 rounded-lg text-left transition-all border ${
+                                                            enabled
+                                                                ? 'bg-emerald-500/5 border-emerald-500/15 hover:bg-emerald-500/10'
+                                                                : 'bg-zinc-800/30 border-zinc-700/30 hover:bg-zinc-800/60'
+                                                        }`}
+                                                    >
+                                                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                                                            enabled
+                                                                ? 'bg-emerald-500 border-emerald-500'
+                                                                : 'border-zinc-600 bg-transparent'
+                                                        }`}>
+                                                            {enabled && (
+                                                                <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                            )}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className={`text-xs font-semibold ${enabled ? 'text-emerald-400' : 'text-gray-400'}`}>{label}</p>
+                                                            <p className="text-[10px] text-gray-600 leading-tight">{desc}</p>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {isAdmin && (
+                                    <div className="border-t border-zinc-800/60 px-5 py-4 bg-zinc-900/60">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <svg className="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                            </svg>
+                                            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Platform admin access</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                            {permDefs.map(({ label }) => (
+                                                <div key={label} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-red-500/5 border border-red-500/10">
+                                                    <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    <span className="text-xs font-medium text-red-400">{label}</span>
+                                                    <span className="ml-auto text-[9px] text-red-400/50 uppercase font-bold">Admin</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
-                {/* Pagination */}
                 {users.last_page > 1 && (
                     <div className="flex items-center justify-center gap-1 mt-6">
                         {users.links.map((link, idx) => (
@@ -288,7 +422,6 @@ export default function Users({
                 )}
             </div>
 
-            {/* Role Confirm Modal */}
             {confirmAction && (
                 <>
                     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmAction(null)} />
@@ -330,7 +463,6 @@ export default function Users({
                 </>
             )}
 
-            {/* Add User Modal */}
             {showAddUser && (
                 <>
                     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowAddUser(false)} />
@@ -401,7 +533,6 @@ export default function Users({
                                     </select>
                                 </div>
 
-                                {/* Permissions Checklist */}
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Access Permissions</label>
                                     {newUser.role === 'admin' ? (
