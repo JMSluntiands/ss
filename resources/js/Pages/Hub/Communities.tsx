@@ -139,7 +139,7 @@ export default function Communities({
                             <p className="text-sm text-gray-400 mt-1">
                                 {shadowMember && memberProfile
                                     ? `Member · ${memberProfile.name} · Rank ${memberProfile.rank}`
-                                    : 'Main Beyblade community — members, events, and blog on the syndicate site.'}
+                                    : 'Partner community on the main site — join there to access the members roster.'}
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2 shrink-0">
@@ -151,14 +151,16 @@ export default function Communities({
                             >
                                 Visit site
                             </a>
-                            <a
-                                href={mainMembers}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-4 py-2 text-xs font-semibold rounded-lg bg-red-600/90 hover:bg-red-500 text-white transition-colors"
-                            >
-                                Members roster
-                            </a>
+                            {shadowMember && (
+                                <a
+                                    href={mainMembers}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-4 py-2 text-xs font-semibold rounded-lg bg-red-600/90 hover:bg-red-500 text-white transition-colors"
+                                >
+                                    Members roster
+                                </a>
+                            )}
                         </div>
                     </div>
                 </div>

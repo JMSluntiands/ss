@@ -25,6 +25,8 @@ interface Tournament {
     stadiums: number | null;
     third_place_match: boolean;
     placement_matches_fifth_seventh: boolean;
+    de_split_participants?: boolean;
+    de_grand_finals?: 'reset' | 'single' | 'none';
 }
 
 interface Props {
@@ -287,6 +289,8 @@ export default function Create({ tournament }: Props) {
         stadiums: tournament?.stadiums?.toString() ?? '',
         third_place_match: tournament?.third_place_match ?? false,
         placement_matches_fifth_seventh: tournament?.placement_matches_fifth_seventh ?? false,
+        de_split_participants: tournament?.de_split_participants ?? false,
+        de_grand_finals: tournament?.de_grand_finals ?? 'reset',
     });
     const withAppBase = (href: string): string => {
         if (typeof window === 'undefined' || href.startsWith('http')) return href;
@@ -713,6 +717,64 @@ export default function Create({ tournament }: Props) {
                                             </span>
                                         </label>
                                     )}
+
+                                    {data.format === 'double_elimination' && (
+                                        <div className="mt-4 space-y-4 rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
+                                            <label className="flex items-start gap-2 cursor-pointer group">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={data.de_split_participants}
+                                                    onChange={(e) => setData('de_split_participants', e.target.checked)}
+                                                    className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/20 focus:ring-offset-0"
+                                                />
+                                                <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">
+                                                    <span className="text-slate-300">Split Participants</span>
+                                                    {' '}— Start with half of the participants in the losers bracket.
+                                                </span>
+                                            </label>
+
+                                            <div>
+                                                <p className="text-sm font-medium text-slate-300 mb-2">Grand Finals</p>
+                                                <div className="space-y-2">
+                                                    {([
+                                                        {
+                                                            value: 'reset' as const,
+                                                            label: '1–2 matches',
+                                                            detail: 'Winners bracket finalist must be defeated twice by the losers bracket finalist.',
+                                                        },
+                                                        {
+                                                            value: 'single' as const,
+                                                            label: '1 match',
+                                                            detail: 'Single grand final — either finalist can win the tournament.',
+                                                        },
+                                                        {
+                                                            value: 'none' as const,
+                                                            label: 'None',
+                                                            detail: 'No grand final — winners bracket champion is crowned when the winners final ends.',
+                                                        },
+                                                    ]).map((opt) => (
+                                                        <label
+                                                            key={opt.value}
+                                                            className="flex items-start gap-2.5 cursor-pointer group rounded-lg px-2 py-1.5 hover:bg-slate-800/50"
+                                                        >
+                                                            <input
+                                                                type="radio"
+                                                                name="de_grand_finals"
+                                                                checked={data.de_grand_finals === opt.value}
+                                                                onChange={() => setData('de_grand_finals', opt.value)}
+                                                                className="mt-1 h-4 w-4 border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/20 focus:ring-offset-0"
+                                                            />
+                                                            <span className="text-sm text-slate-400 group-hover:text-slate-300">
+                                                                <span className="text-slate-300 font-medium">{opt.label}</span>
+                                                                {' — '}
+                                                                {opt.detail}
+                                                            </span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -857,6 +919,49 @@ export default function Create({ tournament }: Props) {
                                                 Break ties with placement matches
                                             </span>
                                         </label>
+
+                                        {data.final_stage_format === 'double_elimination' && (
+                                            <div className="mt-4 space-y-4 rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
+                                                <label className="flex items-start gap-2 cursor-pointer group">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={data.de_split_participants}
+                                                        onChange={(e) => setData('de_split_participants', e.target.checked)}
+                                                        className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/20 focus:ring-offset-0"
+                                                    />
+                                                    <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">
+                                                        <span className="text-slate-300">Split Participants</span>
+                                                        {' '}— Start with half of the participants in the losers bracket.
+                                                    </span>
+                                                </label>
+
+                                                <div>
+                                                    <p className="text-sm font-medium text-slate-300 mb-2">Grand Finals</p>
+                                                    <div className="space-y-2">
+                                                        {([
+                                                            { value: 'reset' as const, label: '1–2 matches', detail: 'Winners bracket finalist must be defeated twice by the losers bracket finalist.' },
+                                                            { value: 'single' as const, label: '1 match', detail: 'Single grand final — either finalist can win the tournament.' },
+                                                            { value: 'none' as const, label: 'None', detail: 'No grand final — winners bracket champion is crowned when the winners final ends.' },
+                                                        ]).map((opt) => (
+                                                            <label key={opt.value} className="flex items-start gap-2.5 cursor-pointer group rounded-lg px-2 py-1.5 hover:bg-slate-800/50">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="de_grand_finals_final_stage"
+                                                                    checked={data.de_grand_finals === opt.value}
+                                                                    onChange={() => setData('de_grand_finals', opt.value)}
+                                                                    className="mt-1 h-4 w-4 border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/20 focus:ring-offset-0"
+                                                                />
+                                                                <span className="text-sm text-slate-400 group-hover:text-slate-300">
+                                                                    <span className="text-slate-300 font-medium">{opt.label}</span>
+                                                                    {' — '}
+                                                                    {opt.detail}
+                                                                </span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}

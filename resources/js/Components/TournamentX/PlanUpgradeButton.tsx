@@ -1,4 +1,5 @@
 import { PageProps } from '@/types';
+import { Dialog, DialogPanel } from '@headlessui/react';
 import { router, usePage } from '@inertiajs/react';
 import { PropsWithChildren, useState } from 'react';
 
@@ -55,44 +56,42 @@ export default function PlanUpgradeButton({ children, className, title }: Button
                 {children}
             </button>
 
-            {open && details && (
-                <>
-                    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <div
-                            className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl shadow-black/50"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="px-6 py-5 border-b border-zinc-800/80">
-                                <h2 className="text-lg font-bold text-white">
+            <Dialog open={open} onClose={() => setOpen(false)} className="relative z-[100]">
+                <div className="fixed inset-0 bg-black/75 backdrop-blur-sm" aria-hidden="true" />
+
+                <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6">
+                    {details && (
+                        <DialogPanel className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl shadow-black/50">
+                            <div className="px-6 py-5 border-b border-zinc-800/80 shrink-0">
+                                <h2 className="text-xl font-bold text-white">
                                     Upgrade to {details.target_plan.name}
                                 </h2>
-                                <p className="text-sm text-gray-500 mt-1">{details.target_plan.description}</p>
+                                <p className="text-sm text-gray-400 mt-1">{details.target_plan.description}</p>
                             </div>
 
-                            <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
-                                <div className="grid sm:grid-cols-2 gap-3">
+                            <div className="px-6 py-5 space-y-5 overflow-y-auto">
+                                <div className="grid sm:grid-cols-2 gap-4">
                                     <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-2">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
                                             Current — {details.current_plan.name}
                                         </p>
-                                        <ul className="space-y-1.5">
+                                        <ul className="space-y-2">
                                             {details.current_plan.features.map((feature) => (
-                                                <li key={feature} className="flex items-start gap-2 text-xs text-gray-500">
-                                                    <span className="text-gray-600 shrink-0">•</span>
+                                                <li key={feature} className="flex items-start gap-2 text-sm text-gray-300">
+                                                    <span className="text-gray-500 shrink-0 mt-0.5">•</span>
                                                     <span>{feature}</span>
                                                 </li>
                                             ))}
                                         </ul>
                                     </div>
                                     <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-4">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-2">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-cyan-300 mb-3">
                                             Upgrade — {details.target_plan.name}
                                         </p>
-                                        <ul className="space-y-1.5">
+                                        <ul className="space-y-2">
                                             {details.target_plan.features.map((feature) => (
-                                                <li key={feature} className="flex items-start gap-2 text-xs text-gray-300">
-                                                    <span className="text-cyan-400 shrink-0">✓</span>
+                                                <li key={feature} className="flex items-start gap-2 text-sm text-gray-100">
+                                                    <span className="text-cyan-400 shrink-0 mt-0.5">✓</span>
                                                     <span>{feature}</span>
                                                 </li>
                                             ))}
@@ -101,53 +100,55 @@ export default function PlanUpgradeButton({ children, className, title }: Button
                                 </div>
 
                                 <div>
-                                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
                                         How to upgrade
                                     </p>
-                                    <ol className="space-y-2">
+                                    <ol className="space-y-3">
                                         {details.steps.map((step, index) => (
-                                            <li key={step} className="flex items-start gap-3 text-sm text-gray-400">
-                                                <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-300 text-[10px] font-bold flex items-center justify-center shrink-0">
+                                            <li key={step} className="flex items-start gap-3 text-sm text-gray-200">
+                                                <span className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-200 text-xs font-bold flex items-center justify-center shrink-0">
                                                     {index + 1}
                                                 </span>
-                                                <span>{step}</span>
+                                                <span className="pt-0.5">{step}</span>
                                             </li>
                                         ))}
                                     </ol>
                                 </div>
 
                                 {payment && (
-                                    <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">
-                                        <p className="text-xs font-bold uppercase tracking-wider text-amber-400/90 mb-3 text-center">
+                                    <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-5">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-amber-300 mb-3 text-center">
                                             Payment details
                                         </p>
-                                        <p className="text-2xl font-bold text-white text-center">
+                                        <p className="text-3xl font-bold text-white text-center">
                                             {payment.amount}
                                             {payment.period ? (
-                                                <span className="text-sm font-normal text-gray-500">{payment.period}</span>
+                                                <span className="text-base font-normal text-gray-400">{payment.period}</span>
                                             ) : null}
                                         </p>
                                         {payment.payment_qr_url && (
                                             <img
                                                 src={payment.payment_qr_url}
                                                 alt="Payment QR"
-                                                className="w-48 h-48 object-contain mx-auto rounded-lg mt-3 mb-2 border border-zinc-800"
+                                                className="w-52 h-52 object-contain mx-auto rounded-lg mt-4 mb-2 border border-zinc-800"
                                             />
                                         )}
                                         {payment.payment_method && (
-                                            <div className="mt-3 rounded-lg bg-zinc-900/80 border border-zinc-800 px-3 py-2 text-center">
-                                                <p className="text-[10px] uppercase tracking-wider text-gray-600">Send to</p>
-                                                <p className="text-sm text-white font-medium mt-0.5">{payment.payment_method}</p>
+                                            <div className="mt-4 rounded-lg bg-zinc-900/80 border border-zinc-800 px-4 py-3 text-center">
+                                                <p className="text-xs uppercase tracking-wider text-gray-400">Send to</p>
+                                                <p className="text-base text-white font-medium mt-1">{payment.payment_method}</p>
                                             </div>
                                         )}
                                         {payment.instructions && (
-                                            <p className="text-xs text-amber-400/80 mt-3 text-center">{payment.instructions}</p>
+                                            <p className="text-sm text-amber-300/90 mt-4 text-center leading-relaxed">
+                                                {payment.instructions}
+                                            </p>
                                         )}
                                     </div>
                                 )}
 
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
                                         Upload payment proof *
                                     </label>
                                     <input
@@ -155,30 +156,30 @@ export default function PlanUpgradeButton({ children, className, title }: Button
                                         accept="image/*"
                                         required
                                         onChange={(e) => setPaymentProof(e.target.files?.[0] ?? null)}
-                                        className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-violet-500/10 file:text-violet-300 hover:file:bg-violet-500/20 file:cursor-pointer"
+                                        className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-violet-500/10 file:text-violet-300 hover:file:bg-violet-500/20 file:cursor-pointer"
                                     />
-                                    <p className="text-[11px] text-gray-600 mt-1">
+                                    <p className="text-xs text-gray-500 mt-2">
                                         Screenshot of GCash/Maya/bank transfer (max 5MB)
                                     </p>
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Note (optional)</label>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Note (optional)</label>
                                     <textarea
                                         value={message}
                                         onChange={(e) => setMessage(e.target.value)}
                                         rows={2}
-                                        className="w-full rounded-xl bg-zinc-950 border border-zinc-700 text-sm text-white px-3 py-2"
+                                        className="w-full rounded-xl bg-zinc-950 border border-zinc-700 text-sm text-white px-3 py-2.5"
                                         placeholder="Reference number, sender name, date paid, etc."
                                     />
                                 </div>
                             </div>
 
-                            <div className="px-6 py-4 border-t border-zinc-800/80 flex gap-3">
+                            <div className="px-6 py-4 border-t border-zinc-800/80 flex gap-3 shrink-0">
                                 <button
                                     type="button"
                                     onClick={() => setOpen(false)}
-                                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-400 border border-zinc-700 hover:text-white"
+                                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-300 border border-zinc-700 hover:text-white hover:border-zinc-600"
                                 >
                                     Cancel
                                 </button>
@@ -191,10 +192,10 @@ export default function PlanUpgradeButton({ children, className, title }: Button
                                     {submitting ? 'Submitting...' : 'Submit request'}
                                 </button>
                             </div>
-                        </div>
-                    </div>
-                </>
-            )}
+                        </DialogPanel>
+                    )}
+                </div>
+            </Dialog>
         </>
     );
 }

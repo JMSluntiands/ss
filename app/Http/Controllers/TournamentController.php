@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Tournament;
 use App\Models\TournamentMatch;
+use App\Services\DoubleEliminationService;
 use App\Services\RoundRobinService;
 use App\Services\SwissService;
 use App\Support\TwoStageGroups;
@@ -18,7 +19,8 @@ class TournamentController extends Controller
 {
     public function __construct(
         private SwissService $swissService,
-        private RoundRobinService $roundRobinService
+        private RoundRobinService $roundRobinService,
+        private DoubleEliminationService $doubleEliminationService,
     ) {}
 
     private function redirectPath(Request $request, string $path): string
@@ -92,6 +94,30 @@ class TournamentController extends Controller
         }
 
         $validated['swiss_top_cut_players'] = $n;
+
+        return $validated;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function normalizeDoubleEliminationOptions(array $validated): array
+    {
+        $usesDoubleElim = ($validated['format'] ?? '') === 'double_elimination'
+            || ($validated['final_stage_format'] ?? '') === 'double_elimination';
+
+        if (! $usesDoubleElim) {
+            $validated['de_split_participants'] = false;
+            $validated['de_grand_finals'] = 'reset';
+
+            return $validated;
+        }
+
+        $validated['de_split_participants'] = (bool) ($validated['de_split_participants'] ?? false);
+        $validated['de_grand_finals'] = in_array($validated['de_grand_finals'] ?? 'reset', ['reset', 'single', 'none'], true)
+            ? $validated['de_grand_finals']
+            : 'reset';
 
         return $validated;
     }
@@ -223,10 +249,13 @@ class TournamentController extends Controller
             'break_ties' => 'boolean',
             'third_place_match' => 'boolean',
             'placement_matches_fifth_seventh' => 'boolean',
+            'de_split_participants' => 'boolean',
+            'de_grand_finals' => 'nullable|in:reset,single,none',
             'stadiums' => 'nullable|integer|min:1',
         ]);
 
         $validated = $this->normalizeSwissTopCut($request, $validated);
+        $validated = $this->normalizeDoubleEliminationOptions($validated);
 
         $slug = $validated['slug'] ?: Str::slug($validated['name']);
         $baseSlug = $slug;
@@ -321,10 +350,13 @@ class TournamentController extends Controller
             'break_ties' => 'boolean',
             'third_place_match' => 'boolean',
             'placement_matches_fifth_seventh' => 'boolean',
+            'de_split_participants' => 'boolean',
+            'de_grand_finals' => 'nullable|in:reset,single,none',
             'stadiums' => 'nullable|integer|min:1',
         ]);
 
         $validated = $this->normalizeSwissTopCut($request, $validated);
+        $validated = $this->normalizeDoubleEliminationOptions($validated);
 
         $tournament->update($validated);
 
@@ -501,6 +533,10 @@ class TournamentController extends Controller
 
         // Swiss / Round Robin group stage flow
         if (in_array($tournament->format, ['swiss', 'round_robin'], true) && $match->stage !== 'final') {
+            if ($tournament->matches()->where('stage', 'final')->exists()) {
+                return back()->withErrors(['match' => 'Group stage scores cannot be edited after the final stage has started.']);
+            }
+
             $validated = $request->validate([
                 'winner_id' => 'nullable|exists:participants,id',
                 'player1_battle_points' => 'required|integer|min:0',
@@ -549,7 +585,7 @@ class TournamentController extends Controller
 
         // Winner advances to next match (feeder order determines player1 vs player2)
         if ($match->next_match_id) {
-            $this->propagateParticipantToNextMatch($match, $validated['winner_id'], 'next_match_id');
+            $this->doubleEliminationService->propagateParticipantToNextMatch($match, $validated['winner_id'], 'next_match_id');
         }
 
         // DE: Loser drops to losers bracket
@@ -559,12 +595,13 @@ class TournamentController extends Controller
                 : $match->player1_id;
 
             if ($loserId) {
-                $this->propagateParticipantToNextMatch($match, $loserId, 'loser_next_match_id');
+                $this->doubleEliminationService->propagateParticipantToNextMatch($match, $loserId, 'loser_next_match_id');
             }
         }
 
-        // Auto-advance any BYE matches that now have exactly one player
-        $this->resolveAutoAdvances($tournament, $match->stage ?? 'group');
+        $this->doubleEliminationService->propagateByeAdvances($tournament, $match->stage ?? 'group');
+
+        $this->doubleEliminationService->resolveEliminationProgress($tournament, $match);
 
         // Check tournament completion
         if ($match->stage === 'final') {
@@ -587,28 +624,28 @@ class TournamentController extends Controller
                 $tournament->update(['status' => 'completed']);
             }
         } else {
-            $grandFinal = TournamentMatch::where('tournament_id', $tournament->id)
-                ->where('stage', '!=', 'final')
-                ->where('bracket', 'grand_final')
-                ->first();
-
-            if ($grandFinal) {
-                if ($grandFinal->winner_id) {
-                    $tournament->update(['status' => 'completed']);
-                }
-            } else {
-                $finalMatch = TournamentMatch::where('tournament_id', $tournament->id)
+            if (! $this->doubleEliminationService->usesDoubleElimination($tournament, $match->stage ?? 'group')) {
+                $grandFinal = TournamentMatch::where('tournament_id', $tournament->id)
                     ->where('stage', '!=', 'final')
-                    ->whereNull('next_match_id')
-                    ->where(function ($q) {
-                        $q->whereNull('bracket')
-                          ->orWhere('bracket', 'winners');
-                    })
-                    ->orderByDesc('round')
+                    ->where('bracket', 'grand_final')
                     ->first();
 
-                if ($finalMatch && $finalMatch->winner_id) {
+                if ($grandFinal?->winner_id) {
                     $tournament->update(['status' => 'completed']);
+                } else {
+                    $finalMatch = TournamentMatch::where('tournament_id', $tournament->id)
+                        ->where('stage', '!=', 'final')
+                        ->whereNull('next_match_id')
+                        ->where(function ($q) {
+                            $q->whereNull('bracket')
+                              ->orWhere('bracket', 'winners');
+                        })
+                        ->orderByDesc('round')
+                        ->first();
+
+                    if ($finalMatch && $finalMatch->winner_id) {
+                        $tournament->update(['status' => 'completed']);
+                    }
                 }
             }
         }
@@ -825,13 +862,6 @@ class TournamentController extends Controller
                 $p1Id = $feederMatch1->winner_id;
                 $p2Id = $feederMatch2->winner_id;
 
-                $winnerId = null;
-                if ($p1Id && !$p2Id) {
-                    $winnerId = $p1Id;
-                } elseif (!$p1Id && $p2Id) {
-                    $winnerId = $p2Id;
-                }
-
                 $match = TournamentMatch::create([
                     'tournament_id' => $tournament->id,
                     'stage' => $stage,
@@ -840,7 +870,7 @@ class TournamentController extends Controller
                     'match_number' => $rmn++,
                     'player1_id' => $p1Id,
                     'player2_id' => $p2Id,
-                    'winner_id' => $winnerId,
+                    'status' => 'pending',
                 ]);
 
                 $feederMatch1->update(['next_match_id' => $match->id]);
@@ -911,6 +941,8 @@ class TournamentController extends Controller
                 $quarterFinals[3]->update(['loser_next_match_id' => $fifthSemi2->id]);
             }
         }
+
+        $this->doubleEliminationService->propagateByeAdvances($tournament, $stage);
     }
 
     private function generateDoubleEliminationBracket(
@@ -918,300 +950,8 @@ class TournamentController extends Controller
         $participants,
         string $stage = 'group',
         ?string $bracketPrefix = null,
-    ) {
-        $winnersBracket = $this->resolveBracketTag($bracketPrefix, 'winners') ?? 'winners';
-        $losersBracket = $this->resolveBracketTag($bracketPrefix, 'losers') ?? 'losers';
-        $grandFinalBracket = $this->resolveBracketTag($bracketPrefix, 'grand_final') ?? 'grand_final';
-
-        $count = $participants->count();
-        $bracketSize = 1;
-        while ($bracketSize < $count) {
-            $bracketSize *= 2;
-        }
-        $ubRounds = intval(log($bracketSize, 2));
-
-        // ===== UPPER BRACKET =====
-        $seedOrder = $this->generateSeedOrder($bracketSize);
-        $slots = array_fill(0, $bracketSize, null);
-        foreach ($seedOrder as $slotIndex => $seed) {
-            if ($seed <= $count) {
-                $slots[$slotIndex] = $participants[$seed - 1];
-            }
-        }
-
-        $ubMatchesByRound = [];
-        $matchNumber = 1;
-
-        // UB Round 1
-        $ubR1 = [];
-        for ($i = 0; $i < $bracketSize; $i += 2) {
-            $p1 = $slots[$i];
-            $p2 = $slots[$i + 1];
-            $isBye = ($p1 === null || $p2 === null);
-            $winner = $isBye ? ($p1 ?? $p2) : null;
-
-            $match = TournamentMatch::create([
-                'tournament_id' => $tournament->id,
-                'stage' => $stage,
-                'bracket' => $winnersBracket,
-                'round' => 1,
-                'match_number' => $matchNumber++,
-                'player1_id' => $p1?->id,
-                'player2_id' => $p2?->id,
-                'winner_id' => $winner?->id,
-                'status' => $isBye ? 'completed' : 'pending',
-            ]);
-            $ubR1[] = $match;
-        }
-        $ubMatchesByRound[1] = $ubR1;
-
-        // UB Rounds 2+
-        $prevRound = $ubR1;
-        for ($round = 2; $round <= $ubRounds; $round++) {
-            $currRound = [];
-            for ($i = 0; $i < count($prevRound); $i += 2) {
-                $f1 = $prevRound[$i];
-                $f2 = $prevRound[$i + 1];
-                $p1Id = $f1->winner_id;
-                $p2Id = $f2->winner_id;
-
-                $winnerId = null;
-                if ($p1Id && !$p2Id) {
-                    $winnerId = $p1Id;
-                } elseif (!$p1Id && $p2Id) {
-                    $winnerId = $p2Id;
-                }
-
-                $status = 'pending';
-                if ($winnerId) {
-                    $status = 'completed';
-                } elseif ($p1Id && $p2Id) {
-                    $status = 'pending';
-                }
-
-                $match = TournamentMatch::create([
-                    'tournament_id' => $tournament->id,
-                    'stage' => $stage,
-                    'bracket' => $winnersBracket,
-                    'round' => $round,
-                    'match_number' => $matchNumber++,
-                    'player1_id' => $p1Id,
-                    'player2_id' => $p2Id,
-                    'winner_id' => $winnerId,
-                    'status' => $status,
-                ]);
-
-                $f1->update(['next_match_id' => $match->id]);
-                $f2->update(['next_match_id' => $match->id]);
-
-                $currRound[] = $match;
-            }
-            $ubMatchesByRound[$round] = $currRound;
-            $prevRound = $currRound;
-        }
-
-        // ===== LOWER BRACKET =====
-        $lbRoundCount = 2 * ($ubRounds - 1);
-        $lbMatchesByRound = [];
-
-        $matchesPerLBRound = [];
-        $matchesPerLBRound[1] = intval($bracketSize / 4);
-        for ($r = 2; $r <= $lbRoundCount; $r++) {
-            if ($r % 2 === 0) {
-                $matchesPerLBRound[$r] = $matchesPerLBRound[$r - 1];
-            } else {
-                $matchesPerLBRound[$r] = intval($matchesPerLBRound[$r - 1] / 2);
-            }
-        }
-
-        for ($r = 1; $r <= $lbRoundCount; $r++) {
-            $lbRound = [];
-            for ($m = 0; $m < $matchesPerLBRound[$r]; $m++) {
-                $match = TournamentMatch::create([
-                    'tournament_id' => $tournament->id,
-                    'stage' => $stage,
-                    'bracket' => $losersBracket,
-                    'round' => $r,
-                    'match_number' => $matchNumber++,
-                    'status' => 'pending',
-                ]);
-                $lbRound[] = $match;
-            }
-            $lbMatchesByRound[$r] = $lbRound;
-        }
-
-        // Connect LB internal: each round's winners advance to the next round
-        for ($r = 1; $r < $lbRoundCount; $r++) {
-            $currMatches = $lbMatchesByRound[$r];
-            $nextMatches = $lbMatchesByRound[$r + 1];
-
-            if ($r % 2 === 1) {
-                // Odd round → next even round (same match count)
-                for ($i = 0; $i < count($currMatches); $i++) {
-                    $currMatches[$i]->update(['next_match_id' => $nextMatches[$i]->id]);
-                }
-            } else {
-                // Even round → next odd round (match count halves)
-                for ($i = 0; $i < count($currMatches); $i++) {
-                    $nextIdx = intval($i / 2);
-                    $currMatches[$i]->update(['next_match_id' => $nextMatches[$nextIdx]->id]);
-                }
-            }
-        }
-
-        // Connect UB losers → LB
-        // UB R1 losers → LB R1 (2 UB losers per LB match)
-        for ($i = 0; $i < count($ubMatchesByRound[1]); $i++) {
-            $lbIdx = intval($i / 2);
-            $ubMatchesByRound[1][$i]->update([
-                'loser_next_match_id' => $lbMatchesByRound[1][$lbIdx]->id,
-            ]);
-        }
-
-        // UB R(n) losers → LB R(2*(n-1)) for n >= 2
-        for ($ubRound = 2; $ubRound <= $ubRounds; $ubRound++) {
-            $lbTargetRound = 2 * ($ubRound - 1);
-            $ubMatches = $ubMatchesByRound[$ubRound];
-            $lbTargets = $lbMatchesByRound[$lbTargetRound];
-
-            for ($i = 0; $i < count($ubMatches); $i++) {
-                if (isset($lbTargets[$i])) {
-                    $ubMatches[$i]->update([
-                        'loser_next_match_id' => $lbTargets[$i]->id,
-                    ]);
-                }
-            }
-        }
-
-        // ===== GRAND FINALS =====
-        $grandFinal = TournamentMatch::create([
-            'tournament_id' => $tournament->id,
-            'stage' => $stage,
-            'bracket' => $grandFinalBracket,
-            'round' => 1,
-            'match_number' => $matchNumber++,
-            'status' => 'pending',
-        ]);
-
-        // UB final → Grand Finals
-        $ubFinalMatch = $ubMatchesByRound[$ubRounds][0];
-        $ubFinalMatch->update(['next_match_id' => $grandFinal->id]);
-
-        // LB final → Grand Finals
-        $lbFinalMatch = $lbMatchesByRound[$lbRoundCount][0];
-        $lbFinalMatch->update(['next_match_id' => $grandFinal->id]);
-
-        // Resolve any auto-advances from BYEs
-        $this->resolveAutoAdvances($tournament, $stage);
-    }
-
-    /**
-     * Place a participant into the correct slot of the downstream match based on
-     * feeder match order (first feeder → player1, second → player2).
-     */
-    private function propagateParticipantToNextMatch(
-        TournamentMatch $fromMatch,
-        int $participantId,
-        string $linkColumn = 'next_match_id',
     ): void {
-        $nextMatchId = $fromMatch->{$linkColumn};
-        if (!$nextMatchId) {
-            return;
-        }
-
-        $nextMatch = TournamentMatch::find($nextMatchId);
-        if (!$nextMatch) {
-            return;
-        }
-
-        $feeders = TournamentMatch::where('tournament_id', $fromMatch->tournament_id)
-            ->where('stage', $fromMatch->stage)
-            ->where($linkColumn, $nextMatchId)
-            ->orderBy('match_number')
-            ->get();
-
-        if ($feeders->count() === 2) {
-            $feederIndex = $feeders->search(fn ($f) => $f->id === $fromMatch->id);
-            if ($feederIndex === 0) {
-                $nextMatch->update(['player1_id' => $participantId]);
-
-                return;
-            }
-            if ($feederIndex === 1) {
-                $nextMatch->update(['player2_id' => $participantId]);
-
-                return;
-            }
-        }
-
-        if (!$nextMatch->player1_id) {
-            $nextMatch->update(['player1_id' => $participantId]);
-        } elseif (!$nextMatch->player2_id && $nextMatch->player1_id !== $participantId) {
-            $nextMatch->update(['player2_id' => $participantId]);
-        }
-    }
-
-    /**
-     * Auto-advance matches where one player is present, the other is missing,
-     * and all feeder matches have been resolved.
-     */
-    private function resolveAutoAdvances(Tournament $tournament, string $stage): void
-    {
-        $maxIterations = 50;
-        for ($iter = 0; $iter < $maxIterations; $iter++) {
-            $changed = false;
-
-            $pendingMatches = TournamentMatch::where('tournament_id', $tournament->id)
-                ->where('stage', $stage)
-                ->where('status', 'pending')
-                ->get();
-
-            foreach ($pendingMatches as $match) {
-                $hasP1 = (bool) $match->player1_id;
-                $hasP2 = (bool) $match->player2_id;
-
-                if ($hasP1 && $hasP2) {
-                    continue;
-                }
-                if (!$hasP1 && !$hasP2) {
-                    continue;
-                }
-
-                // One player exists, check if all feeders are resolved
-                $feeders = TournamentMatch::where('tournament_id', $tournament->id)
-                    ->where('stage', $stage)
-                    ->where(function ($q) use ($match) {
-                        $q->where('next_match_id', $match->id)
-                          ->orWhere('loser_next_match_id', $match->id);
-                    })
-                    ->get();
-
-                if ($feeders->isEmpty()) {
-                    continue;
-                }
-
-                $allResolved = $feeders->every(fn ($f) => $f->status === 'completed');
-                if (!$allResolved) {
-                    continue;
-                }
-
-                $winnerId = $hasP1 ? $match->player1_id : $match->player2_id;
-                $match->update([
-                    'winner_id' => $winnerId,
-                    'status' => 'completed',
-                ]);
-
-                if ($match->next_match_id) {
-                    $this->propagateParticipantToNextMatch($match, $winnerId, 'next_match_id');
-                }
-
-                $changed = true;
-            }
-
-            if (!$changed) {
-                break;
-            }
-        }
+        $this->doubleEliminationService->generate($tournament, $participants, $stage, $bracketPrefix);
     }
 
     /**
@@ -1281,9 +1021,13 @@ class TournamentController extends Controller
     public function playerMatching(Tournament $tournament)
     {
         return Inertia::render('Tournaments/PlayerMatching', [
-            'tournament' => $tournament->only(['id', 'name', 'slug', 'status', 'format', 'current_round']),
+            'tournament' => $tournament->only([
+                'id', 'name', 'slug', 'status', 'format', 'current_round', 'tournament_type',
+                'pts_for_match_win', 'pts_for_match_tie', 'swiss_top_cut_players', 'advance_per_group',
+            ]),
             'matches' => $this->playingMatchesForDisplay($tournament),
             'group_leaders' => $this->playerMatchingGroupLeaders($tournament),
+            'standings' => $this->playerMatchingStandings($tournament),
         ]);
     }
 
@@ -1294,6 +1038,7 @@ class TournamentController extends Controller
             'status' => $tournament->status,
             'current_round' => $tournament->current_round,
             'group_leaders' => $this->playerMatchingGroupLeaders($tournament),
+            'standings' => $this->playerMatchingStandings($tournament),
         ]);
     }
 
@@ -1412,6 +1157,50 @@ class TournamentController extends Controller
         }
 
         return $leaders;
+    }
+
+    /**
+     * @return array<int, array{
+     *     rank: int,
+     *     participant_id: int,
+     *     participant_name: string,
+     *     wins: int,
+     *     losses: int,
+     *     draws: int,
+     *     tournament_points: float,
+     *     battle_points: int,
+     *     opponent_strength: float,
+     *     pts_diff: int
+     * }>
+     */
+    private function playerMatchingStandings(Tournament $tournament): array
+    {
+        if (! in_array($tournament->format, ['swiss', 'round_robin'], true)) {
+            return [];
+        }
+
+        $standings = $tournament->swissStandings()->with('participant')->get();
+        if ($standings->isEmpty()) {
+            return [];
+        }
+
+        $ptsDiff = $this->standingsPointsDiff($tournament);
+        $sorted = $this->sortStandingsLikeUi($standings, $ptsDiff);
+
+        return $sorted->values()->map(function ($standing, int $index) use ($ptsDiff) {
+            return [
+                'rank' => $index + 1,
+                'participant_id' => $standing->participant_id,
+                'participant_name' => $standing->participant->name ?? '—',
+                'wins' => (int) $standing->wins,
+                'losses' => (int) $standing->losses,
+                'draws' => (int) $standing->draws,
+                'tournament_points' => (float) $standing->tournament_points,
+                'battle_points' => (int) $standing->battle_points,
+                'opponent_strength' => (float) $standing->opponent_strength,
+                'pts_diff' => $ptsDiff[$standing->participant_id] ?? 0,
+            ];
+        })->all();
     }
 
     public function destroy(Tournament $tournament)
@@ -1586,6 +1375,10 @@ class TournamentController extends Controller
         }
 
         if (in_array($tournament->format, ['swiss', 'round_robin'], true) && $match->stage !== 'final') {
+            if ($tournament->matches()->where('stage', 'final')->exists()) {
+                return back()->withErrors(['match' => 'Group stage scores cannot be edited after the final stage has started.']);
+            }
+
             $winnerId = $isDraw ? 0 : $validated['winner_id'];
 
             $groupService = $tournament->format === 'round_robin'
@@ -1618,14 +1411,7 @@ class TournamentController extends Controller
         ]);
 
         if ($match->next_match_id) {
-            $nextMatch = TournamentMatch::find($match->next_match_id);
-            if ($nextMatch) {
-                if (!$nextMatch->player1_id) {
-                    $nextMatch->update(['player1_id' => $validated['winner_id']]);
-                } elseif ($nextMatch->player1_id != $validated['winner_id'] && !$nextMatch->player2_id) {
-                    $nextMatch->update(['player2_id' => $validated['winner_id']]);
-                }
-            }
+            $this->doubleEliminationService->propagateParticipantToNextMatch($match, $validated['winner_id'], 'next_match_id');
         }
 
         if ($match->loser_next_match_id) {
@@ -1634,18 +1420,13 @@ class TournamentController extends Controller
                 : $match->player1_id;
 
             if ($loserId) {
-                $loserMatch = TournamentMatch::find($match->loser_next_match_id);
-                if ($loserMatch) {
-                    if (!$loserMatch->player1_id) {
-                        $loserMatch->update(['player1_id' => $loserId]);
-                    } elseif (!$loserMatch->player2_id) {
-                        $loserMatch->update(['player2_id' => $loserId]);
-                    }
-                }
+                $this->doubleEliminationService->propagateParticipantToNextMatch($match, $loserId, 'loser_next_match_id');
             }
         }
 
-        $this->resolveAutoAdvances($tournament, $match->stage ?? 'group');
+        $this->doubleEliminationService->propagateByeAdvances($tournament, $match->stage ?? 'group');
+
+        $this->doubleEliminationService->resolveEliminationProgress($tournament, $match);
 
         if ($match->stage === 'final') {
             $lastMatch = TournamentMatch::where('tournament_id', $tournament->id)

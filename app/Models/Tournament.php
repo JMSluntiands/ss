@@ -41,6 +41,8 @@ class Tournament extends Model
         'enable_predictions',
         'third_place_match',
         'placement_matches_fifth_seventh',
+        'de_split_participants',
+        'de_grand_finals',
         'notify_participants',
         'status',
     ];
@@ -57,6 +59,7 @@ class Tournament extends Model
             'enable_predictions' => 'boolean',
             'third_place_match' => 'boolean',
             'placement_matches_fifth_seventh' => 'boolean',
+            'de_split_participants' => 'boolean',
             'notify_participants' => 'boolean',
             'start_time' => 'datetime',
             'swiss_top_cut_players' => 'integer',

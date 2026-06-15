@@ -247,7 +247,7 @@ class ParticipantController extends Controller
                 $p->update(['seed' => $index + 1]);
             });
 
-        return redirect()->route('tournaments.show', $tournament);
+        return back();
     }
 
     private function resolveUserId(string $name, ?int $explicitUserId): ?int

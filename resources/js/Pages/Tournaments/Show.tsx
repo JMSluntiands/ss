@@ -1,9 +1,11 @@
+import BracketRoundsTree from '@/Components/Bracket/BracketRoundsTree';
+import { BRACKET_SCROLL_CLASS } from '@/Components/Bracket/BracketColumn';
 import ParticipantAvatar from '@/Components/ParticipantAvatar';
 import SiteLogo from '@/Components/SiteLogo';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import QRCode from 'react-qr-code';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageProps } from '@/types';
 import { persistLiveScoreQueued, type RoundEntry as LiveRoundEntry } from '@/utils/liveScoreSync';
@@ -84,6 +86,8 @@ interface Tournament {
     break_ties: boolean;
     third_place_match: boolean;
     placement_matches_fifth_seventh: boolean;
+    de_split_participants?: boolean;
+    de_grand_finals?: 'reset' | 'single' | 'none';
     swiss_rounds: number | null;
     swiss_top_cut_players: number | null;
     current_round: number;
@@ -513,29 +517,75 @@ function EditMatchPlayersModal({
     );
 }
 
+function BracketMatchSlot({
+    match,
+    tournamentId,
+    isActive,
+    canScore,
+    stadiumPickerMatchId,
+    onOpenStadiumPicker,
+    onCloseStadiumPicker,
+    participants,
+    stadiumCount,
+    occupiedStadiums,
+    onMatchReported,
+}: {
+    match: TournamentMatch;
+    tournamentId: number;
+    isActive: boolean;
+    canScore: boolean;
+    stadiumPickerMatchId?: number | null;
+    onOpenStadiumPicker?: (matchId: number) => void;
+    onCloseStadiumPicker?: () => void;
+    participants: Participant[];
+    stadiumCount: number;
+    occupiedStadiums: number[];
+    onMatchReported?: () => void;
+}) {
+    return (
+        <MatchCard
+            match={match}
+            tournamentId={tournamentId}
+            isActive={isActive}
+            canScore={canScore}
+            isStadiumPickerOpen={stadiumPickerMatchId === match.id}
+            onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)}
+            onCloseStadiumPicker={onCloseStadiumPicker}
+            participants={participants}
+            stadiumCount={stadiumCount}
+            occupiedStadiums={occupiedStadiums}
+            onMatchReported={onMatchReported}
+        />
+    );
+}
+
 /* ─── Single Elimination MatchCard ─── */
 function MatchCard({
     match,
     tournamentId,
     isActive,
     canScore: canScoreProp = true,
+    compact = false,
     isStadiumPickerOpen = false,
     onOpenStadiumPicker,
     onCloseStadiumPicker,
     participants = [],
     stadiumCount = 0,
     occupiedStadiums = [],
+    onMatchReported,
 }: {
     match: TournamentMatch;
     tournamentId: number;
     isActive: boolean;
     canScore?: boolean;
+    compact?: boolean;
     isStadiumPickerOpen?: boolean;
     onOpenStadiumPicker?: () => void;
     onCloseStadiumPicker?: () => void;
     participants?: Participant[];
     stadiumCount?: number;
     occupiedStadiums?: number[];
+    onMatchReported?: () => void;
 }) {
     const [showScoreModal, setShowScoreModal] = useState(false);
     const [showEditPlayers, setShowEditPlayers] = useState(false);
@@ -588,7 +638,11 @@ function MatchCard({
             {
                 preserveScroll: true,
                 preserveState: true,
-                onFinish: () => { setSubmitting(false); setShowScoreModal(false); },
+                onFinish: () => {
+                    setSubmitting(false);
+                    setShowScoreModal(false);
+                    onMatchReported?.();
+                },
             }
         );
     };
@@ -622,6 +676,12 @@ function MatchCard({
     const p1Name = match.player1?.name || 'TBD';
     const p2Name = match.player2?.name || 'TBD';
     const isBye = (!match.player1_id || !match.player2_id) && match.winner_id;
+    const hasRecordedScore =
+        match.status === 'completed' &&
+        ((match.player1_score != null && match.player1_score > 0) ||
+            (match.player2_score != null && match.player2_score > 0) ||
+            ((match.round_details?.length ?? 0) > 0));
+    const showWinnerStyle = hasRecordedScore && !!match.winner_id;
 
     const p1Judge = match.player1_id ? participants.find(p => p.id === match.player1_id)?.judge : null;
     const p2Judge = match.player2_id ? participants.find(p => p.id === match.player2_id)?.judge : null;
@@ -635,10 +695,114 @@ function MatchCard({
         </span>
     );
 
-    return (
-        <>
-            <div className={`rounded-xl border overflow-hidden text-sm w-56 shrink-0 ${
-                match.winner_id
+    const p1Seed = match.player1_id ? participants.find((p) => p.id === match.player1_id)?.seed : null;
+    const p2Seed = match.player2_id ? participants.find((p) => p.id === match.player2_id)?.seed : null;
+
+    const compactPlayerRow = (
+        playerId: number | null,
+        name: string,
+        seed: number | null | undefined,
+        score: number | null,
+        isWinner: boolean,
+    ) => (
+        <div
+            className={`h-[26px] flex items-stretch border-b border-[#4a5059]/80 last:border-b-0 ${
+                isWinner ? 'bg-[#666e7c]' : playerId ? 'bg-[#5c636f]' : 'bg-[#545b67]'
+            }`}
+        >
+            <div className="w-8 shrink-0 flex items-center justify-center bg-[#3d434d] text-[11px] text-slate-400 tabular-nums border-r border-[#4a5059]/80">
+                {playerId && seed != null ? seed : ''}
+            </div>
+            <span
+                className={`flex-1 flex items-center px-2 truncate text-[12px] min-w-0 ${
+                    isWinner ? 'font-semibold text-white' : playerId ? 'text-slate-100' : ''
+                }`}
+            >
+                {playerId ? name : ''}
+            </span>
+            {score != null && score > 0 && (
+                <span className={`shrink-0 flex items-center pr-2 text-[11px] tabular-nums ${isWinner ? 'text-white' : 'text-slate-400'}`}>
+                    {score}
+                </span>
+            )}
+        </div>
+    );
+
+    const matchCard = compact ? (
+                <div className="relative w-[208px] flex items-start gap-0.5 group">
+                    <div className="flex-1 min-w-0">
+                        <span className="absolute -top-[11px] left-0 text-[11px] leading-none text-slate-500 tabular-nums select-none pointer-events-none z-10">
+                            {match.match_number}
+                        </span>
+                        <div
+                            className={`rounded-md overflow-hidden h-[52px] border border-[#4a5059]/60 ${
+                                isPlaying ? 'ring-1 ring-emerald-500/70' : ''
+                            } ${showWinnerStyle ? 'border-slate-400/50' : ''}`}
+                        >
+                            {compactPlayerRow(
+                                match.player1_id,
+                                p1Name,
+                                p1Seed,
+                                hasRecordedScore ? match.player1_score : null,
+                                showWinnerStyle && match.winner_id === match.player1_id,
+                            )}
+                            {compactPlayerRow(
+                                match.player2_id,
+                                p2Name,
+                                p2Seed,
+                                hasRecordedScore ? match.player2_score : null,
+                                showWinnerStyle && match.winner_id === match.player2_id,
+                            )}
+                        </div>
+                    </div>
+
+                    {canEditPlayers && (
+                        <button
+                            type="button"
+                            onClick={() => setShowEditPlayers(true)}
+                            className="shrink-0 mt-2 p-1 rounded text-slate-500 hover:text-white hover:bg-slate-700/50 transition-colors"
+                            title="Edit players"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
+                    )}
+
+                    {canReport && (
+                        <div className="absolute inset-0 flex items-center justify-center gap-1 rounded-md bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {canSetPlaying && (
+                                <button
+                                    type="button"
+                                    onClick={handleSetPlaying}
+                                    className="px-2 py-1 rounded text-[10px] font-semibold bg-emerald-600/90 text-white hover:bg-emerald-500"
+                                >
+                                    Play
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={openScoreModal}
+                                className="px-2 py-1 rounded text-[10px] font-semibold bg-slate-600/90 text-white hover:bg-slate-500"
+                            >
+                                Score
+                            </button>
+                        </div>
+                    )}
+
+                    {hasRecordedScore && match.winner_id && !canReport && (
+                        <button
+                            type="button"
+                            onClick={() => setShowDetails(true)}
+                            className="absolute inset-0 flex items-center justify-center rounded-md bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-semibold text-white"
+                        >
+                            Details
+                        </button>
+                    )}
+                </div>
+    ) : (
+            <div className={`rounded-xl border overflow-hidden text-sm w-[208px] shrink-0 ${
+                showWinnerStyle
                     ? 'border-slate-700/50 bg-slate-800/40'
                     : isPlaying
                         ? 'border-emerald-500/40 bg-slate-800/60 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500/20'
@@ -670,43 +834,33 @@ function MatchCard({
                     </div>
                 )}
                 <div className={`flex items-center justify-between px-3 py-2.5 border-b border-slate-700/30 transition-all ${
-                    match.winner_id && match.winner_id === match.player1_id
-                        ? 'bg-cyan-500/10 text-cyan-400 font-semibold'
+                    showWinnerStyle && match.winner_id === match.player1_id
+                        ? 'bg-slate-800/80 text-white font-semibold'
                         : match.player1_id ? 'text-slate-300' : 'text-slate-600 italic'
                 }`}>
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {match.winner_id && match.winner_id === match.player1_id && (
-                            <svg className="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                        )}
                         <span className="truncate" title={p1Name}>{p1Name}</span>
                         {p1Judge && <JudgeBadge judge={p1Judge} />}
                     </div>
-                    {match.player1_score !== null && match.player1_score > 0 && (
-                        <span className={`text-xs font-bold ml-2 shrink-0 ${match.winner_id === match.player1_id ? 'text-cyan-400' : 'text-slate-500'}`}>{match.player1_score}</span>
+                    {hasRecordedScore && match.player1_score !== null && match.player1_score > 0 && (
+                        <span className={`text-xs font-bold ml-2 shrink-0 ${match.winner_id === match.player1_id ? 'text-white' : 'text-slate-500'}`}>{match.player1_score}</span>
                     )}
                 </div>
                 <div className={`flex items-center justify-between px-3 py-2.5 transition-all ${
-                    match.winner_id && match.winner_id === match.player2_id
-                        ? 'bg-cyan-500/10 text-cyan-400 font-semibold'
+                    showWinnerStyle && match.winner_id === match.player2_id
+                        ? 'bg-slate-800/80 text-white font-semibold'
                         : match.player2_id ? 'text-slate-300' : 'text-slate-600 italic'
                 }`}>
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {match.winner_id && match.winner_id === match.player2_id && (
-                            <svg className="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                        )}
                         <span className="truncate" title={p2Name}>{p2Name}</span>
                         {p2Judge && <JudgeBadge judge={p2Judge} />}
                     </div>
-                    {match.player2_score !== null && match.player2_score > 0 && (
-                        <span className={`text-xs font-bold ml-2 ${match.winner_id === match.player2_id ? 'text-cyan-400' : 'text-slate-500'}`}>{match.player2_score}</span>
+                    {hasRecordedScore && match.player2_score !== null && match.player2_score > 0 && (
+                        <span className={`text-xs font-bold ml-2 ${match.winner_id === match.player2_id ? 'text-white' : 'text-slate-500'}`}>{match.player2_score}</span>
                     )}
                 </div>
                 {/* Score details toggle for completed */}
-                {match.winner_id && (match.player1_score !== null || match.player2_score !== null) && (
+                {hasRecordedScore && (
                     <button
                         onClick={() => setShowDetails(!showDetails)}
                         className="w-full flex items-center justify-center gap-1 px-2 py-1 border-t border-slate-700/30 text-[10px] font-medium text-slate-500 hover:text-cyan-400 hover:bg-cyan-500/5 transition-all"
@@ -746,6 +900,11 @@ function MatchCard({
                     </button>
                 )}
             </div>
+    );
+
+    return (
+        <>
+            {matchCard}
 
             {/* Score Details Modal */}
             {showDetails && match.winner_id && (() => {
@@ -821,13 +980,6 @@ function MatchCard({
                                                 );
                                             })}
 
-            <EditMatchPlayersModal
-                open={showEditPlayers}
-                onClose={() => setShowEditPlayers(false)}
-                tournamentId={tournamentId}
-                match={match}
-                participants={participants}
-            />
                                         </div>
                                     </div>
                                 ) : (
@@ -839,6 +991,14 @@ function MatchCard({
                 </>
                 );
             })()}
+
+            <EditMatchPlayersModal
+                open={showEditPlayers}
+                onClose={() => setShowEditPlayers(false)}
+                tournamentId={tournamentId}
+                match={match}
+                participants={participants}
+            />
 
             {/* Stadium Picker Modal */}
             {isStadiumPickerOpen && (
@@ -963,17 +1123,28 @@ function SwissScoreModal({
         ? route('matches.liveScore', { tournament: tournamentId, match: match.id })
         : null;
     const [rounds, setRounds] = useState<RoundEntry[]>(() => (match.round_details as RoundEntry[] | null) ?? []);
+    const roundsRef = useRef(rounds);
     const [submitting, setSubmitting] = useState(false);
 
-    const updateRounds = (updater: RoundEntry[] | ((prev: RoundEntry[]) => RoundEntry[])) => {
+    useEffect(() => {
+        roundsRef.current = rounds;
+    }, [rounds]);
+
+    useEffect(() => {
+        const server = (match.round_details ?? []) as RoundEntry[];
+        setRounds((prev) => (server.length >= prev.length ? server : prev));
+    }, [match.id, match.round_details]);
+
+    const updateRounds = useCallback((updater: RoundEntry[] | ((prev: RoundEntry[]) => RoundEntry[])) => {
         setRounds((prev) => {
             const next = typeof updater === 'function' ? updater(prev) : updater;
+            roundsRef.current = next;
             if (liveScoreUrl) {
                 void persistLiveScoreQueued(liveScoreUrl, next as LiveRoundEntry[]);
             }
             return next;
         });
-    };
+    }, [liveScoreUrl]);
 
     const p1BP = rounds.filter(r => r.winner === 'p1').reduce((s, r) => s + r.points, 0);
     const p2BP = rounds.filter(r => r.winner === 'p2').reduce((s, r) => s + r.points, 0);
@@ -1013,8 +1184,11 @@ function SwissScoreModal({
     return (
         <>
             <div className="fixed inset-0 z-40 !mt-0 bg-black/70" onClick={onClose} />
-            <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4">
-                <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 p-6">
+            <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center p-4 pointer-events-none">
+                <div
+                    className="pointer-events-auto w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/40 p-6"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-semibold text-white">{isEdit ? 'Edit Match Result' : 'Report Match Result'}</h2>
                         <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
@@ -1168,6 +1342,8 @@ function SwissMatchCard({
     match,
     tournamentId,
     isActive,
+    isCurrentRound = true,
+    canEditGroupScore = false,
     canScore: canScoreProp = true,
     onOpenScore,
     isDetailsOpen = false,
@@ -1183,6 +1359,8 @@ function SwissMatchCard({
     match: TournamentMatch;
     tournamentId: number;
     isActive: boolean;
+    isCurrentRound?: boolean;
+    canEditGroupScore?: boolean;
     canScore?: boolean;
     onOpenScore: (matchId: number) => void;
     isDetailsOpen?: boolean;
@@ -1200,9 +1378,10 @@ function SwissMatchCard({
     const p2Name = match.player2?.name || 'BYE';
     const isCompleted = match.status === 'completed';
     const isPlaying = match.status === 'playing';
-    const canReport = isActive && canScoreProp && !isCompleted && match.player1_id && match.player2_id && !match.is_bye;
+    const canReport = isActive && isCurrentRound && canScoreProp && !isCompleted && match.player1_id && match.player2_id && !match.is_bye;
     const canSetPlaying = canReport && !isPlaying;
-    const canEditPlayers = isActive && !match.is_bye && match.round === 1;
+    const canEditCompletedScore = canEditGroupScore && canScoreProp && !match.is_bye;
+    const canEditPlayers = isActive && isCurrentRound && !match.is_bye && match.round === 1;
 
     const p1Judge = match.player1_id ? participants.find(p => p.id === match.player1_id)?.judge : null;
     const p2Judge = match.player2_id ? participants.find(p => p.id === match.player2_id)?.judge : null;
@@ -1262,7 +1441,7 @@ function SwissMatchCard({
                             {match.stadium ? `Stadium ${match.stadium}` : 'Now Playing'}
                         </span>
                     </div>
-                    {isActive && (
+                    {isActive && isCurrentRound && (
                         <button
                             onClick={cancelPlaying}
                             className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
@@ -1335,7 +1514,7 @@ function SwissMatchCard({
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                                 Score
                             </button>
-                            {isActive && (
+                            {canEditCompletedScore && (
                                 <button
                                     onClick={() => onOpenScore(match.id)}
                                     className="px-2.5 py-1 rounded-lg bg-slate-800/60 border border-slate-700/50 text-[10px] font-medium text-slate-500 hover:text-amber-400 hover:border-amber-500/30 transition-all"
@@ -1706,7 +1885,17 @@ function PlayerStatsTable({ participants, matches, standings }: {
     matches: TournamentMatch[];
     standings?: SwissStanding[];
 }) {
-    const completedMatches = matches.filter(m => m.status === 'completed' && !m.is_bye);
+    const completedMatches = matches.filter(m => {
+        if (m.status !== 'completed' || m.is_bye) {
+            return false;
+        }
+        const hasScore =
+            (m.player1_score != null && m.player1_score > 0) ||
+            (m.player2_score != null && m.player2_score > 0) ||
+            ((m.round_details?.length ?? 0) > 0);
+
+        return hasScore;
+    });
     if (completedMatches.length === 0) return null;
 
     const playerStats = participants.map(p => {
@@ -1828,34 +2017,11 @@ function sortMatchesByNumber(matches: TournamentMatch[]): TournamentMatch[] {
 }
 
 function shouldHideBracketMatch(match: TournamentMatch, isFirstRound: boolean): boolean {
-    if (isFirstRound && match.is_bye) return true;
+    if (!isFirstRound) return false;
+    if (match.is_bye) return true;
+    if (!match.player1_id && !match.player2_id) return true;
     if ((!match.player1_id || !match.player2_id) && match.winner_id) return true;
-    if (isFirstRound && !match.player1_id && !match.player2_id) return true;
     return false;
-}
-
-function BracketRoundMatches({
-    roundMatches,
-    roundIndex,
-    children,
-}: {
-    roundMatches: TournamentMatch[];
-    roundIndex: number;
-    children: (match: TournamentMatch) => React.ReactNode;
-}) {
-    const isFirstRound = roundIndex === 0;
-    const visible = sortMatchesByNumber(roundMatches).filter(
-        (m) => !shouldHideBracketMatch(m, isFirstRound),
-    );
-    if (visible.length === 0) return null;
-
-    return (
-        <div className="flex flex-col justify-around flex-1 gap-4">
-            {visible.map((match) => (
-                <div key={match.id}>{children(match)}</div>
-            ))}
-        </div>
-    );
 }
 
 /* ─── Elimination Bracket Renderer (SE or DE) ─── */
@@ -1871,6 +2037,7 @@ function EliminationBracket({
     groupSplit = true,
     embedded = false,
     panelTitle,
+    onMatchReported,
 }: {
     matches: TournamentMatch[];
     tournament: Tournament;
@@ -1883,6 +2050,7 @@ function EliminationBracket({
     groupSplit?: boolean;
     embedded?: boolean;
     panelTitle?: string;
+    onMatchReported?: () => void;
 }) {
     const participants = tournament.participants || [];
     const isTwoStage = tournament.tournament_type === 'two_stage';
@@ -1954,6 +2122,7 @@ function EliminationBracket({
                                     groupSplit={false}
                                     embedded
                                     panelTitle={group.label}
+                                    onMatchReported={onMatchReported}
                                 />
                             </div>
                         ))}
@@ -1964,107 +2133,115 @@ function EliminationBracket({
     }
 
     if (format === 'double_elimination') {
+        const renderBracketMatch = (match: TournamentMatch) => (
+            <BracketMatchSlot
+                match={match}
+                tournamentId={tournament.id}
+                isActive={isActive}
+                canScore={canScore}
+                stadiumPickerMatchId={stadiumPickerMatchId}
+                onOpenStadiumPicker={onOpenStadiumPicker}
+                onCloseStadiumPicker={onCloseStadiumPicker}
+                participants={tournament.participants || []}
+                stadiumCount={tournament.stadiums || 0}
+                occupiedStadiums={occupiedStadiums}
+                onMatchReported={onMatchReported}
+            />
+        );
+
+        const renderBracketPanel = (
+            title: string,
+            dotClass: string,
+            bracketMatches: TournamentMatch[],
+            roundNames: (roundIndex: number, total: number) => string,
+            hideEmptyLaterRounds = false,
+        ) => {
+            const roundsMap: Record<number, TournamentMatch[]> = {};
+            bracketMatches.forEach((m) => {
+                if (!roundsMap[m.round]) roundsMap[m.round] = [];
+                roundsMap[m.round].push(m);
+            });
+
+            let rounds = Object.keys(roundsMap).map(Number).sort((a, b) => a - b);
+            if (rounds.length === 0) return null;
+
+            const firstRoundNumber = rounds[0];
+            const firstRoundCount = Math.max(1, sortMatchesByNumber(roundsMap[firstRoundNumber] ?? []).length);
+
+            return (
+                <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-800/80 flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${dotClass}`} />
+                        <h3 className="text-base font-semibold text-white">{title}</h3>
+                    </div>
+                    <div className={`p-4 sm:p-6 ${BRACKET_SCROLL_CLASS}`}>
+                        <BracketRoundsTree
+                            rounds={rounds}
+                            roundsMap={roundsMap}
+                            roundLabel={roundNames}
+                            firstRoundMatchCount={firstRoundCount}
+                            hideMatch={(m) =>
+                                shouldHideBracketMatch(
+                                    m as TournamentMatch,
+                                    (m as TournamentMatch).round === firstRoundNumber,
+                                )
+                            }
+                            renderMatch={(match) => renderBracketMatch(match as TournamentMatch)}
+                        />
+                    </div>
+                </div>
+            );
+        };
+
         const winnersMatches = matches.filter(m => m.bracket === 'winners' || m.bracket?.endsWith('_winners'));
         const losersMatches = matches.filter(m => m.bracket === 'losers' || m.bracket?.endsWith('_losers'));
         const grandFinalMatches = matches.filter(m => m.bracket === 'grand_final' || m.bracket?.endsWith('_grand_final'));
 
-        const wRoundsMap: Record<number, TournamentMatch[]> = {};
-        winnersMatches.forEach(m => {
-            if (!wRoundsMap[m.round]) wRoundsMap[m.round] = [];
-            wRoundsMap[m.round].push(m);
-        });
-        const wRounds = Object.keys(wRoundsMap).map(Number).sort((a, b) => a - b);
-
-        const lRoundsMap: Record<number, TournamentMatch[]> = {};
-        losersMatches.forEach(m => {
-            if (!lRoundsMap[m.round]) lRoundsMap[m.round] = [];
-            lRoundsMap[m.round].push(m);
-        });
-        const lRounds = Object.keys(lRoundsMap).map(Number).sort((a, b) => a - b);
-
-        const getWRoundName = (round: number) => {
-            if (round === wRounds.length) return 'WB Finals';
-            if (round === wRounds.length - 1) return 'WB Semi-Finals';
-            return `WB Round ${round}`;
-        };
-
-        const getLRoundName = (round: number) => {
-            if (round === lRounds.length) return 'LB Finals';
-            return `LB Round ${round}`;
-        };
-
         return (
-            <div className="space-y-8 overflow-hidden">
+            <div className="space-y-6 overflow-hidden">
                 <NowPlayingBanner />
 
-                {/* Winners Bracket */}
-                <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-800/80 flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-cyan-400" />
-                        <h3 className="text-base font-semibold text-white">Winners Bracket</h3>
-                    </div>
-                    <div className="p-6 overflow-x-auto">
-                        <div className="flex gap-8 min-w-max">
-                            {wRounds.map((round, roundIndex) => {
-                                const roundMatches = wRoundsMap[round];
-                                if (roundMatches.length === 0) return null;
-                                return (
-                                    <div key={round} className="flex flex-col">
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 text-center">
-                                            {getWRoundName(round)}
-                                        </h4>
-                                        <BracketRoundMatches roundMatches={roundMatches} roundIndex={roundIndex}>
-                                            {(match) => (
-                                                <MatchCard match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
-                                            )}
-                                        </BracketRoundMatches>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
+                {renderBracketPanel('Winners Bracket', 'bg-cyan-400', winnersMatches, (i, total) => {
+                    if (i === total - 1) return 'Finals';
+                    if (i === total - 2) return 'Semi-Finals';
+                    if (i === total - 3) return 'Quarter-Finals';
+                    return `Round ${i + 1}`;
+                })}
 
-                {/* Losers Bracket */}
-                <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-800/80 flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-red-400" />
-                        <h3 className="text-base font-semibold text-white">Losers Bracket</h3>
-                    </div>
-                    <div className="p-6 overflow-x-auto">
-                        <div className="flex gap-8 min-w-max">
-                            {lRounds.map((round, roundIndex) => {
-                                const roundMatches = lRoundsMap[round];
-                                return (
-                                    <div key={round} className="flex flex-col">
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 text-center">
-                                            {getLRoundName(round)}
-                                        </h4>
-                                        <BracketRoundMatches roundMatches={roundMatches} roundIndex={roundIndex}>
-                                            {(match) => (
-                                                <MatchCard match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
-                                            )}
-                                        </BracketRoundMatches>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
+                {renderBracketPanel('Losers Bracket', 'bg-red-400', losersMatches, (i, total) => {
+                    if (i === total - 1) return 'Finals';
+                    return `Round ${i + 1}`;
+                }, true)}
 
-                {/* Grand Finals */}
                 {grandFinalMatches.length > 0 && (
                     <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/5 overflow-hidden">
                         <div className="px-6 py-4 border-b border-yellow-500/20 flex items-center gap-3">
                             <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3l3.057-3L12 4.5 15.943 0 19 3l-2 6.5L19 21H5l2-11.5L5 3z" />
                             </svg>
-                            <h3 className="text-base font-semibold text-yellow-400">Grand Finals</h3>
+                            <h3 className="text-base font-semibold text-yellow-400">Grand Final</h3>
                         </div>
-                        <div className="p-6 flex justify-center">
-                            {grandFinalMatches.map(match => (
-                                <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
-                            ))}
+                        <div className="p-6 flex flex-col items-center gap-6">
+                            {grandFinalMatches
+                                .filter(m => m.round === 1)
+                                .map(match => (
+                                    <div key={match.id}>
+                                        <p className="text-[10px] font-bold text-yellow-500/70 uppercase tracking-wider text-center mb-2">
+                                            {tournament.de_grand_finals === 'reset' ? 'Grand Final — Game 1' : 'Grand Final'}
+                                        </p>
+                                        {renderBracketMatch(match)}
+                                    </div>
+                                ))}
+                            {grandFinalMatches
+                                .filter(m => m.round === 2 && (m.player1_id || m.player2_id))
+                                .map(match => (
+                                    <div key={match.id}>
+                                        <p className="text-[10px] font-bold text-yellow-500/70 uppercase tracking-wider text-center mb-2">
+                                            Bracket Reset — Game 2
+                                        </p>
+                                        {renderBracketMatch(match)}
+                                    </div>
+                                ))}
                         </div>
                     </div>
                 )}
@@ -2108,26 +2285,37 @@ function EliminationBracket({
     });
     const p5Rounds = Object.keys(p5RoundsMap).map(Number).sort((a, b) => a - b);
 
+    const firstRoundCount = Math.max(1, sortMatchesByNumber(roundsMap[rounds[0]] ?? []).length);
+
     const bracketSection = (
-        <div className={embedded ? 'p-4 overflow-x-auto' : 'p-6 overflow-x-auto'}>
-            <div className="flex gap-8 min-w-max">
-                {rounds.map((round, roundIndex) => {
-                    const roundMatches = roundsMap[round];
-                    if (roundMatches.length === 0) return null;
-                    return (
-                        <div key={round} className="flex flex-col">
-                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 text-center">
-                                {getRoundName(round)}
-                            </h4>
-                            <BracketRoundMatches roundMatches={roundMatches} roundIndex={roundIndex}>
-                                {(match) => (
-                                    <MatchCard match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
-                                )}
-                            </BracketRoundMatches>
-                        </div>
-                    );
-                })}
-            </div>
+        <div className={embedded ? `p-4 ${BRACKET_SCROLL_CLASS}` : `p-6 ${BRACKET_SCROLL_CLASS}`}>
+            <BracketRoundsTree
+                rounds={rounds}
+                roundsMap={roundsMap}
+                roundLabel={(roundIndex, total) => getRoundName(rounds[roundIndex] ?? roundIndex + 1)}
+                firstRoundMatchCount={firstRoundCount}
+                hideMatch={(m) =>
+                    shouldHideBracketMatch(
+                        m as TournamentMatch,
+                        (m as TournamentMatch).round === rounds[0],
+                    )
+                }
+                renderMatch={(match) => (
+                    <BracketMatchSlot
+                        match={match}
+                        tournamentId={tournament.id}
+                        isActive={isActive}
+                        canScore={canScore}
+                        stadiumPickerMatchId={stadiumPickerMatchId}
+                        onOpenStadiumPicker={onOpenStadiumPicker}
+                        onCloseStadiumPicker={onCloseStadiumPicker}
+                        participants={tournament.participants || []}
+                        stadiumCount={tournament.stadiums || 0}
+                        occupiedStadiums={occupiedStadiums}
+                        onMatchReported={onMatchReported}
+                    />
+                )}
+            />
         </div>
     );
 
@@ -2160,7 +2348,7 @@ function EliminationBracket({
                                 </h4>
                                 <div className="flex flex-col gap-4">
                                     {p3Visible.map(match => (
-                                        <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                        <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} onMatchReported={onMatchReported} />
                                     ))}
                                 </div>
                             </div>
@@ -2185,7 +2373,7 @@ function EliminationBracket({
                                             )}
                                             <div className="flex flex-wrap gap-4 justify-center">
                                                 {p5vRoundsMap[round].map(match => (
-                                                    <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} />
+                                                    <MatchCard key={match.id} match={match} tournamentId={tournament.id} isActive={isActive} canScore={canScore} isStadiumPickerOpen={stadiumPickerMatchId === match.id} onOpenStadiumPicker={() => onOpenStadiumPicker?.(match.id)} onCloseStadiumPicker={onCloseStadiumPicker} participants={tournament.participants || []} stadiumCount={tournament.stadiums || 0} occupiedStadiums={occupiedStadiums} onMatchReported={onMatchReported} />
                                                 ))}
                                             </div>
                                         </div>
@@ -2236,12 +2424,10 @@ function SwissView({
     onRefreshBracket,
     isRefreshingBracket = false,
     stadiumPickerMatchId,
-    scoreMatchId,
     detailsMatchId,
     onOpenStadiumPicker,
     onCloseStadiumPicker,
     onOpenScore,
-    onCloseScore,
     onOpenDetails,
     onCloseDetails,
     finalStageStadiumPickerMatchId,
@@ -2257,12 +2443,10 @@ function SwissView({
     onRefreshBracket?: () => void;
     isRefreshingBracket?: boolean;
     stadiumPickerMatchId: number | null;
-    scoreMatchId: number | null;
     detailsMatchId: number | null;
     onOpenStadiumPicker: (matchId: number) => void;
     onCloseStadiumPicker: () => void;
     onOpenScore: (matchId: number) => void;
-    onCloseScore: () => void;
     onOpenDetails: (matchId: number) => void;
     onCloseDetails: () => void;
     finalStageStadiumPickerMatchId: number | null;
@@ -2313,9 +2497,6 @@ function SwissView({
         setSelectedRound(round);
         try { sessionStorage.setItem(roundKey, String(round)); } catch {}
     };
-    const scoreMatch = scoreMatchId
-        ? groupMatches.find((m) => m.id === scoreMatchId) ?? null
-        : null;
     const detailsMatch = detailsMatchId
         ? groupMatches.find((m) => m.id === detailsMatchId) ?? null
         : null;
@@ -2341,6 +2522,7 @@ function SwissView({
     const canAdvance = isActive && allCurrentComplete && !isLastRound;
     const canStartFinals = isActive && allCurrentComplete && isLastRound && wantsSwissPlayoff && !hasFinalStage;
     const canComplete = isActive && allCurrentComplete && isLastRound && !wantsSwissPlayoff;
+    const canEditGroupScore = isActive && !hasFinalStage && canScore;
 
     const NowPlayingBanner = () => {
         if (playingMatches.length === 0) return null;
@@ -2513,7 +2695,9 @@ function SwissView({
                                                     key={match.id}
                                                     match={match}
                                                     tournamentId={tournament.id}
-                                                    isActive={isActive && selectedRound === currentRound}
+                                                    isActive={isActive}
+                                                    isCurrentRound={selectedRound === currentRound}
+                                                    canEditGroupScore={canEditGroupScore}
                                                     canScore={canScore}
                                                     onOpenScore={onOpenScore}
                                                     isDetailsOpen={detailsMatchId === match.id}
@@ -2555,7 +2739,9 @@ function SwissView({
                                     key={match.id}
                                     match={match}
                                     tournamentId={tournament.id}
-                                    isActive={isActive && selectedRound === currentRound}
+                                    isActive={isActive}
+                                    isCurrentRound={selectedRound === currentRound}
+                                    canEditGroupScore={canEditGroupScore}
                                     canScore={canScore}
                                     onOpenScore={onOpenScore}
                                     isDetailsOpen={detailsMatchId === match.id}
@@ -2745,6 +2931,7 @@ function SwissView({
                         stadiumPickerMatchId={finalStageStadiumPickerMatchId}
                         onOpenStadiumPicker={onOpenFinalStageStadiumPicker}
                         onCloseStadiumPicker={onCloseFinalStageStadiumPicker}
+                        onMatchReported={onRefreshBracket}
                     />
                 ) : tournament.status === 'completed' && !isTwoStage && !hasSwissTopCut && standings.length > 0 ? (
                     /* Single-stage Swiss completed: show podium */
@@ -2843,14 +3030,6 @@ function SwissView({
                 )
             )}
 
-            {/* Score Modal */}
-            {!readOnly && scoreMatch && (
-                <SwissScoreModal
-                    match={scoreMatch}
-                    tournamentId={tournament.id}
-                    onClose={onCloseScore}
-                />
-            )}
             {detailsMatch && (
                 <SwissHistoryModal
                     match={detailsMatch}
@@ -3398,6 +3577,7 @@ export default function Show({
 
     const currentStatus = liveDataRef.current.status ?? tournament.status;
     const shouldPoll = readOnly || currentStatus === 'active' || currentStatus === 'completed';
+    const pauseLivePoll = openSwissScoreMatchId !== null;
     const liveUrl = readOnly
         ? `/t/${tournament.slug}/live`
         : `/tournaments/${tournament.id}/live`;
@@ -3412,7 +3592,7 @@ export default function Show({
             return data;
         },
         enabled: shouldPoll,
-        refetchInterval: shouldPoll ? 5000 : false,
+        refetchInterval: shouldPoll && !pauseLivePoll ? 5000 : false,
         refetchIntervalInBackground: false,
         refetchOnWindowFocus: false,
         structuralSharing: true,
@@ -3431,7 +3611,14 @@ export default function Show({
     };
 
     const handleRemoveParticipant = (participantId: number) => {
-        router.delete(route('participants.destroy', [tournament.id, participantId]), { preserveScroll: true, preserveState: true });
+        router.delete(route('participants.destroy', [tournament.id, participantId]), {
+            preserveScroll: true,
+            onSuccess: () => {
+                liveDataRef.current = { matches: null, standings: null, status: null, currentRound: null };
+                prevDataRef.current = '';
+                void refreshBracket();
+            },
+        });
     };
 
     const handleDelete = () => {
@@ -3457,10 +3644,14 @@ export default function Show({
     const maxLabel = effectiveMax != null ? effectiveMax.toString() : '\u221e';
     const atParticipantLimit = effectiveMax != null && participantCount >= effectiveMax;
     const isActive = !readOnly && liveTournament.status === 'active';
+    const tournamentShareUrl = `${window.location.origin}/t/${tournament.slug}`;
     const occupiedStadiums = matches
         .filter(m => m.status === 'playing' && m.stadium)
         .map(m => m.stadium as number);
     const isGroupStage = ['swiss', 'round_robin'].includes(tournament.format);
+    const scoreModalMatch = openSwissScoreMatchId
+        ? matches.find((m) => m.id === openSwissScoreMatchId) ?? null
+        : null;
     const isRoundRobin = tournament.format === 'round_robin';
     const isTwoStage = tournament.tournament_type === 'two_stage';
     const hasSwissTopCut =
@@ -3925,10 +4116,21 @@ export default function Show({
                                         Randomize Seeds
                                     </button>
                                 )}
-                                <button onClick={() => { const shareUrl = `${window.location.origin}/t/${tournament.slug}`; navigator.clipboard.writeText(shareUrl); setToast('Tournament link copied!'); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent hover:border-slate-700/50 transition-all">
-                                    <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                                    Share Tournament
-                                </button>
+                                <div className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-400 border border-slate-700/50 bg-slate-800/30">
+                                    <svg className="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                    <span className="shrink-0 whitespace-nowrap">Share Tournament</span>
+                                    <span className="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 text-xs font-mono text-slate-300 truncate">
+                                        {tournamentShareUrl}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => { navigator.clipboard.writeText(tournamentShareUrl); setToast('Tournament link copied!'); }}
+                                        className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800/60 transition-all shrink-0"
+                                        title="Copy link"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -4037,12 +4239,10 @@ export default function Show({
                                     onRefreshBracket={shouldPoll ? refreshBracket : undefined}
                                     isRefreshingBracket={isLiveFetching}
                                     stadiumPickerMatchId={openSwissStadiumMatchId}
-                                    scoreMatchId={openSwissScoreMatchId}
                                     detailsMatchId={openSwissDetailsMatchId}
                                     onOpenStadiumPicker={setOpenSwissStadiumMatchId}
                                     onCloseStadiumPicker={() => setOpenSwissStadiumMatchId(null)}
                                     onOpenScore={setOpenSwissScoreMatchId}
-                                    onCloseScore={() => setOpenSwissScoreMatchId(null)}
                                     onOpenDetails={setOpenSwissDetailsMatchId}
                                     onCloseDetails={() => setOpenSwissDetailsMatchId(null)}
                                     finalStageStadiumPickerMatchId={openFinalStageStadiumMatchId}
@@ -4102,14 +4302,15 @@ export default function Show({
                                     stadiumPickerMatchId={openFinalStageStadiumMatchId}
                                     onOpenStadiumPicker={setOpenFinalStageStadiumMatchId}
                                     onCloseStadiumPicker={() => setOpenFinalStageStadiumMatchId(null)}
+                                    onMatchReported={shouldPoll ? refreshBracket : undefined}
                                 />
                             )
                         ) : (
                             /* Single Elimination Bracket */
-                            <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
+                            <div className="rounded-2xl border border-slate-800/80 bg-slate-900/40">
                                 <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between">
                                     <h2 className="text-lg font-semibold text-white">Bracket</h2>
-                                    {isActive && canScore && <span className="text-xs text-cyan-400 font-medium">Click a name to report winner</span>}
+                                    {isActive && canScore && <span className="text-xs text-slate-500 font-medium">Use Play / Score on each match</span>}
                                 </div>
 
                                 {matches.length === 0 ? (
@@ -4124,37 +4325,31 @@ export default function Show({
                                         </p>
                                     </div>
                                 ) : (
-                                    <div className="p-6 overflow-x-auto">
-                                        <div className="flex gap-8 min-w-max">
-                                            {rounds.map((round, roundIndex) => {
-                                                const roundMatches = roundsMap[round];
-                                                if (roundMatches.length === 0) return null;
-
-                                                return (
-                                                    <div key={round} className="flex flex-col">
-                                                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 text-center">
-                                                            {getRoundName(round)}
-                                                        </h3>
-                                                        <BracketRoundMatches roundMatches={roundMatches} roundIndex={roundIndex}>
-                                                            {(match) => (
-                                                                <MatchCard
-                                                                    match={match}
-                                                                    tournamentId={tournament.id}
-                                                                    isActive={isActive}
-                                                                    canScore={canScore}
-                                                                    isStadiumPickerOpen={openFinalStageStadiumMatchId === match.id}
-                                                                    onOpenStadiumPicker={() => setOpenFinalStageStadiumMatchId(match.id)}
-                                                                    onCloseStadiumPicker={() => setOpenFinalStageStadiumMatchId(null)}
-                                                                    participants={participants}
-                                                                    stadiumCount={tournament.stadiums || 0}
-                                                                    occupiedStadiums={occupiedStadiums}
-                                                                />
-                                                            )}
-                                                        </BracketRoundMatches>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                    <div className={`p-6 ${BRACKET_SCROLL_CLASS}`}>
+                                        <BracketRoundsTree
+                                            rounds={rounds}
+                                            roundsMap={roundsMap}
+                                            roundLabel={(roundIndex) => getRoundName(rounds[roundIndex] ?? roundIndex + 1)}
+                                            firstRoundMatchCount={Math.max(1, sortMatchesByNumber(roundsMap[rounds[0]] ?? []).length)}
+                                            hideMatch={(m) =>
+                                                shouldHideBracketMatch(m, m.round === rounds[0])
+                                            }
+                                            renderMatch={(match) => (
+                                                <BracketMatchSlot
+                                                    match={match}
+                                                    tournamentId={tournament.id}
+                                                    isActive={isActive}
+                                                    canScore={canScore}
+                                                    stadiumPickerMatchId={openFinalStageStadiumMatchId}
+                                                    onOpenStadiumPicker={setOpenFinalStageStadiumMatchId}
+                                                    onCloseStadiumPicker={() => setOpenFinalStageStadiumMatchId(null)}
+                                                    participants={participants}
+                                                    stadiumCount={tournament.stadiums || 0}
+                                                    occupiedStadiums={occupiedStadiums}
+                                                    onMatchReported={shouldPoll ? refreshBracket : undefined}
+                                                />
+                                            )}
+                                        />
                                     </div>
                                 )}
                             </div>
@@ -4174,6 +4369,15 @@ export default function Show({
             {/* Bulk Add Modal */}
             {!readOnly && showAddModal && (
                 <BulkAddModal tournamentId={tournament.id} onClose={() => setShowAddModal(false)} />
+            )}
+
+            {!readOnly && scoreModalMatch && (
+                <SwissScoreModal
+                    key={scoreModalMatch.id}
+                    match={scoreModalMatch}
+                    tournamentId={tournament.id}
+                    onClose={() => setOpenSwissScoreMatchId(null)}
+                />
             )}
 
             {/* Delete Modal */}
