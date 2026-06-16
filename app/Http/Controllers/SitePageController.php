@@ -99,33 +99,13 @@ class SitePageController extends Controller
     {
         SiteEventDisplay::loadAndApplyFormat($event);
 
-        $registrationCounts = [
-            'total' => $event->registrations()->whereIn('status', ['tentative', 'confirmed'])->count(),
-            'confirmed' => $event->registrations()->where('status', 'confirmed')->count(),
-            'tentative' => $event->registrations()->where('status', 'tentative')->count(),
-        ];
-
-        $event->load([
-            'registrations' => function ($query) {
-                $query
-                    ->whereIn('status', ['tentative', 'confirmed'])
-                    ->latest()
-                    ->select([
-                        'id',
-                        'site_event_id',
-                        'full_name',
-                        'entry_type',
-                        'blader_name_1',
-                        'blader_name_2',
-                        'status',
-                        'created_at',
-                    ]);
-            },
-        ]);
+        $registeredCount = $event->registrations()
+            ->whereIn('status', ['tentative', 'confirmed'])
+            ->count();
 
         return Inertia::render('Events/Show', [
             'event' => $event,
-            'registrationCounts' => $registrationCounts,
+            'registeredCount' => $registeredCount,
         ]);
     }
 

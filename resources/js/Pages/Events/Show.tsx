@@ -7,16 +7,6 @@ import { formatEventFeeDisplay, getRegistrationFee } from '@/utils/eventFees';
 import { getEventRegistrationDefaults } from '@/utils/eventRegistration';
 import { isEventSlotsFull } from '@/utils/eventSlots';
 
-interface EventRegistrationItem {
-    id: number;
-    full_name: string;
-    entry_type: 'single' | 'double';
-    blader_name_1: string;
-    blader_name_2: string | null;
-    status: 'tentative' | 'confirmed';
-    created_at: string;
-}
-
 interface EventData {
     id: number;
     title: string;
@@ -40,7 +30,6 @@ interface EventData {
     require_payment: boolean;
     payment_method: string | null;
     payment_qr: string | null;
-    registrations: EventRegistrationItem[];
 }
 
 interface RegForm {
@@ -96,31 +85,20 @@ function formatEventDateTime(date: string, time?: string | null): string {
     return `${dateText} ${timeText}`;
 }
 
-const PLAYERS_PER_PAGE = 7;
-
 export default function EventShow({
     event,
-    registrationCounts,
+    registeredCount,
 }: {
     event: EventData;
-    registrationCounts: { total: number; confirmed: number; tentative: number };
+    registeredCount: number;
 }) {
     const { flash, auth } = usePage<PageProps>().props;
     const [regOpen, setRegOpen] = useState(false);
     const [regForm, setRegForm] = useState<RegForm>(emptyReg);
     const [processing, setProcessing] = useState(false);
-    const [regPage, setRegPage] = useState(1);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mapUrl = getMapEmbedUrl(event);
-    const slotsFull = isEventSlotsFull(event.slots, registrationCounts.total);
-    const totalRegPages = Math.max(1, Math.ceil(event.registrations.length / PLAYERS_PER_PAGE));
-    const currentRegPage = Math.min(regPage, totalRegPages);
-    const paginatedRegistrations = event.registrations.slice(
-        (currentRegPage - 1) * PLAYERS_PER_PAGE,
-        currentRegPage * PLAYERS_PER_PAGE,
-    );
-    const regRangeStart = event.registrations.length === 0 ? 0 : (currentRegPage - 1) * PLAYERS_PER_PAGE + 1;
-    const regRangeEnd = Math.min(currentRegPage * PLAYERS_PER_PAGE, event.registrations.length);
+    const slotsFull = isEventSlotsFull(event.slots, registeredCount);
 
     const openRegister = () => {
         if (slotsFull) return;
@@ -221,20 +199,6 @@ export default function EventShow({
                                     </div>
                                 </div>
 
-                                {event.prizes && event.prizes.length > 0 && (
-                                    <div className="mb-6">
-                                        <h2 className="text-sm font-bold uppercase tracking-wide text-white mb-2">Prizes</h2>
-                                        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4 space-y-2">
-                                            {event.prizes.map((p, i) => (
-                                                <div key={i} className="flex gap-3 text-sm">
-                                                    <span className="text-red-400 font-semibold min-w-[130px]">{p.place}:</span>
-                                                    <span className="text-gray-300">{p.prize}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
                                 {mapUrl && (
                                     <div className="rounded-xl overflow-hidden border border-zinc-700/40">
                                         <iframe
@@ -264,77 +228,21 @@ export default function EventShow({
                                     {slotsFull ? 'Slots Full' : 'Register Now'}
                                 </button>
 
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/50 p-3 text-center">
-                                        <p className="text-2xl font-bold text-white">{registrationCounts.total}</p>
-                                        <p className="text-xs uppercase tracking-wider text-gray-500 mt-1">Registered</p>
-                                    </div>
-                                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
-                                        <p className="text-2xl font-bold text-emerald-400">{registrationCounts.confirmed}</p>
-                                        <p className="text-xs uppercase tracking-wider text-emerald-400/70 mt-1">Confirmed</p>
-                                    </div>
-                                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-center">
-                                        <p className="text-2xl font-bold text-amber-400">{registrationCounts.tentative}</p>
-                                        <p className="text-xs uppercase tracking-wider text-amber-400/70 mt-1">Tentative</p>
-                                    </div>
-                                </div>
-
-                                <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
-                                    <div className="px-4 py-3 border-b border-zinc-800/60 flex items-center justify-between gap-2">
-                                        <h2 className="text-sm font-bold uppercase tracking-wide text-white">Registered Players</h2>
-                                        {event.registrations.length > 0 && (
-                                            <span className="text-[10px] text-gray-600 shrink-0">
-                                                {regRangeStart}–{regRangeEnd} of {event.registrations.length}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {event.registrations.length > 0 ? (
-                                        <>
-                                            <div className="divide-y divide-zinc-800/60">
-                                                {paginatedRegistrations.map((reg) => (
-                                                    <div key={reg.id} className="px-4 py-3">
-                                                        <p className="text-sm font-semibold text-white">{reg.full_name}</p>
-                                                        <p className="text-xs text-gray-500 mb-1">
-                                                            {reg.blader_name_1}{reg.blader_name_2 ? ` / ${reg.blader_name_2}` : ''} ({reg.entry_type})
-                                                        </p>
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
-                                                            reg.status === 'confirmed'
-                                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                                : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                                        }`}>
-                                                            {reg.status}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            {totalRegPages > 1 && (
-                                                <div className="px-4 py-3 border-t border-zinc-800/60 flex items-center justify-between gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setRegPage((page) => Math.max(1, page - 1))}
-                                                        disabled={currentRegPage === 1}
-                                                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-zinc-700/50 hover:text-white hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400 transition-colors"
-                                                    >
-                                                        Prev
-                                                    </button>
-                                                    <span className="text-[11px] text-gray-500">
-                                                        Page {currentRegPage} of {totalRegPages}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setRegPage((page) => Math.min(totalRegPages, page + 1))}
-                                                        disabled={currentRegPage === totalRegPages}
-                                                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-zinc-700/50 hover:text-white hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400 transition-colors"
-                                                    >
-                                                        Next
-                                                    </button>
+                                {event.prizes && event.prizes.length > 0 && (
+                                    <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-zinc-800/60">
+                                            <h2 className="text-sm font-bold uppercase tracking-wide text-white">Prizes</h2>
+                                        </div>
+                                        <div className="p-4 space-y-2">
+                                            {event.prizes.map((p, i) => (
+                                                <div key={i} className="text-sm">
+                                                    <span className="text-red-400 font-semibold">{p.place}</span>
+                                                    <p className="text-gray-300 mt-0.5">{p.prize}</p>
                                                 </div>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <p className="px-4 py-8 text-sm text-gray-500 text-center">No registrations yet.</p>
-                                    )}
-                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                             </div>
                         </div>
