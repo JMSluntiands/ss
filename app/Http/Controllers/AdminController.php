@@ -94,46 +94,86 @@ class AdminController extends Controller
         $search = $request->input('search');
         $accountType = $request->input('account_type');
 
-        $query = User::query()->with(['siteMember:id,user_id,name,rank,role']);
+        $applySearch = function ($query) use ($search): void {
+            if (! $search) {
+                return;
+            }
 
-        if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('blader_name', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('blader_name', 'like', "%{$search}%");
             });
-        }
+        };
+
+        $counts = [
+            'all' => User::count(),
+            'organizer' => User::where('account_type', UserAccountType::ORGANIZER)->count(),
+            'member' => User::where('account_type', UserAccountType::MEMBER)->count(),
+            'admin' => User::where('account_type', UserAccountType::ADMIN)->count(),
+        ];
+
+        $planOptions = [
+            ['value' => TournamentXPlan::STARTER, 'label' => 'Starter (Free)'],
+            ['value' => TournamentXPlan::COMMUNITY, 'label' => 'Community'],
+            ['value' => TournamentXPlan::PRO, 'label' => 'Pro'],
+        ];
 
         if ($accountType && in_array($accountType, [
             UserAccountType::ORGANIZER,
             UserAccountType::MEMBER,
             UserAccountType::ADMIN,
         ], true)) {
+            $query = User::query()->with(['siteMember:id,user_id,name,rank,role']);
+            $applySearch($query);
             $query->where('account_type', $accountType);
+
+            $users = $query->withCount('tournaments')
+                ->latest()
+                ->paginate(20)
+                ->withQueryString();
+
+            return Inertia::render('Admin/Users', [
+                'layout' => 'single',
+                'users' => $users,
+                'organizers' => [],
+                'community' => [],
+                'filters' => [
+                    'search' => $search ?? '',
+                    'account_type' => $accountType,
+                ],
+                'counts' => $counts,
+                'planOptions' => $planOptions,
+            ]);
         }
 
-        $users = $query->withCount('tournaments')
+        $organizersQuery = User::query()->with(['siteMember:id,user_id,name,rank,role']);
+        $applySearch($organizersQuery);
+        $organizers = $organizersQuery
+            ->where('account_type', UserAccountType::ORGANIZER)
+            ->withCount('tournaments')
             ->latest()
-            ->paginate(20)
-            ->withQueryString();
+            ->get();
+
+        $communityQuery = User::query()->with(['siteMember:id,user_id,name,rank,role']);
+        $applySearch($communityQuery);
+        $community = $communityQuery
+            ->whereIn('account_type', [UserAccountType::MEMBER, UserAccountType::ADMIN])
+            ->withCount('tournaments')
+            ->latest()
+            ->get();
 
         return Inertia::render('Admin/Users', [
-            'users' => $users,
+            'layout' => 'split',
+            'users' => null,
+            'organizers' => $organizers,
+            'community' => $community,
             'filters' => [
                 'search' => $search ?? '',
-                'account_type' => $accountType ?? '',
+                'account_type' => '',
             ],
-            'counts' => [
-                'all' => User::count(),
-                'organizer' => User::where('account_type', UserAccountType::ORGANIZER)->count(),
-                'member' => User::where('account_type', UserAccountType::MEMBER)->count(),
-                'admin' => User::where('account_type', UserAccountType::ADMIN)->count(),
-            ],
-            'planOptions' => [
-                ['value' => TournamentXPlan::STARTER, 'label' => 'Starter (Free)'],
-                ['value' => TournamentXPlan::COMMUNITY, 'label' => 'Community'],
-                ['value' => TournamentXPlan::PRO, 'label' => 'Pro'],
-            ],
+            'counts' => $counts,
+            'planOptions' => $planOptions,
         ]);
     }
 

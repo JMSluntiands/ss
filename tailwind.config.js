@@ -18,12 +18,17 @@ export default {
             animation: {
                 'spin-slow': 'spin 8s linear infinite',
                 'fade-in-up': 'fadeInUp 0.3s ease-out forwards',
+                'hero-fade-in': 'heroFadeIn 0.5s ease-out forwards',
                 'lightning-1': 'lightning1 3s ease-in-out infinite',
                 'lightning-2': 'lightning2 4s ease-in-out 1s infinite',
                 'lightning-3': 'lightning3 3.5s ease-in-out 0.5s infinite',
                 'lightning-4': 'lightning4 2.8s ease-in-out 1.5s infinite',
             },
             keyframes: {
+                heroFadeIn: {
+                    '0%': { opacity: '0', transform: 'translateY(12px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
                 fadeInUp: {
                     '0%': { opacity: '0', transform: 'translateY(8px)' },
                     '100%': { opacity: '1', transform: 'translateY(0)' },

@@ -91,6 +91,16 @@ export default function AdminLayout({
 
     const contentItems: AdminNavItem[] = [
         {
+            name: 'Hero Carousel',
+            href: route('admin.content.hero-slides'),
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h10M4 18h16" />
+                </svg>
+            ),
+            active: currentPage === 'hero-slides',
+        },
+        {
             name: 'Blog Posts',
             href: route('admin.content.blog'),
             icon: (

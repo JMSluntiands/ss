@@ -40,11 +40,11 @@ interface PaginatedUsers {
 type AccountTypeFilter = '' | 'organizer' | 'member' | 'admin';
 
 const permDefs = [
-    { key: 'can_create_tournaments', label: 'Create Tournaments', desc: 'Can create and organize new tournaments' },
-    { key: 'can_manage_tournaments', label: 'Manage Tournaments', desc: 'Can manage all tournaments on the platform' },
-    { key: 'can_use_judge', label: 'Judge System', desc: 'Can generate judge codes and use the judge panel' },
-    { key: 'can_score_matches', label: 'Score Matches', desc: 'Can report and submit match scores' },
-    { key: 'can_manage_events', label: 'Manage Events', desc: 'Can create and manage events from the dashboard' },
+    { key: 'can_create_tournaments', short: 'Create' },
+    { key: 'can_manage_tournaments', short: 'Manage' },
+    { key: 'can_use_judge', short: 'Judge' },
+    { key: 'can_score_matches', short: 'Score' },
+    { key: 'can_manage_events', short: 'Events' },
 ] as const;
 
 const accountTypeBadge: Record<string, { label: string; className: string }> = {
@@ -76,6 +76,10 @@ interface AccountCounts {
     admin: number;
 }
 
+function userPerm(user: UserRecord, key: string): boolean {
+    return Boolean((user as unknown as Record<string, boolean>)[key]);
+}
+
 function resolveAccountType(user: UserRecord): string {
     if (user.account_type === 'organizer' || user.account_type === 'member' || user.account_type === 'admin') {
         return user.account_type;
@@ -84,13 +88,410 @@ function resolveAccountType(user: UserRecord): string {
     return user.role === 'admin' ? 'admin' : 'organizer';
 }
 
-export default function Users({
+function UserAvatar({ user, accountType }: { user: UserRecord; accountType: string }) {
+    return (
+        <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${
+                accountType === 'organizer'
+                    ? 'bg-gradient-to-tr from-cyan-700 to-cyan-500'
+                    : accountType === 'member'
+                    ? 'bg-gradient-to-tr from-violet-700 to-violet-500'
+                    : 'bg-gradient-to-tr from-red-700 to-red-500'
+            }`}
+        >
+            {user.name.charAt(0).toUpperCase()}
+        </div>
+    );
+}
+
+function AccountBadge({ accountType }: { accountType: string }) {
+    const badge = accountTypeBadge[accountType] ?? accountTypeBadge.organizer;
+
+    return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border whitespace-nowrap ${badge.className}`}>
+            {badge.label}
+        </span>
+    );
+}
+
+function PermissionToggles({
+    user,
+    onToggle,
+}: {
+    user: UserRecord;
+    onToggle: (user: UserRecord, key: string) => void;
+}) {
+    return (
+        <div className="flex flex-wrap gap-1">
+            {permDefs.map(({ key, short }) => {
+                const enabled = userPerm(user, key);
+
+                return (
+                    <button
+                        key={key}
+                        type="button"
+                        onClick={() => onToggle(user, key)}
+                        title={short}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-colors ${
+                            enabled
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20'
+                                : 'bg-zinc-800/60 text-gray-500 border-zinc-700/50 hover:text-gray-300'
+                        }`}
+                    >
+                        {short}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+function TableShell({
+    title,
+    subtitle,
+    accent,
+    count,
+    children,
+    emptyMessage,
+}: {
+    title: string;
+    subtitle: string;
+    accent: 'cyan' | 'violet';
+    count: number;
+    children: React.ReactNode;
+    emptyMessage: string;
+}) {
+    const borderClass = accent === 'cyan' ? 'border-cyan-500/20' : 'border-violet-500/20';
+    const headerBg = accent === 'cyan' ? 'bg-cyan-500/5' : 'bg-violet-500/5';
+    const titleClass = accent === 'cyan' ? 'text-cyan-300' : 'text-violet-300';
+
+    return (
+        <section className={`rounded-2xl border ${borderClass} overflow-hidden`}>
+            <div className={`px-5 py-4 border-b ${borderClass} ${headerBg}`}>
+                <div className="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 className={`text-sm font-bold uppercase tracking-wider ${titleClass}`}>{title}</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-500">{count} account{count !== 1 ? 's' : ''}</span>
+                </div>
+            </div>
+
+            {count === 0 ? (
+                <div className="px-6 py-10 text-center text-sm text-gray-500">{emptyMessage}</div>
+            ) : (
+                <div className="overflow-x-auto">{children}</div>
+            )}
+        </section>
+    );
+}
+
+function OrganizerTable({
     users,
+    planOptions,
+    onTogglePerm,
+    onMakeAdmin,
+}: {
+    users: UserRecord[];
+    planOptions: Array<{ value: string; label: string }>;
+    onTogglePerm: (user: UserRecord, key: string) => void;
+    onMakeAdmin: (user: UserRecord) => void;
+}) {
+    return (
+        <TableShell
+            title="Tournament X Organizers"
+            subtitle="Accounts that run tournaments, judge panels, and live scoring"
+            accent="cyan"
+            count={users.length}
+            emptyMessage="No organizer accounts found."
+        >
+            <table className="w-full min-w-[900px] text-sm">
+                <thead>
+                    <tr className="border-b border-zinc-800/80 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                        <th className="px-5 py-3">User</th>
+                        <th className="px-5 py-3">Email</th>
+                        <th className="px-5 py-3">Plan</th>
+                        <th className="px-5 py-3">Tournaments</th>
+                        <th className="px-5 py-3">Joined</th>
+                        <th className="px-5 py-3">Permissions</th>
+                        <th className="px-5 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/60">
+                    {users.map((user) => (
+                        <tr key={user.id} className="hover:bg-cyan-500/[0.03] transition-colors">
+                            <td className="px-5 py-3">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <UserAvatar user={user} accountType="organizer" />
+                                    <span className="font-medium text-white truncate">{user.name}</span>
+                                </div>
+                            </td>
+                            <td className="px-5 py-3 text-gray-400 truncate max-w-[200px]">{user.email}</td>
+                            <td className="px-5 py-3">
+                                {planOptions.length > 0 ? (
+                                    <select
+                                        value={user.tournamentx_plan ?? 'starter'}
+                                        onChange={(e) =>
+                                            router.patch(route('admin.users.plan', user.id), {
+                                                tournamentx_plan: e.target.value,
+                                            }, { preserveState: true })
+                                        }
+                                        className="rounded-lg border border-cyan-500/30 bg-zinc-900 px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
+                                    >
+                                        {planOptions.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <span className="text-xs text-gray-500">—</span>
+                                )}
+                            </td>
+                            <td className="px-5 py-3 text-gray-400">{user.tournaments_count}</td>
+                            <td className="px-5 py-3 text-gray-500 whitespace-nowrap text-xs">
+                                {new Date(user.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="px-5 py-3">
+                                <PermissionToggles user={user} onToggle={onTogglePerm} />
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                                <button
+                                    type="button"
+                                    onClick={() => onMakeAdmin(user)}
+                                    className="px-2.5 py-1 rounded-lg text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all whitespace-nowrap"
+                                >
+                                    Make Admin
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </TableShell>
+    );
+}
+
+function CommunityTable({
+    users,
+    onRemoveAdmin,
+}: {
+    users: UserRecord[];
+    onRemoveAdmin: (user: UserRecord) => void;
+}) {
+    return (
+        <TableShell
+            title="Members & Admins"
+            subtitle="Shadow Syndicate community logins and platform admin accounts"
+            accent="violet"
+            count={users.length}
+            emptyMessage="No member or admin accounts found."
+        >
+            <table className="w-full min-w-[800px] text-sm">
+                <thead>
+                    <tr className="border-b border-zinc-800/80 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                        <th className="px-5 py-3">User</th>
+                        <th className="px-5 py-3">Email</th>
+                        <th className="px-5 py-3">Type</th>
+                        <th className="px-5 py-3">Blader / Roster</th>
+                        <th className="px-5 py-3">Joined</th>
+                        <th className="px-5 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/60">
+                    {users.map((user) => {
+                        const accountType = resolveAccountType(user);
+                        const isAdmin = accountType === 'admin' || user.role === 'admin';
+                        const blader = user.blader_name || user.site_member?.name;
+                        const rosterMeta = [
+                            user.site_member?.rank,
+                            user.site_member?.role,
+                        ].filter(Boolean).join(' · ');
+
+                        return (
+                            <tr key={user.id} className="hover:bg-violet-500/[0.03] transition-colors">
+                                <td className="px-5 py-3">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <UserAvatar user={user} accountType={accountType} />
+                                        <span className="font-medium text-white truncate">{user.name}</span>
+                                    </div>
+                                </td>
+                                <td className="px-5 py-3 text-gray-400 truncate max-w-[200px]">{user.email}</td>
+                                <td className="px-5 py-3">
+                                    <AccountBadge accountType={accountType} />
+                                </td>
+                                <td className="px-5 py-3 text-xs text-gray-500 max-w-[180px]">
+                                    {blader ? (
+                                        <div>
+                                            <span className="text-violet-400/90">{blader}</span>
+                                            {rosterMeta && <span className="block text-gray-600 mt-0.5">{rosterMeta}</span>}
+                                        </div>
+                                    ) : isAdmin ? (
+                                        <span className="text-red-400/70">Full platform access</span>
+                                    ) : (
+                                        <span className="text-gray-600">—</span>
+                                    )}
+                                </td>
+                                <td className="px-5 py-3 text-gray-500 whitespace-nowrap text-xs">
+                                    {new Date(user.created_at).toLocaleDateString()}
+                                </td>
+                                <td className="px-5 py-3 text-right">
+                                    {isAdmin ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => onRemoveAdmin(user)}
+                                            className="px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 bg-zinc-800 border border-zinc-700/50 hover:text-white hover:bg-zinc-700 transition-all whitespace-nowrap"
+                                        >
+                                            Remove Admin
+                                        </button>
+                                    ) : (
+                                        <span className="text-xs text-gray-600">—</span>
+                                    )}
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </TableShell>
+    );
+}
+
+function FilteredUserTable({
+    users,
+    planOptions,
+    activeFilter,
+    onTogglePerm,
+    onMakeAdmin,
+    onRemoveAdmin,
+}: {
+    users: UserRecord[];
+    planOptions: Array<{ value: string; label: string }>;
+    activeFilter: AccountTypeFilter;
+    onTogglePerm: (user: UserRecord, key: string) => void;
+    onMakeAdmin: (user: UserRecord) => void;
+    onRemoveAdmin: (user: UserRecord) => void;
+}) {
+    const isOrganizer = activeFilter === 'organizer';
+    const accent = isOrganizer ? 'cyan' : 'violet';
+    const borderClass = accent === 'cyan' ? 'border-cyan-500/20' : 'border-violet-500/20';
+
+    return (
+        <div className={`rounded-2xl border ${borderClass} overflow-hidden`}>
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] text-sm">
+                    <thead>
+                        <tr className="border-b border-zinc-800/80 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-zinc-900/40">
+                            <th className="px-5 py-3">User</th>
+                            <th className="px-5 py-3">Email</th>
+                            {isOrganizer && <th className="px-5 py-3">Plan</th>}
+                            {isOrganizer && <th className="px-5 py-3">Tournaments</th>}
+                            {!isOrganizer && <th className="px-5 py-3">Type</th>}
+                            {!isOrganizer && <th className="px-5 py-3">Blader / Roster</th>}
+                            <th className="px-5 py-3">Joined</th>
+                            {isOrganizer && <th className="px-5 py-3">Permissions</th>}
+                            <th className="px-5 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/60">
+                        {users.map((user) => {
+                            const accountType = resolveAccountType(user);
+                            const isAdmin = accountType === 'admin' || user.role === 'admin';
+                            const blader = user.blader_name || user.site_member?.name;
+
+                            return (
+                                <tr key={user.id} className="hover:bg-zinc-800/20 transition-colors">
+                                    <td className="px-5 py-3">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <UserAvatar user={user} accountType={accountType} />
+                                            <span className="font-medium text-white truncate">{user.name}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-5 py-3 text-gray-400 truncate max-w-[200px]">{user.email}</td>
+                                    {isOrganizer && (
+                                        <td className="px-5 py-3">
+                                            <select
+                                                value={user.tournamentx_plan ?? 'starter'}
+                                                onChange={(e) =>
+                                                    router.patch(route('admin.users.plan', user.id), {
+                                                        tournamentx_plan: e.target.value,
+                                                    }, { preserveState: true })
+                                                }
+                                                className="rounded-lg border border-cyan-500/30 bg-zinc-900 px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
+                                            >
+                                                {planOptions.map((opt) => (
+                                                    <option key={opt.value} value={opt.value}>
+                                                        {opt.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                    )}
+                                    {isOrganizer && (
+                                        <td className="px-5 py-3 text-gray-400">{user.tournaments_count}</td>
+                                    )}
+                                    {!isOrganizer && (
+                                        <td className="px-5 py-3">
+                                            <AccountBadge accountType={accountType} />
+                                        </td>
+                                    )}
+                                    {!isOrganizer && (
+                                        <td className="px-5 py-3 text-xs text-violet-400/90 truncate max-w-[180px]">
+                                            {blader ?? (isAdmin ? 'Full platform access' : '—')}
+                                        </td>
+                                    )}
+                                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap text-xs">
+                                        {new Date(user.created_at).toLocaleDateString()}
+                                    </td>
+                                    {isOrganizer && (
+                                        <td className="px-5 py-3">
+                                            <PermissionToggles user={user} onToggle={onTogglePerm} />
+                                        </td>
+                                    )}
+                                    <td className="px-5 py-3 text-right">
+                                        {isAdmin ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => onRemoveAdmin(user)}
+                                                className="px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 bg-zinc-800 border border-zinc-700/50 hover:text-white hover:bg-zinc-700 transition-all"
+                                            >
+                                                Remove Admin
+                                            </button>
+                                        ) : isOrganizer ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => onMakeAdmin(user)}
+                                                className="px-2.5 py-1 rounded-lg text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all"
+                                            >
+                                                Make Admin
+                                            </button>
+                                        ) : (
+                                            <span className="text-xs text-gray-600">—</span>
+                                        )}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+export default function Users({
+    layout = 'split',
+    users,
+    organizers = [],
+    community = [],
     filters,
     counts,
     planOptions = [],
 }: {
-    users: PaginatedUsers;
+    layout?: 'split' | 'single';
+    users: PaginatedUsers | null;
+    organizers?: UserRecord[];
+    community?: UserRecord[];
     filters: { search?: string; account_type?: string };
     counts: AccountCounts;
     planOptions?: Array<{ value: string; label: string }>;
@@ -105,6 +506,7 @@ export default function Users({
     });
 
     const activeFilter = (filters.account_type ?? '') as AccountTypeFilter;
+    const isSplitView = layout === 'split' && !activeFilter;
 
     const navigate = (params: { search?: string; account_type?: string }) => {
         router.get(route('admin.users'), {
@@ -124,18 +526,23 @@ export default function Users({
 
     const handleTogglePerm = (user: UserRecord, key: string) => {
         router.patch(route('admin.users.permissions', user.id), {
-            [key]: !(user as any)[key],
+            [key]: !userPerm(user, key),
         }, { preserveState: true });
     };
 
-    const filterDescription =
-        activeFilter === 'organizer'
-            ? 'Organizer accounts registered on Tournament X'
-            : activeFilter === 'member'
-            ? 'Shadow Syndicate community member logins'
-            : activeFilter === 'admin'
-            ? 'Platform admin accounts'
-            : 'All login accounts across Tournament X and Shadow Syndicate';
+    const filterDescription = isSplitView
+        ? 'Organizers and community accounts shown in separate tables'
+        : activeFilter === 'organizer'
+        ? 'Tournament X organizer accounts'
+        : activeFilter === 'member'
+        ? 'Shadow Syndicate member logins'
+        : activeFilter === 'admin'
+        ? 'Platform admin accounts'
+        : 'All login accounts';
+
+    const displayedTotal = isSplitView
+        ? organizers.length + community.length
+        : users?.total ?? 0;
 
     return (
         <AdminLayout currentPage="users">
@@ -148,13 +555,18 @@ export default function Users({
                         <div className="mt-2 w-16 h-1 rounded-full bg-gradient-to-r from-red-600 to-red-400" />
                         <p className="text-sm text-gray-500 mt-3">{filterDescription}</p>
                         <p className="text-xs text-gray-600 mt-1">
-                            Showing {users.total} account{users.total !== 1 ? 's' : ''}
-                            {activeFilter === 'organizer' && ` · ${counts.organizer} Tournament X total`}
-                            {activeFilter === 'member' && ` · ${counts.member} members total`}
+                            Showing {displayedTotal} account{displayedTotal !== 1 ? 's' : ''}
                         </p>
                     </div>
                     <button
-                        onClick={() => { setNewUser({ name: '', email: '', password: '', role: 'user', can_create_tournaments: false, can_manage_tournaments: false, can_use_judge: false, can_score_matches: false, can_manage_events: false }); setShowAddUser(true); }}
+                        onClick={() => {
+                            setNewUser({
+                                name: '', email: '', password: '', role: 'user',
+                                can_create_tournaments: false, can_manage_tournaments: false,
+                                can_use_judge: false, can_score_matches: false, can_manage_events: false,
+                            });
+                            setShowAddUser(true);
+                        }}
                         className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-red-700 to-red-500 text-sm font-semibold text-white shadow-lg shadow-red-500/25 transition-all hover:shadow-red-500/40 hover:brightness-110 active:scale-[0.98]"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,7 +576,6 @@ export default function Users({
                     </button>
                 </div>
 
-                {/* Account type tabs */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-6">
                     {accountFilters.map(({ value, label, countKey }) => {
                         const active = activeFilter === value;
@@ -192,7 +603,6 @@ export default function Users({
                     })}
                 </div>
 
-                {/* Search */}
                 <form onSubmit={handleSearch} className="mb-6">
                     <div className="relative">
                         <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -208,200 +618,35 @@ export default function Users({
                     </div>
                 </form>
 
-                {/* User Cards */}
-                <div className="space-y-4">
-                    {users.data.length === 0 && (
-                        <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 px-6 py-12 text-center">
-                            <p className="text-gray-500 text-sm">No accounts found for this filter.</p>
-                        </div>
-                    )}
+                {isSplitView ? (
+                    <div className="space-y-8">
+                        <OrganizerTable
+                            users={organizers}
+                            planOptions={planOptions}
+                            onTogglePerm={handleTogglePerm}
+                            onMakeAdmin={(user) => setConfirmAction({ user, newRole: 'admin' })}
+                        />
+                        <CommunityTable
+                            users={community}
+                            onRemoveAdmin={(user) => setConfirmAction({ user, newRole: 'user' })}
+                        />
+                    </div>
+                ) : users && users.data.length > 0 ? (
+                    <FilteredUserTable
+                        users={users.data}
+                        planOptions={planOptions}
+                        activeFilter={activeFilter}
+                        onTogglePerm={handleTogglePerm}
+                        onMakeAdmin={(user) => setConfirmAction({ user, newRole: 'admin' })}
+                        onRemoveAdmin={(user) => setConfirmAction({ user, newRole: 'user' })}
+                    />
+                ) : (
+                    <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 px-6 py-12 text-center">
+                        <p className="text-gray-500 text-sm">No accounts found for this filter.</p>
+                    </div>
+                )}
 
-                    {users.data.map((user) => {
-                        const accountType = resolveAccountType(user);
-                        const badge = accountTypeBadge[accountType] ?? accountTypeBadge.organizer;
-                        const isOrganizer = accountType === 'organizer';
-                        const isMember = accountType === 'member';
-                        const isAdmin = accountType === 'admin';
-
-                        return (
-                            <div
-                                key={user.id}
-                                className={`rounded-2xl border overflow-hidden transition-colors ${
-                                    isOrganizer
-                                        ? 'border-cyan-500/20 bg-cyan-500/[0.03] hover:border-cyan-500/35'
-                                        : isMember
-                                        ? 'border-violet-500/20 bg-violet-500/[0.03] hover:border-violet-500/35'
-                                        : 'border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700/80'
-                                }`}
-                            >
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${
-                                            isOrganizer
-                                                ? 'bg-gradient-to-tr from-cyan-700 to-cyan-500'
-                                                : isMember
-                                                ? 'bg-gradient-to-tr from-violet-700 to-violet-500'
-                                                : 'bg-gradient-to-tr from-red-700 to-red-500'
-                                        }`}>
-                                            {user.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <p className="text-sm font-semibold text-white truncate">{user.name}</p>
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${badge.className}`}>
-                                                    {badge.label}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                                            {isMember && (user.blader_name || user.site_member?.name) && (
-                                                <p className="text-xs text-violet-400/80 mt-0.5">
-                                                    Blader: {user.blader_name || user.site_member?.name}
-                                                    {user.site_member?.rank ? ` · ${user.site_member.rank}` : ''}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 shrink-0">
-                                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                                            {isOrganizer && (
-                                                <>
-                                                    <span>{user.tournaments_count} tournament{user.tournaments_count !== 1 ? 's' : ''}</span>
-                                                    <span className="text-zinc-700">·</span>
-                                                </>
-                                            )}
-                                            <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
-                                        </div>
-                                        {isAdmin || user.role === 'admin' ? (
-                                            <button
-                                                onClick={() => setConfirmAction({ user, newRole: 'user' })}
-                                                className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 bg-zinc-800 border border-zinc-700/50 hover:text-white hover:bg-zinc-700 transition-all"
-                                            >
-                                                Remove Admin
-                                            </button>
-                                        ) : isOrganizer ? (
-                                            <button
-                                                onClick={() => setConfirmAction({ user, newRole: 'admin' })}
-                                                className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all"
-                                            >
-                                                Make Admin
-                                            </button>
-                                        ) : null}
-                                    </div>
-                                </div>
-
-                                {isOrganizer && planOptions.length > 0 && (
-                                    <div className="border-t border-cyan-500/15 px-5 py-4 bg-cyan-500/5">
-                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                            <div>
-                                                <p className="text-[10px] font-bold text-cyan-400/80 uppercase tracking-wider">Tournament X plan</p>
-                                                <p className="text-xs text-gray-600 mt-0.5">Controls player limits, judge panel, and live scoring.</p>
-                                            </div>
-                                            <select
-                                                value={user.tournamentx_plan ?? 'starter'}
-                                                onChange={(e) =>
-                                                    router.patch(route('admin.users.plan', user.id), {
-                                                        tournamentx_plan: e.target.value,
-                                                    }, { preserveState: true })
-                                                }
-                                                className="rounded-xl border border-cyan-500/30 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                                            >
-                                                {planOptions.map((opt) => (
-                                                    <option key={opt.value} value={opt.value}>
-                                                        {opt.label}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {isMember && (
-                                    <div className="border-t border-violet-500/15 px-5 py-4 bg-violet-500/5">
-                                        <p className="text-[10px] font-bold text-violet-400/80 uppercase tracking-wider">Shadow Syndicate member</p>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Community login only — profile, events, and stats on the main site. Not a Tournament X organizer account.
-                                        </p>
-                                        {user.site_member && (
-                                            <p className="text-xs text-gray-600 mt-2">
-                                                Roster: {user.site_member.name}
-                                                {user.site_member.role ? ` · ${user.site_member.role}` : ''}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-
-                                {isOrganizer && (
-                                    <div className="border-t border-zinc-800/60 px-5 py-4 bg-zinc-900/60">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <svg className="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                            </svg>
-                                            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Tournament X permissions</span>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                                            {permDefs.map(({ key, label, desc }) => {
-                                                const enabled = (user as any)[key] as boolean;
-                                                return (
-                                                    <button
-                                                        key={key}
-                                                        onClick={() => handleTogglePerm(user, key)}
-                                                        className={`flex items-start gap-2.5 px-3 py-2 rounded-lg text-left transition-all border ${
-                                                            enabled
-                                                                ? 'bg-emerald-500/5 border-emerald-500/15 hover:bg-emerald-500/10'
-                                                                : 'bg-zinc-800/30 border-zinc-700/30 hover:bg-zinc-800/60'
-                                                        }`}
-                                                    >
-                                                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
-                                                            enabled
-                                                                ? 'bg-emerald-500 border-emerald-500'
-                                                                : 'border-zinc-600 bg-transparent'
-                                                        }`}>
-                                                            {enabled && (
-                                                                <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                                                </svg>
-                                                            )}
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <p className={`text-xs font-semibold ${enabled ? 'text-emerald-400' : 'text-gray-400'}`}>{label}</p>
-                                                            <p className="text-[10px] text-gray-600 leading-tight">{desc}</p>
-                                                        </div>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {isAdmin && (
-                                    <div className="border-t border-zinc-800/60 px-5 py-4 bg-zinc-900/60">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <svg className="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                            </svg>
-                                            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Platform admin access</span>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                                            {permDefs.map(({ label }) => (
-                                                <div key={label} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-red-500/5 border border-red-500/10">
-                                                    <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                    <span className="text-xs font-medium text-red-400">{label}</span>
-                                                    <span className="ml-auto text-[9px] text-red-400/50 uppercase font-bold">Admin</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {users.last_page > 1 && (
+                {!isSplitView && users && users.last_page > 1 && (
                     <div className="flex items-center justify-center gap-1 mt-6">
                         {users.links.map((link, idx) => (
                             <button
@@ -538,35 +783,22 @@ export default function Users({
                                     {newUser.role === 'admin' ? (
                                         <p className="text-xs text-red-400/70 italic px-1">Admin role has full access to all features.</p>
                                     ) : (
-                                        <div className="grid grid-cols-1 gap-1.5">
-                                            {permDefs.map(({ key, label, desc }) => {
-                                                const enabled = (newUser as any)[key] as boolean;
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {permDefs.map(({ key, short }) => {
+                                                const enabled = userPerm(newUser as unknown as UserRecord, key);
+
                                                 return (
                                                     <button
                                                         type="button"
                                                         key={key}
                                                         onClick={() => setNewUser({ ...newUser, [key]: !enabled })}
-                                                        className={`flex items-start gap-2.5 px-3 py-2 rounded-lg text-left transition-all border ${
+                                                        className={`px-2 py-1 rounded text-xs font-semibold border transition-colors ${
                                                             enabled
-                                                                ? 'bg-emerald-500/5 border-emerald-500/15 hover:bg-emerald-500/10'
-                                                                : 'bg-zinc-800/30 border-zinc-700/30 hover:bg-zinc-800/60'
+                                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                                                                : 'bg-zinc-800/60 text-gray-500 border-zinc-700/50'
                                                         }`}
                                                     >
-                                                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
-                                                            enabled
-                                                                ? 'bg-emerald-500 border-emerald-500'
-                                                                : 'border-zinc-600 bg-transparent'
-                                                        }`}>
-                                                            {enabled && (
-                                                                <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                                                </svg>
-                                                            )}
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <p className={`text-xs font-semibold ${enabled ? 'text-emerald-400' : 'text-gray-400'}`}>{label}</p>
-                                                            <p className="text-[10px] text-gray-600 leading-tight">{desc}</p>
-                                                        </div>
+                                                        {short}
                                                     </button>
                                                 );
                                             })}

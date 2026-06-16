@@ -87,9 +87,10 @@ class TournamentController extends Controller
         }
 
         $n = (int) $raw;
-        if ($n < 2 || $n > 512) {
+        $allowed = [8, 16, 32, 64, 128];
+        if (! in_array($n, $allowed, true)) {
             throw ValidationException::withMessages([
-                'swiss_top_cut_players' => 'Top cut must be between 2 and 512 players.',
+                'swiss_top_cut_players' => 'Top cut must be 8, 16, 32, 64, or 128 players, or left blank for no playoff bracket.',
             ]);
         }
 

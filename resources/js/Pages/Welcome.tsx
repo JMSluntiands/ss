@@ -1,3 +1,4 @@
+import HeroCarousel, { HeroSlideData } from '@/Components/HeroCarousel';
 import { MemberSlideData, MembersSliderSection } from '@/Components/MembersMarquee';
 // import TournamentRosterSection, { TournamentRosterData } from '@/Components/TournamentRosterSection';
 import SiteFooter from '@/Components/SiteFooter';
@@ -13,9 +14,10 @@ import { useEffect, useState } from 'react';
 
 export default function Welcome({
     auth,
+    heroSlides = [],
     members = [],
     // tournamentRosters = [],
-}: PageProps & { members?: MemberSlideData[] /* ; tournamentRosters?: TournamentRosterData[] */ }) {
+}: PageProps & { heroSlides?: HeroSlideData[]; members?: MemberSlideData[] /* ; tournamentRosters?: TournamentRosterData[] */ }) {
     const page = usePage<PageProps>();
     const tournamentXSiteHref = tournamentxSiteUrl(page.props);
     const [scrollY, setScrollY] = useState(0);
@@ -60,77 +62,10 @@ export default function Welcome({
                     </div>
 
                     <div className="relative z-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-                        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-                            {/* Left column - Text */}
-                            <div className="text-center lg:text-left order-2 lg:order-1">
-                                <h1 className="text-4xl sm:text-6xl lg:text-8xl font-black tracking-tighter leading-none mb-6 break-words">
-                                    SHADOW
-                                    <br />
-                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-400 to-red-600">
-                                        SYNDICATE
-                                    </span>
-                                </h1>
-
-                                <p className="text-lg sm:text-xl text-gray-400 max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
-                                    Stay sharp. Stay ready.{' '}
-                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-400 to-red-600 font-semibold">
-                                        Feel the Shadow
-                                    </span>
-                                </p>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setJoinModalOpen(true)}
-                                    className="mb-6 inline-flex items-center justify-center gap-2 px-8 py-3.5 text-sm font-bold text-white bg-red-600 hover:bg-red-500 rounded-xl shadow-lg shadow-red-900/30 transition-colors mx-auto lg:mx-0"
-                                >
-                                    Join Us
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            {/* Right column - Logo */}
-                            <div className="flex justify-center order-1 lg:order-2 w-full min-w-0">
-                                <div className="relative mx-auto max-w-full px-6 sm:px-10 py-4">
-                                    <SiteLogo
-                                        glow
-                                        blend
-                                        className="w-48 h-48 sm:w-72 sm:h-72 lg:w-[400px] lg:h-[400px] mx-auto object-contain"
-                                    />
-
-                                    <svg className="absolute top-0 right-2 sm:-top-6 sm:-right-8 w-12 h-20 sm:w-16 sm:h-24 animate-lightning-1" viewBox="0 0 64 96" fill="none">
-                                        <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg1)" />
-                                        <defs><linearGradient id="lg1" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fff" /><stop offset="1" stopColor="#ef4444" /></linearGradient></defs>
-                                    </svg>
-
-                                    <svg className="absolute bottom-0 left-0 sm:-bottom-4 sm:-left-10 w-10 h-16 sm:w-14 sm:h-20 rotate-[200deg] animate-lightning-2" viewBox="0 0 64 96" fill="none">
-                                        <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg2)" />
-                                        <defs><linearGradient id="lg2" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fca5a5" /><stop offset="1" stopColor="#dc2626" /></linearGradient></defs>
-                                    </svg>
-
-                                    <svg className="absolute top-1/2 right-0 sm:-right-12 w-10 h-14 sm:w-12 sm:h-16 -rotate-[30deg] animate-lightning-3" viewBox="0 0 64 96" fill="none">
-                                        <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg3)" />
-                                        <defs><linearGradient id="lg3" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fff" /><stop offset="1" stopColor="#b91c1c" /></linearGradient></defs>
-                                    </svg>
-
-                                    <svg className="absolute top-0 left-0 sm:-top-2 sm:-left-8 w-8 h-12 sm:w-10 sm:h-14 rotate-[160deg] animate-lightning-4" viewBox="0 0 64 96" fill="none">
-                                        <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg4)" />
-                                        <defs><linearGradient id="lg4" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fecaca" /><stop offset="1" stopColor="#ef4444" /></linearGradient></defs>
-                                    </svg>
-
-                                    <svg className="absolute bottom-2 right-1 sm:bottom-4 sm:-right-6 w-8 h-12 sm:w-10 sm:h-16 rotate-[45deg] animate-lightning-2" viewBox="0 0 64 96" fill="none">
-                                        <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg5)" />
-                                        <defs><linearGradient id="lg5" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fff" /><stop offset="1" stopColor="#dc2626" /></linearGradient></defs>
-                                    </svg>
-
-                                    <svg className="absolute top-6 left-1 sm:top-8 sm:-left-6 w-7 h-10 sm:w-8 sm:h-12 -rotate-[120deg] animate-lightning-1" viewBox="0 0 64 96" fill="none">
-                                        <path d="M32 0L20 40h16L24 96l28-56H36L48 0H32z" fill="url(#lg6)" />
-                                        <defs><linearGradient id="lg6" x1="32" y1="0" x2="32" y2="96" gradientUnits="userSpaceOnUse"><stop stopColor="#fca5a5" /><stop offset="1" stopColor="#b91c1c" /></linearGradient></defs>
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
+                        <HeroCarousel
+                            slides={heroSlides}
+                            onJoinClick={() => setJoinModalOpen(true)}
+                        />
 
                         <div className="mt-16 animate-bounce text-center">
                             <a href="#about" className="text-gray-600 hover:text-red-400 transition-colors">

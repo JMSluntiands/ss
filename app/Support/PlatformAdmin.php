@@ -22,6 +22,15 @@ class PlatformAdmin
         return url('/'.self::pathPrefix().'/login');
     }
 
+    public static function dashboardUrl(): string
+    {
+        if (Route::has('admin.dashboard')) {
+            return route('admin.dashboard', absolute: true);
+        }
+
+        return url('/'.self::pathPrefix());
+    }
+
     public static function isRequest(?\Illuminate\Http\Request $request = null): bool
     {
         $request ??= request();

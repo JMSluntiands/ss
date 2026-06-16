@@ -11,6 +11,7 @@ use App\Support\PlatformAdmin;
 use App\Support\TournamentXAuth;
 use App\Support\TournamentXDomain;
 use App\Support\TournamentXPlan;
+use App\Support\UserAccountType;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -74,6 +75,9 @@ class HandleInertiaRequests extends Middleware
                 'user' => $authUser,
             ],
             'is_admin' => PlatformAdmin::isRequest($request) && ($user?->isAdminAccount() ?? false),
+            'is_platform_admin_user' => $user ? UserAccountType::isAdmin($user) : false,
+            'platform_admin_login_url' => PlatformAdmin::loginUrl(),
+            'platform_admin_dashboard_url' => route('admin.dashboard', absolute: true),
             'is_member_portal' => $user
                 ? app(MemberDashboardStatsService::class)->isMemberDashboardUser($user)
                 : false,

@@ -36,6 +36,68 @@ interface Props {
 /** Two-stage tournament UI (hidden until ready for general use). */
 const SHOW_TWO_STAGE_TOURNAMENT = false;
 
+const TOP_CUT_OPTIONS = [8, 16, 32, 64, 128] as const;
+
+function normalizeTopCutValue(value: string): string {
+    if (!value) return '';
+    const n = parseInt(value, 10);
+    return TOP_CUT_OPTIONS.includes(n as (typeof TOP_CUT_OPTIONS)[number]) ? String(n) : '';
+}
+
+function TopCutSelect({
+    id,
+    label,
+    value,
+    onChange,
+    emptyLabel,
+    hint,
+    hintId,
+    error,
+    selectClass,
+    labelClass,
+    hintClass,
+}: {
+    id: string;
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    emptyLabel: string;
+    hint: string;
+    hintId: string;
+    error?: string;
+    selectClass: string;
+    labelClass: string;
+    hintClass: string;
+}) {
+    const normalized = normalizeTopCutValue(value);
+
+    return (
+        <div>
+            <label htmlFor={id} className={labelClass}>
+                {label}
+            </label>
+            <select
+                id={id}
+                value={normalized}
+                onChange={(e) => onChange(e.target.value)}
+                className={`${selectClass} max-w-[200px]`}
+                aria-describedby={hintId}
+            >
+                <option value="">{emptyLabel}</option>
+                {TOP_CUT_OPTIONS.map((n) => (
+                    <option key={n} value={String(n)}>
+                        Top {n}
+                    </option>
+                ))}
+            </select>
+            <p id={hintId} className={hintClass}>
+                {hint}
+            </p>
+            {error && <InputError message={error} className="mt-2" />}
+        </div>
+    );
+}
+
 type PlacementTone = 'yes' | 'maybe' | 'no' | 'na';
 
 function placementToneClass(tone: PlacementTone): string {
@@ -282,10 +344,11 @@ export default function Create({ tournament }: Props) {
         pts_for_game_tie: tournament?.pts_for_game_tie?.toString() ?? '0.0',
         pts_for_bye: tournament?.pts_for_bye?.toString() ?? '1.0',
         swiss_rounds: tournament?.swiss_rounds?.toString() ?? '',
-        swiss_top_cut_players:
+        swiss_top_cut_players: normalizeTopCutValue(
             tournament?.swiss_top_cut_players != null && tournament.swiss_top_cut_players > 0
                 ? String(tournament.swiss_top_cut_players)
                 : '',
+        ),
         stadiums: tournament?.stadiums?.toString() ?? '',
         third_place_match: tournament?.third_place_match ?? false,
         placement_matches_fifth_seventh: tournament?.placement_matches_fifth_seventh ?? false,
@@ -541,27 +604,19 @@ export default function Create({ tournament }: Props) {
                                                     <span className="text-white font-medium">single elimination playoff</span>. Leave blank for
                                                     standings-only (no playoff bracket).
                                                 </p>
-                                                <div>
-                                                    <label htmlFor="rr_top_cut_players" className={labelClass}>
-                                                        Players in playoff bracket (top N)
-                                                    </label>
-                                                    <input
-                                                        id="rr_top_cut_players"
-                                                        type="number"
-                                                        min={2}
-                                                        max={512}
-                                                        value={data.swiss_top_cut_players}
-                                                        onChange={(e) => setData('swiss_top_cut_players', e.target.value)}
-                                                        placeholder="e.g. 8"
-                                                        className={`${inputClass} max-w-[200px]`}
-                                                        aria-describedby="rr_top_cut_players_hint"
-                                                    />
-                                                    <p id="rr_top_cut_players_hint" className={hintClass}>
-                                                        Leave blank for no playoff. Must be at least 2 if set. Bracket is seeded from Round Robin
-                                                        standings (1st vs lowest, etc.).
-                                                    </p>
-                                                    <InputError message={errors.swiss_top_cut_players} className="mt-2" />
-                                                </div>
+                                                <TopCutSelect
+                                                    id="rr_top_cut_players"
+                                                    label="Players in playoff bracket (top N)"
+                                                    value={data.swiss_top_cut_players}
+                                                    onChange={(v) => setData('swiss_top_cut_players', v)}
+                                                    emptyLabel="None — standings only"
+                                                    hint="Choose how many players advance to single elimination playoffs, seeded from Round Robin standings."
+                                                    hintId="rr_top_cut_players_hint"
+                                                    error={errors.swiss_top_cut_players}
+                                                    selectClass={selectClass}
+                                                    labelClass={labelClass}
+                                                    hintClass={hintClass}
+                                                />
                                                 {SHOW_TWO_STAGE_TOURNAMENT && (
                                                     <button
                                                         type="button"
@@ -629,27 +684,19 @@ export default function Create({ tournament }: Props) {
                                                     <span className="text-white font-medium">single elimination playoff</span>. Leave the field blank for
                                                     Swiss-only (standings decide final order).
                                                 </p>
-                                                <div>
-                                                    <label htmlFor="swiss_top_cut_players" className={labelClass}>
-                                                        Players in playoff bracket (top N)
-                                                    </label>
-                                                    <input
-                                                        id="swiss_top_cut_players"
-                                                        type="number"
-                                                        min={2}
-                                                        max={512}
-                                                        value={data.swiss_top_cut_players}
-                                                        onChange={(e) => setData('swiss_top_cut_players', e.target.value)}
-                                                        placeholder="e.g. 8"
-                                                        className={`${inputClass} max-w-[200px]`}
-                                                        aria-describedby="swiss_top_cut_players_hint"
-                                                    />
-                                                    <p id="swiss_top_cut_players_hint" className={hintClass}>
-                                                        Leave blank for Swiss-only (no playoff). Must be at least 2 if set. The bracket is built from
-                                                        Swiss standings order (1st seed vs lowest, etc.).
-                                                    </p>
-                                                    <InputError message={errors.swiss_top_cut_players} className="mt-2" />
-                                                </div>
+                                                <TopCutSelect
+                                                    id="swiss_top_cut_players"
+                                                    label="Players in playoff bracket (top N)"
+                                                    value={data.swiss_top_cut_players}
+                                                    onChange={(v) => setData('swiss_top_cut_players', v)}
+                                                    emptyLabel="None — Swiss only"
+                                                    hint="Choose how many players advance to single elimination playoffs, seeded from Swiss standings (1st vs lowest, etc.)."
+                                                    hintId="swiss_top_cut_players_hint"
+                                                    error={errors.swiss_top_cut_players}
+                                                    selectClass={selectClass}
+                                                    labelClass={labelClass}
+                                                    hintClass={hintClass}
+                                                />
                                                 {SHOW_TWO_STAGE_TOURNAMENT && (
                                                     <button
                                                         type="button"
@@ -827,24 +874,19 @@ export default function Create({ tournament }: Props) {
                                             </div>
                                             {(data.group_stage_format === 'swiss' || data.group_stage_format === 'round_robin') && (
                                                 <div className="pt-2">
-                                                    <label htmlFor="swiss_top_cut_two_stage" className={labelClass}>
-                                                        Total players in finals bracket (optional)
-                                                    </label>
-                                                    <input
+                                                    <TopCutSelect
                                                         id="swiss_top_cut_two_stage"
-                                                        type="number"
-                                                        min={2}
-                                                        max={512}
+                                                        label="Total players in finals bracket (optional)"
                                                         value={data.swiss_top_cut_players}
-                                                        onChange={(e) => setData('swiss_top_cut_players', e.target.value)}
-                                                        placeholder="e.g. 16"
-                                                        className={`${inputClass} max-w-[200px]`}
-                                                        aria-describedby="swiss_top_cut_two_stage_hint"
+                                                        onChange={(v) => setData('swiss_top_cut_players', v)}
+                                                        emptyLabel="Auto (qualifiers × groups)"
+                                                        hint="Pick a fixed bracket size, or leave on Auto to use (qualifiers per group) × (number of groups)."
+                                                        hintId="swiss_top_cut_two_stage_hint"
+                                                        error={errors.swiss_top_cut_players}
+                                                        selectClass={selectClass}
+                                                        labelClass={labelClass}
+                                                        hintClass={hintClass}
                                                     />
-                                                    <p id="swiss_top_cut_two_stage_hint" className={hintClass}>
-                                                        Leave blank to auto-calculate: (qualifiers per group) × (number of groups).
-                                                    </p>
-                                                    <InputError message={errors.swiss_top_cut_players} className="mt-2" />
                                                 </div>
                                             )}
                                         </div>

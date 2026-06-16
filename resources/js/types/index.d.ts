@@ -22,6 +22,9 @@ export type PageProps<
         user: User | null;
     };
     is_admin: boolean;
+    is_platform_admin_user: boolean;
+    platform_admin_login_url: string;
+    platform_admin_dashboard_url: string;
     /** True when user should use Shadow Syndicate member portal (not Tournament X organizer UI). */
     is_member_portal: boolean;
     permissions: {

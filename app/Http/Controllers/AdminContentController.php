@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BlogPost;
 use App\Support\BlogImageStorage;
 use App\Support\ImageOptimizer;
+use App\Models\HeroSlide;
 use App\Models\JerseyItem;
 use App\Models\SiteEvent;
 use App\Models\SiteMember;
@@ -426,6 +427,94 @@ class AdminContentController extends Controller
         ]);
 
         return back()->with('success', "Password updated for {$member->name}.");
+    }
+
+    // ── Hero carousel ──
+
+    public function heroSlidesIndex()
+    {
+        $slides = HeroSlide::orderBy('sort_order')->paginate(20);
+
+        return Inertia::render('Admin/Content/HeroSlides', ['slides' => $slides]);
+    }
+
+    public function heroSlideStore(Request $request)
+    {
+        $data = $this->validateHeroSlide($request);
+
+        if ($data['use_logo_visual'] ?? false) {
+            $data['image_url'] = null;
+        } elseif ($request->hasFile('image')) {
+            $data['image_url'] = ImageOptimizer::storeOptimized($request->file('image'), 'hero-images', 1200);
+        }
+        unset($data['image']);
+
+        HeroSlide::create($data);
+
+        return back()->with('success', 'Hero slide created.');
+    }
+
+    public function heroSlideUpdate(Request $request, HeroSlide $slide)
+    {
+        $data = $this->validateHeroSlide($request);
+        unset($data['image']);
+
+        if ($data['use_logo_visual'] ?? false) {
+            $this->deleteHeroSlideImage($slide->image_url);
+            $data['image_url'] = null;
+        } elseif ($request->hasFile('image')) {
+            $this->deleteHeroSlideImage($slide->image_url);
+            $data['image_url'] = ImageOptimizer::storeOptimized($request->file('image'), 'hero-images', 1200);
+        } else {
+            unset($data['image_url']);
+        }
+
+        $slide->update($data);
+
+        return back()->with('success', 'Hero slide updated.');
+    }
+
+    public function heroSlideDestroy(HeroSlide $slide)
+    {
+        $this->deleteHeroSlideImage($slide->image_url);
+        $slide->delete();
+
+        return back()->with('success', 'Hero slide deleted.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validateHeroSlide(Request $request): array
+    {
+        $data = $request->validate([
+            'title_primary' => 'required|string|max:100',
+            'title_secondary' => 'required|string|max:100',
+            'tagline' => 'nullable|string|max:255',
+            'tagline_accent' => 'nullable|string|max:100',
+            'cta_label' => 'nullable|string|max:100',
+            'cta_url' => 'nullable|string|max:500',
+            'cta_opens_join_modal' => 'boolean',
+            'use_logo_visual' => 'boolean',
+            'image' => 'nullable|image|max:5120',
+            'published' => 'boolean',
+            'sort_order' => 'integer',
+        ]);
+
+        if ($data['cta_opens_join_modal'] ?? false) {
+            $data['cta_url'] = null;
+        }
+
+        return $data;
+    }
+
+    private function deleteHeroSlideImage(?string $imageUrl): void
+    {
+        if (! $imageUrl || str_starts_with($imageUrl, 'http://') || str_starts_with($imageUrl, 'https://')) {
+            return;
+        }
+
+        ImageOptimizer::deleteStored($imageUrl);
     }
 
     // ── Jersey / Merch ──

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BlogPost;
+use App\Models\HeroSlide;
 use App\Models\JerseyItem;
 use App\Models\SiteEvent;
 use App\Models\SiteMember;
@@ -20,7 +21,25 @@ class SitePageController extends Controller
             ->orderBy('sort_order')
             ->get();
 
+        $heroSlides = HeroSlide::query()
+            ->where('published', true)
+            ->orderBy('sort_order')
+            ->get([
+                'id',
+                'title_primary',
+                'title_secondary',
+                'tagline',
+                'tagline_accent',
+                'cta_label',
+                'cta_url',
+                'cta_opens_join_modal',
+                'image_url',
+                'use_logo_visual',
+                'sort_order',
+            ]);
+
         return Inertia::render('Welcome', [
+            'heroSlides' => $heroSlides,
             'members' => $stats->rosterProfiles($members),
             // 'tournamentRosters' => SiteTournamentRoster::query()
             //     ->orderBy('sort_order')

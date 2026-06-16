@@ -62,13 +62,13 @@ export default function SiteNav({
     trailing,
 }: SiteNavProps) {
     const page = usePage<PageProps>();
-    const { auth, tournamentx_enabled, tournamentx_url, is_member_portal } = page.props;
+    const { auth, tournamentx_enabled, tournamentx_url, is_member_portal, is_platform_admin_user, platform_admin_dashboard_url } = page.props;
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
 
     const loginUrl = memberLoginUrl();
     const profileUrl = auth.user
-        ? accountHomeUrl({ is_member_portal, tournamentx_enabled, tournamentx_url })
+        ? accountHomeUrl({ is_member_portal, is_platform_admin_user, platform_admin_dashboard_url, tournamentx_enabled, tournamentx_url })
         : memberLoginUrl();
 
     const navClass =

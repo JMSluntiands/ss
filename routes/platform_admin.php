@@ -61,6 +61,11 @@ Route::middleware([ConfigurePlatformAdminSession::class, 'web'])
             Route::put('/content/members/{member}/password', [AdminContentController::class, 'memberUpdatePassword'])->name('content.members.password');
             Route::delete('/content/members/{member}', [AdminContentController::class, 'memberDestroy'])->name('content.members.destroy');
 
+            Route::get('/content/hero-slides', [AdminContentController::class, 'heroSlidesIndex'])->name('content.hero-slides');
+            Route::post('/content/hero-slides', [AdminContentController::class, 'heroSlideStore'])->name('content.hero-slides.store');
+            Route::put('/content/hero-slides/{slide}', [AdminContentController::class, 'heroSlideUpdate'])->name('content.hero-slides.update');
+            Route::delete('/content/hero-slides/{slide}', [AdminContentController::class, 'heroSlideDestroy'])->name('content.hero-slides.destroy');
+
             Route::get('/content/jersey', [AdminContentController::class, 'jerseyIndex'])->name('content.jersey');
             Route::post('/content/jersey', [AdminContentController::class, 'jerseyStore'])->name('content.jersey.store');
             Route::put('/content/jersey/{item}', [AdminContentController::class, 'jerseyUpdate'])->name('content.jersey.update');

@@ -5,7 +5,23 @@ use App\Http\Controllers\MemberAuthController;
 use App\Http\Controllers\MemberDashboardController;
 use App\Services\MemberDashboardStatsService;
 use App\Support\TournamentXDomain;
+use App\Support\UserAccountType;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+
+Route::get('/storage/{path}', function (string $path) {
+    $path = str_replace('\\', '/', $path);
+    if ($path === '' || str_contains($path, '..')) {
+        abort(404);
+    }
+
+    $disk = Storage::disk('public');
+    if (! $disk->exists($path)) {
+        abort(404);
+    }
+
+    return $disk->response($path);
+})->where('path', '.*')->name('storage.public');
 
 $registerMainSite = function (): void {
     Route::get('/site-assets/logo', fn () => \App\Support\SiteAssets::logoResponse())->name('site.logo');
@@ -55,6 +71,9 @@ $registerTournamentRedirects = function (): void {
     Route::get('/forgot-password', fn () => $to('/forgot-password'));
     Route::get('/dashboard', function () use ($to) {
         $user = auth()->user();
+        if ($user && UserAccountType::isAdmin($user)) {
+            return redirect()->route('admin.dashboard');
+        }
         if ($user && app(MemberDashboardStatsService::class)->isMemberDashboardUser($user)) {
             return redirect()->route('member.dashboard');
         }
