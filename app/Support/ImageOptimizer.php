@@ -19,8 +19,10 @@ class ImageOptimizer
     {
         $dir = pathinfo($relativePath, PATHINFO_DIRNAME);
         $name = pathinfo($relativePath, PATHINFO_FILENAME);
+        $ext = strtolower(pathinfo($relativePath, PATHINFO_EXTENSION));
+        $thumbExt = $ext === 'png' ? 'png' : 'jpg';
 
-        return ($dir !== '.' ? $dir.'/' : '').$name.'_thumb.jpg';
+        return ($dir !== '.' ? $dir.'/' : '').$name.'_thumb.'.$thumbExt;
     }
 
     public static function deleteStored(string $relativePath): void
@@ -65,6 +67,10 @@ class ImageOptimizer
 
         $thumbMaxWidth ??= self::defaultThumbWidth($maxWidth);
 
+        if (self::hasTransparency($image)) {
+            return self::savePng($image, $directory, $maxWidth, $thumbMaxWidth);
+        }
+
         return self::saveJpeg($image, $directory, $maxWidth, $quality, $thumbMaxWidth);
     }
 
@@ -86,6 +92,10 @@ class ImageOptimizer
 
         $thumbMaxWidth ??= self::defaultThumbWidth($maxWidth);
 
+        if (self::hasTransparency($image)) {
+            return self::savePng($image, $directory, $maxWidth, $thumbMaxWidth);
+        }
+
         return self::saveJpeg($image, $directory, $maxWidth, $quality, $thumbMaxWidth);
     }
 
@@ -99,7 +109,7 @@ class ImageOptimizer
             return false;
         }
 
-        if (str_ends_with(strtolower($relativePath), '_thumb.jpg')) {
+        if (str_ends_with(strtolower($relativePath), '_thumb.jpg') || str_ends_with(strtolower($relativePath), '_thumb.png')) {
             return false;
         }
 
@@ -143,7 +153,7 @@ class ImageOptimizer
             return false;
         }
 
-        if (str_ends_with(strtolower($relativePath), '_thumb.jpg')) {
+        if (str_ends_with(strtolower($relativePath), '_thumb.jpg') || str_ends_with(strtolower($relativePath), '_thumb.png')) {
             return false;
         }
 
@@ -193,6 +203,10 @@ class ImageOptimizer
                 $image = @imagecreatefromjpeg($path);
             } elseif (str_contains($mime, 'png') || $ext === 'png') {
                 $image = @imagecreatefrompng($path);
+                if ($image instanceof GdImage) {
+                    imagealphablending($image, true);
+                    imagesavealpha($image, true);
+                }
             } elseif ((str_contains($mime, 'webp') || $ext === 'webp') && function_exists('imagecreatefromwebp')) {
                 $image = @imagecreatefromwebp($path);
             } elseif (str_contains($mime, 'gif') || $ext === 'gif') {
@@ -205,6 +219,53 @@ class ImageOptimizer
         } catch (Throwable) {
             return null;
         }
+    }
+
+    private static function hasTransparency(GdImage $image): bool
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $stepX = max(1, (int) ($width / 40));
+        $stepY = max(1, (int) ($height / 40));
+
+        for ($y = 0; $y < $height; $y += $stepY) {
+            for ($x = 0; $x < $width; $x += $stepX) {
+                $rgba = imagecolorat($image, $x, $y);
+                $alpha = ($rgba >> 24) & 0x7F;
+
+                if ($alpha > 0) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static function savePng(GdImage $image, string $directory, int $maxWidth, int $thumbMaxWidth): ?string
+    {
+        $resized = self::resizeIfNeeded($image, $maxWidth, preserveAlpha: true);
+        $binary = self::encodePng($resized);
+
+        if ($binary === null) {
+            if ($resized !== $image) {
+                imagedestroy($resized);
+            }
+            imagedestroy($image);
+
+            return null;
+        }
+
+        $filename = trim($directory, '/').'/'.Str::uuid().'.png';
+        Storage::disk('public')->put($filename, $binary);
+        self::writeThumbPng($resized, $filename, $thumbMaxWidth);
+
+        if ($resized !== $image) {
+            imagedestroy($resized);
+        }
+        imagedestroy($image);
+
+        return $filename;
     }
 
     private static function saveJpeg(GdImage $image, string $directory, int $maxWidth, int $quality, int $thumbMaxWidth): ?string
@@ -256,6 +317,35 @@ class ImageOptimizer
         return $ok;
     }
 
+    private static function writeThumbPng(GdImage $source, string $mainRelativePath, int $thumbMaxWidth): bool
+    {
+        $thumbPath = self::thumbPathFor($mainRelativePath);
+        $absolute = Storage::disk('public')->path($thumbPath);
+        $dir = dirname($absolute);
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+        $targetWidth = min($width, $thumbMaxWidth);
+        $targetHeight = (int) round($height * ($targetWidth / $width));
+
+        $thumb = imagecreatetruecolor($targetWidth, $targetHeight);
+        imagealphablending($thumb, false);
+        imagesavealpha($thumb, true);
+        $transparent = imagecolorallocatealpha($thumb, 0, 0, 0, 127);
+        imagefill($thumb, 0, 0, $transparent);
+        imagealphablending($thumb, true);
+        imagecopyresampled($thumb, $source, 0, 0, 0, 0, $targetWidth, $targetHeight, $width, $height);
+        imagesavealpha($thumb, true);
+
+        $ok = imagepng($thumb, $absolute, 6);
+        imagedestroy($thumb);
+
+        return $ok;
+    }
+
     private static function saveJpegToPath(GdImage $image, string $absolutePath, int $maxWidth, int $quality): bool
     {
         $resized = self::resizeIfNeeded($image, $maxWidth);
@@ -268,7 +358,7 @@ class ImageOptimizer
         return $ok;
     }
 
-    private static function resizeIfNeeded(GdImage $image, int $maxWidth): GdImage
+    private static function resizeIfNeeded(GdImage $image, int $maxWidth, bool $preserveAlpha = false): GdImage
     {
         $width = imagesx($image);
         $height = imagesy($image);
@@ -279,10 +369,39 @@ class ImageOptimizer
 
         $newHeight = (int) round($height * ($maxWidth / $width));
         $resized = imagecreatetruecolor($maxWidth, $newHeight);
+
+        if ($preserveAlpha) {
+            imagealphablending($resized, false);
+            imagesavealpha($resized, true);
+            $transparent = imagecolorallocatealpha($resized, 0, 0, 0, 127);
+            imagefill($resized, 0, 0, $transparent);
+            imagealphablending($resized, true);
+        }
+
         imagecopyresampled($resized, $image, 0, 0, 0, 0, $maxWidth, $newHeight, $width, $height);
+
+        if ($preserveAlpha) {
+            imagesavealpha($resized, true);
+        }
+
         imagedestroy($image);
 
         return $resized;
+    }
+
+    private static function encodePng(GdImage $image): ?string
+    {
+        imagesavealpha($image, true);
+
+        ob_start();
+        $ok = imagepng($image, null, 6);
+        $data = ob_get_clean();
+
+        if (! $ok || $data === false || $data === '') {
+            return null;
+        }
+
+        return $data;
     }
 
     private static function encodeJpeg(GdImage $image, int $quality): ?string

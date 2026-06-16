@@ -19,7 +19,7 @@ function storageRelativePath(url: string): string {
 }
 
 export function storageThumbPath(relativePath: string): string {
-    if (relativePath.endsWith('_thumb.jpg')) {
+    if (relativePath.endsWith('_thumb.jpg') || relativePath.endsWith('_thumb.png')) {
         return relativePath;
     }
 
@@ -28,7 +28,10 @@ export function storageThumbPath(relativePath: string): string {
         return `${relativePath}_thumb.jpg`;
     }
 
-    return `${relativePath.slice(0, lastDot)}_thumb.jpg`;
+    const ext = relativePath.slice(lastDot + 1).toLowerCase();
+    const thumbExt = ext === 'png' ? 'png' : 'jpg';
+
+    return `${relativePath.slice(0, lastDot)}_thumb.${thumbExt}`;
 }
 
 export function memberImageSrc(url: string | null, size: ImageSize = 'full'): string | null {
